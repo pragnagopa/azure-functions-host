@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly WorkerConfig _workerConfig;
         private readonly Uri _serverUri;
         private readonly ILogger _logger;
+        private static object _syncLock = new object();
         private string _workerId;
         private Process _process;
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
@@ -129,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             };
 
             _process = _processFactory.CreateWorkerProcess(workerContext);
-            StartProcess(_workerId, _process);
+            StartProcess(_workerId);
             _processRegistry?.Register(_process);
         }
 
@@ -317,6 +318,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void HandleWorkerError(Exception exc)
         {
             _startSubscription?.Dispose();
+            _process?.Dispose();
 
             // unlink function inputs
             foreach (var link in _inputLinks)
@@ -324,16 +326,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 link.Dispose();
             }
 
-            _logger.LogError(exc, $"Worker encountered an error.");
             _eventManager.Publish(new WorkerErrorEvent(Id, exc));
         }
 
         // TODO: move this out of LanguageWorkerChannel to WorkerProcessFactory
-        internal void StartProcess(string workerId, Process process)
+        internal void StartProcess(string workerId)
         {
-            process.ErrorDataReceived += (sender, e) =>
+            string processExitMessage = string.Empty;
+            _process.ErrorDataReceived += (sender, e) =>
             {
-                // Java logs to stderr by default
                 // TODO: per language stdout/err parser?
                 if (e.Data != null)
                 {
@@ -344,6 +345,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     else if (e.Data.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1)
                     {
                         _logger.LogError(e.Data);
+                        processExitMessage += e.Data;
                     }
                     else
                     {
@@ -351,35 +353,49 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
             };
-            process.OutputDataReceived += (sender, e) =>
+            _process.OutputDataReceived += (sender, e) =>
             {
                 if (e.Data != null)
                 {
                     _logger.LogInformation(e.Data);
+                    processExitMessage += e.Data;
                 }
             };
-            process.EnableRaisingEvents = true;
-            process.Exited += (s, e) =>
-            {
-                try
+            _process.EnableRaisingEvents = true;
+            _process.Exited += (s, e) =>
                 {
-                    if (process.ExitCode != 0)
+                    bool workerErrorHandled = false;
+                    string exceptionMessage = string.Empty;
+                    try
                     {
-                        HandleWorkerError(new Exception($"{process.StartInfo.FileName} process with pid {process.Id} exited with code {process.ExitCode}"));
+                        if (_process.ExitCode != 0)
+                        {
+                            exceptionMessage = $"{_process.StartInfo.FileName} process with pid {_process.Id} exited with code {_process.ExitCode}\n";
+                            exceptionMessage += processExitMessage;
+                            workerErrorHandled = true;
+                            HandleWorkerError(new LanguageWorkerChannelException(exceptionMessage));
+                        }
+                        else
+                        {
+                            _process.WaitForExit();
+                            _process.Close();
+                        }
                     }
-                    process.WaitForExit();
-                    process.Close();
-                }
-                catch
-                {
-                    HandleWorkerError(new Exception("Worker process is not attached"));
-                }
-            };
-            _logger.LogInformation($"Starting language worker process: {process.StartInfo.FileName} {process.StartInfo.Arguments}");
-            process.Start();
-            _logger.LogInformation($"{process.StartInfo.FileName} process with Id: {process.Id} started");
-            process.BeginErrorReadLine();
-            process.BeginOutputReadLine();
+                    catch (Exception processEx)
+                    {
+                        if (!workerErrorHandled)
+                        {
+                            exceptionMessage += processExitMessage;
+                            HandleWorkerError(new LanguageWorkerChannelException(exceptionMessage, processEx));
+                        }
+                    }
+                };
+            _logger.LogInformation($"Starting {_process.StartInfo.FileName} language worker process with Arguments={_process.StartInfo.Arguments}");
+            _process.Start();
+
+            _logger.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
+            _process.BeginErrorReadLine();
+            _process.BeginOutputReadLine();
         }
 
         private void Send(StreamingMessage msg)

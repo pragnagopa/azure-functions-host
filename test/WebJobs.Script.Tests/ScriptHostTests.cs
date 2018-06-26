@@ -485,6 +485,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void InitializeWorkers_Fails_AddsFunctionErrors()
+        {
+            string functionName = "HttpTrigger";
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            var scriptConfig = new ScriptHostConfiguration
+            {
+                RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample")
+            };
+
+            var testLogger = new TestLogger("test");
+            var environment = new Mock<IScriptHostEnvironment>();
+            var eventManager = new ScriptEventManager();
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            var scriptHost = new ScriptHost(environment.Object, eventManager, scriptConfig, _settingsManager);
+            scriptHost.Initialize();
+            IDictionary<WorkerConfig, LanguageWorkerState> channelState = scriptHost.FunctionDispatcher.LanguageWorkerChannelsState;
+            var nodeWorkerChannel = channelState.Where(w => w.Key.Language.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
+
+            var nodeWorkerId = nodeWorkerChannel.FirstOrDefault().Value.Channel.Id;
+
+            // Raise workerError events to force language worker process restarts
+            var exc = new LanguageWorkerChannelException("TestEx");
+            eventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
+            eventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
+            eventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
+            eventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
+
+            Collection<string> actualFunctionErrors = scriptHost.FunctionErrors[functionName];
+            Assert.NotNull(actualFunctionErrors);
+            Assert.True(actualFunctionErrors.Count >= 3);
+            Assert.Contains("TestEx", actualFunctionErrors.First());
+        }
+
+        [Fact]
         public void ApplyConfiguration_TopLevel()
         {
             JObject config = new JObject();

@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private FileWatcherEventSource _fileEventSource;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private ProxyClientExecutor _proxyClient;
-        private IFunctionRegistry _functionDispatcher;
+        private IFunctionDispatcher _functionDispatcher;
         private ILoggerFactory _loggerFactory;
         private JobHostConfiguration _hostConfig;
         private List<FunctionDescriptorProvider> _descriptorProviders;
@@ -208,6 +208,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal DateTime LastDebugNotify { get; set; }
 
+        internal IFunctionDispatcher FunctionDispatcher => _functionDispatcher;
+
         /// <summary>
         /// Returns true if the specified name is the name of a known function,
         /// regardless of whether the function is in error.
@@ -268,6 +270,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (ex.IsFatal())
                 {
                     throw;
+                }
+            }
+        }
+
+        internal static void AddLanguageWorkerChannelErrors(IFunctionDispatcher functionDispatcher, Dictionary<string, Collection<string>> functionErrors)
+        {
+            foreach (KeyValuePair<WorkerConfig, LanguageWorkerState> kvp in functionDispatcher.LanguageWorkerChannelsState)
+            {
+                WorkerConfig workerConfig = kvp.Key;
+                LanguageWorkerState workerState = kvp.Value;
+                foreach (var functionRegistrationContext in workerState.RegisteredFunctions)
+                {
+                    var languageWorkerChannelException = new LanguageWorkerChannelException(workerState, $"Failed to start language worker process for: {workerConfig.Language}");
+                    AddFunctionError(functionErrors, functionRegistrationContext.Metadata.Name, Utility.FlattenException(languageWorkerChannelException, includeSource: false));
                 }
             }
         }
@@ -736,7 +752,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     server.Uri,
                     _hostConfig.LoggerFactory);
             };
-
             var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
             var providers = new List<IWorkerProvider>();
             if (!string.IsNullOrEmpty(_language))
@@ -755,9 +770,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var workerConfigs = configFactory.GetConfigs(providers);
 
-            _functionDispatcher = new FunctionRegistry(EventManager, server, channelFactory, workerConfigs);
+            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, workerConfigs);
 
-            _eventSubscriptions.Add(EventManager.OfType<WorkerErrorEvent>()
+            _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
                 {
                     HandleHostError(evt.Exception);
@@ -1787,6 +1802,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Also notify the invoker so the error can also be written to the function
                 // log file
                 NotifyInvoker(functionException.MethodName, functionException);
+            }
+            else if (exception is LanguageWorkerChannelException)
+            {
+                AddLanguageWorkerChannelErrors(_functionDispatcher, FunctionErrors);
             }
             else
             {
