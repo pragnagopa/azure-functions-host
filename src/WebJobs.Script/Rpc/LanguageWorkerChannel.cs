@@ -317,6 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void HandleWorkerError(Exception exc)
         {
             _startSubscription?.Dispose();
+            _process.Dispose();
 
             // unlink function inputs
             foreach (var link in _inputLinks)
@@ -325,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
 
             _logger.LogError(exc, $"Worker encountered an error.");
-            _eventManager.Publish(new WorkerErrorEvent(Id, exc));
+            _eventManager.Publish(new WorkerErrorEvent(Id, exc, false));
         }
 
         // TODO: move this out of LanguageWorkerChannel to WorkerProcessFactory
@@ -361,7 +362,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     if (process.ExitCode != 0)
                     {
-                        HandleWorkerError(new Exception($"{process.StartInfo.FileName} process with pid {process.Id} exited with code {process.ExitCode}"));
+                        var workerProcessEx = new Exception($"{process.StartInfo.FileName} process with pid {process.Id} exited with code {process.ExitCode}");
+                        HandleWorkerError(workerProcessEx);
                     }
                     process.WaitForExit();
                     process.Close();

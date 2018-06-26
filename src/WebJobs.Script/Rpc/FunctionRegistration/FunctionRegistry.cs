@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     {
                         _erroredChannels.Add(state.Channel);
                         state.Errors.Add(workerError.Exception);
-                        if (state.Errors.Count < 3)
+                        if (state.Errors.Count < 3 && workerError.RetriableError)
                         {
                             state.Channel = _channelFactory(config, state.Functions);
                         }
