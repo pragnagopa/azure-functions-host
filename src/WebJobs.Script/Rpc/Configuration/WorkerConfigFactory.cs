@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
+                logger.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
             }
         }
 

@@ -120,6 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     proxyMetadata.Name = proxyName;
                     proxyMetadata.ScriptType = ScriptType.Unknown;
+                    proxyMetadata.Language = ScriptType.Unknown.ToString();
                     proxyMetadata.IsProxy = true;
 
                     proxies.Add(proxyMetadata);

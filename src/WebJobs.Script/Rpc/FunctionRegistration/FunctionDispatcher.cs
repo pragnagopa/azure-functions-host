@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public bool IsSupported(FunctionMetadata functionMetadata)
         {
-            return _workerConfigs.Any(config => config.Extensions.Contains(Path.GetExtension(functionMetadata.ScriptFile)));
+            return !string.IsNullOrEmpty(functionMetadata.Language);
         }
 
         internal LanguageWorkerState CreateWorkerState(WorkerConfig config)

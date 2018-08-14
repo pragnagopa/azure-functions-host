@@ -664,6 +664,79 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("myproxy", ProxyMetadataManager.NormalizeProxyName(proxyName));
         }
 
+        [Fact]
+        public void IsSingleLanguage_Returns_True()
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "funcJs1",
+                ScriptType = ScriptType.Javascript,
+                Language = ScriptType.Javascript.ToString()
+            };
+            FunctionMetadata func2 = new FunctionMetadata()
+            {
+                Name = "funcJs2",
+                ScriptType = ScriptType.Javascript,
+                Language = ScriptType.Javascript.ToString()
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                func1, func2
+            };
+            Assert.True(Utility.IsSingleLanguage(functionsList));
+        }
+
+        [Fact]
+        public void IsSingleLanguage_Returns_True_Proxy()
+        {
+            FunctionMetadata proxy = new FunctionMetadata()
+            {
+                Name = "proxy",
+                ScriptType = ScriptType.Unknown,
+                Language = ScriptType.Unknown.ToString(),
+                IsProxy = true
+            };
+            FunctionMetadata funcJs = new FunctionMetadata()
+            {
+                Name = "funcJs",
+                ScriptType = ScriptType.Javascript,
+                Language = ScriptType.Javascript.ToString()
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                proxy, funcJs
+            };
+            Assert.True(Utility.IsSingleLanguage(functionsList));
+        }
+
+        [Fact]
+        public void IsSingleLanguage_Returns_False()
+        {
+            FunctionMetadata funcJs1 = new FunctionMetadata()
+            {
+                Name = "funcJs1",
+                ScriptType = ScriptType.Javascript,
+                Language = ScriptType.Javascript.ToString()
+            };
+            FunctionMetadata funcPython1 = new FunctionMetadata()
+            {
+                Name = "funcPython1",
+                Language = "python",
+                ScriptType = ScriptType.Unknown
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJs1, funcPython1
+            };
+            Assert.False(Utility.IsSingleLanguage(functionsList));
+        }
+
+        [Fact]
+        public void IsSingleLanguage_FunctionsList_Null_Returns_False()
+        {
+            Assert.True(Utility.IsSingleLanguage(null));
+        }
+
 #if WEBROUTING
         [Fact]
         public void HttpRoutesConflict_ReturnsExpectedResult()

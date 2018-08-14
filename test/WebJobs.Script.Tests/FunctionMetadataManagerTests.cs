@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample");
             var functionErrors = new Dictionary<string, ICollection<string>>();
             var functionDirectories = Directory.EnumerateDirectories(functionsPath);
-            var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, NullLogger.Instance, functionErrors);
+            var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, ScriptHost.GetWorkerConfigs(string.Empty, NullLogger.Instance), NullLogger.Instance, functionErrors);
             Assert.Equal(36, metadata.Count);
         }
     }

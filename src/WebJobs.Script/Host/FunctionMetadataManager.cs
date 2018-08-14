@@ -10,8 +10,8 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -38,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public ImmutableDictionary<string, ImmutableArray<string>> Errors
             => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
+        public ImmutableArray<WorkerConfig> LanguageWorkerConfigs { get; set; }
+
         /// <summary>
         /// Read all functions and populate function metadata.
         /// </summary>
@@ -48,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata.ToImmutableArray();
         }
 
-        internal static Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<string> functionDirectories, ICollection<string> functionsWhiteList,
+        internal static Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<string> functionDirectories, ICollection<string> functionsWhiteList, IEnumerable<WorkerConfig> workerConfigs,
             ILogger logger, Dictionary<string, ICollection<string>> functionErrors = null, IFileSystem fileSystem = null)
         {
             functionErrors = functionErrors ?? new Dictionary<string, ICollection<string>>();
@@ -62,13 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (var scriptDir in functionDirectories)
             {
-                var function = ReadFunctionMetadata(scriptDir, functionsWhiteList, functionErrors, fileSystem);
+                var function = ReadFunctionMetadata(scriptDir, functionsWhiteList, workerConfigs, functionErrors, fileSystem);
                 if (function != null)
                 {
                     functions.Add(function);
                 }
             }
-
             return functions;
         }
 
@@ -76,10 +77,10 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _functionErrors.Clear();
             var options = _scriptOptions.Value;
-            return ReadFunctionsMetadata(options.RootScriptDirectorySnapshot, options.Functions, _logger, _functionErrors);
+            return ReadFunctionsMetadata(options.RootScriptDirectorySnapshot, options.Functions, LanguageWorkerConfigs, _logger, _functionErrors);
         }
 
-        internal static FunctionMetadata ReadFunctionMetadata(string scriptDir, ICollection<string> functionsWhiteList, Dictionary<string, ICollection<string>> functionErrors, IFileSystem fileSystem = null)
+        internal static FunctionMetadata ReadFunctionMetadata(string scriptDir, ICollection<string> functionsWhiteList, IEnumerable<WorkerConfig> workerConfigs, Dictionary<string, ICollection<string>> functionErrors, IFileSystem fileSystem = null)
         {
             string functionName = null;
 
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 JObject functionConfig = JObject.Parse(json);
 
-                if (!TryParseFunctionMetadata(functionName, functionConfig, scriptDir, out FunctionMetadata functionMetadata, out string functionError, fileSystem))
+                if (!TryParseFunctionMetadata(functionName, functionConfig, scriptDir, workerConfigs, out FunctionMetadata functionMetadata, out string functionError, fileSystem))
                 {
                     // for functions in error, log the error and don't
                     // add to the functions collection
@@ -133,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, string scriptDirectory,
+        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, string scriptDirectory, IEnumerable<WorkerConfig> workerConfigs,
               out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? new FileSystem();
@@ -152,7 +153,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // determine the script type based on the primary script file extension
-            functionMetadata.ScriptType = ParseScriptType(functionMetadata.ScriptFile);
+            string extension = Path.GetExtension(functionMetadata.ScriptFile).ToLowerInvariant().TrimStart('.');
+            functionMetadata.ScriptType = ParseScriptType(extension);
+
+            // TODO: pgopa remove ScriptType and only keep language?
+            functionMetadata.Language = ParseLanguage(functionMetadata.ScriptType, workerConfigs, extension);
             functionMetadata.EntryPoint = (string)functionConfig["entryPoint"];
 
             return true;
@@ -256,10 +261,8 @@ namespace Microsoft.Azure.WebJobs.Script
             return Path.GetFullPath(functionPrimary);
         }
 
-        private static ScriptType ParseScriptType(string scriptFilePath)
+        private static ScriptType ParseScriptType(string extension)
         {
-            string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
-
             switch (extension)
             {
                 case "csx":
@@ -278,6 +281,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 default:
                     return ScriptType.Unknown;
             }
+        }
+
+        private static string ParseLanguage(ScriptType scriptType, IEnumerable<WorkerConfig> workerConfigs, string extension)
+        {
+            if (scriptType == ScriptType.Unknown)
+            {
+                var workerConfig = workerConfigs.FirstOrDefault(config => config.Extensions.Contains(extension));
+                if (workerConfig != null)
+                {
+                    return workerConfig.Language;
+                }
+                return string.Empty;
+            }
+            return scriptType.ToString();
         }
     }
 }

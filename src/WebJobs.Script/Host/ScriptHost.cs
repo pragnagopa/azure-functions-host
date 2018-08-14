@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
+        private IEnumerable<WorkerConfig> _workerConfigs;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
@@ -246,6 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
+                _workerConfigs = GetWorkerConfigs(_language, _startupLogger);
                 await InitializeWorkersAsync();
 
                 // Generate Functions
@@ -417,7 +419,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal void InitializeFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (string.IsNullOrEmpty(_language))
+            // TODO: pgopa remove any flag after refactoring tests to run in groups
+            if (string.IsNullOrEmpty(_language) || _language == "any")
             {
                 _startupLogger.LogTrace("Adding Function descriptor providers for all languages.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
@@ -477,31 +480,35 @@ namespace Microsoft.Azure.WebJobs.Script
                     server.Uri,
                     _loggerFactory); // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
             };
-            var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
-            var providers = new List<IWorkerProvider>();
-            if (!string.IsNullOrEmpty(_language))
-            {
-                if (!string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-                {
-                    _startupLogger.LogInformation($"'{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName}' is specified, only '{_language}' will be enabled");
-                    providers.AddRange(configFactory.GetWorkerProviders(_startupLogger, language: _language));
-                }
-            }
-            else
-            {
-                // load all providers if no specific language is specified
-                providers.AddRange(configFactory.GetWorkerProviders(_startupLogger));
-            }
 
-            var workerConfigs = configFactory.GetConfigs(providers);
-
-            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, workerConfigs);
+            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, _workerConfigs);
 
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
                 {
                     HandleHostError(evt.Exception);
                 }));
+        }
+
+        internal static IEnumerable<WorkerConfig> GetWorkerConfigs(string language, ILogger logger)
+        {
+            var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, logger);
+            var providers = new List<IWorkerProvider>();
+            // TODO: pgopa remove any flag after refactoring tests to run in groups
+            if (string.IsNullOrEmpty(language) || language == "any")
+            {
+                // load all providers if no specific language is specified
+                providers.AddRange(configFactory.GetWorkerProviders(logger));
+            }
+            else
+            {
+                if (!string.Equals(language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+                {
+                    logger?.LogInformation($"'{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName}' is specified, only '{language}' will be enabled");
+                    providers.AddRange(configFactory.GetWorkerProviders(logger, language: language));
+                }
+            }
+            return configFactory.GetConfigs(providers);
         }
 
         /// <summary>
@@ -655,6 +662,13 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+
+            // TODO: pgopa remove any flag after refactoring tests to run in groups
+            if (!Utility.IsSingleLanguage(functions) && _language != "any")
+            {
+                _startupLogger.LogError($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                return functionDescriptors;
+            }
 
             foreach (FunctionMetadata metadata in functions)
             {
