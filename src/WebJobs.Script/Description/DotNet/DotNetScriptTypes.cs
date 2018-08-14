@@ -3,14 +3,10 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public enum ScriptType
+    public class DotNetScriptTypes
     {
-        Javascript,
-        CSharp,
-        FSharp,
-        DotNetAssembly,
-        TypeScript,
-        JavaArchive,
-        Unknown
+        public const string CSharp = "CSharp";
+        public const string FSharp = "FSharp";
+        public const string DotNetAssembly = "DotNetAssembly";
     }
 }

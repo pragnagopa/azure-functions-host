@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,6 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
     public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
+        static NodeEndToEndTests()
+        {
+            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, "any");
+        }
+
         public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }

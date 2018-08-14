@@ -19,6 +19,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -430,6 +431,21 @@ namespace Microsoft.Azure.WebJobs.Script
                 return false;
             }
 
+            return true;
+        }
+
+        internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string language)
+        {
+            // TODO: pgopa remove any flag after refactoring tests to run in groups
+            if (!string.IsNullOrEmpty(language) || language == "any")
+            {
+                return true;
+            }
+            if (functions != null && functions.Any())
+            {
+                var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false);
+                return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
+            }
             return true;
         }
 

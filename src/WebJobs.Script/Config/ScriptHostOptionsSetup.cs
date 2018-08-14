@@ -2,7 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Rpc.LanguageWorkerConstants;
@@ -14,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
         private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
-
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);

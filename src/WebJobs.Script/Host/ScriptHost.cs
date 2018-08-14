@@ -19,7 +19,6 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -46,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IProxyMetadataManager _proxyMetadataManager;
+        private readonly IEnumerable<WorkerConfig> _workerConfigs;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
@@ -74,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
 
         public ScriptHost(IOptions<JobHostOptions> options,
+            IOptions<LanguageWorkerOptions> workerConfigOptions,
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
@@ -105,6 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _functionMetadataManager = functionMetadataManager;
             _hostIdProvider = hostIdProvider;
             _proxyMetadataManager = proxyMetadataManager;
+            _workerConfigs = workerConfigOptions.Value.LanguageWorkerConfigs;
 
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostEnvironment = scriptHostEnvironment;
@@ -428,7 +430,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal void InitializeFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (string.IsNullOrEmpty(_language))
+            // TODO: pgopa remove any flag after refactoring tests to run in groups
+            if (string.IsNullOrEmpty(_language) || _language == "any")
             {
                 _logger.LogTrace("Adding Function descriptor providers for all languages.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
@@ -493,25 +496,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     _metricsLogger,
                     attemptCount);
             };
-            var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _logger);
-            var providers = new List<IWorkerProvider>();
-            if (!string.IsNullOrEmpty(_language))
-            {
-                if (!string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogInformation($"'{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName}' is specified, only '{_language}' will be enabled");
-                    providers.AddRange(configFactory.GetWorkerProviders(_logger, language: _language));
-                }
-            }
-            else
-            {
-                // load all providers if no specific language is specified
-                providers.AddRange(configFactory.GetWorkerProviders(_logger));
-            }
 
-            var workerConfigs = configFactory.GetConfigs(providers);
-
-            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, workerConfigs);
+            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, _workerConfigs, _language);
 
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
@@ -671,6 +657,12 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+
+            if (!Utility.IsSingleLanguage(functions, _language))
+            {
+                _startupLogger.LogError($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                return functionDescriptors;
+            }
 
             foreach (FunctionMetadata metadata in functions)
             {
