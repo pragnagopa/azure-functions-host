@@ -65,7 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
-        private IEnumerable<WorkerConfig> _workerConfigs;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
@@ -247,7 +246,6 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
-                _workerConfigs = GetWorkerConfigs(_language, _startupLogger);
                 await InitializeWorkersAsync();
 
                 // Generate Functions
@@ -481,34 +479,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     _loggerFactory); // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
             };
 
-            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, _workerConfigs);
+            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, ScriptOptions.LanguageWorkerConfigs);
 
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
                 {
                     HandleHostError(evt.Exception);
                 }));
-        }
-
-        internal static IEnumerable<WorkerConfig> GetWorkerConfigs(string language, ILogger logger)
-        {
-            var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, logger);
-            var providers = new List<IWorkerProvider>();
-            // TODO: pgopa remove any flag after refactoring tests to run in groups
-            if (string.IsNullOrEmpty(language) || language == "any")
-            {
-                // load all providers if no specific language is specified
-                providers.AddRange(configFactory.GetWorkerProviders(logger));
-            }
-            else
-            {
-                if (!string.Equals(language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-                {
-                    logger?.LogInformation($"'{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName}' is specified, only '{language}' will be enabled");
-                    providers.AddRange(configFactory.GetWorkerProviders(logger, language: language));
-                }
-            }
-            return configFactory.GetConfigs(providers);
         }
 
         /// <summary>

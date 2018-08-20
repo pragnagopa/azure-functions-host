@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -59,6 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 return _directorySnapshot;
             }
         }
+
+        public IEnumerable<WorkerConfig> LanguageWorkerConfigs { get; set; }
 
         /// <summary>
         /// Gets the current ScriptHost instance id.

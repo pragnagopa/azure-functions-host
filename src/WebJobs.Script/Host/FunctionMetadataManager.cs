@@ -38,8 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public ImmutableDictionary<string, ImmutableArray<string>> Errors
             => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public ImmutableArray<WorkerConfig> LanguageWorkerConfigs { get; set; }
-
         /// <summary>
         /// Read all functions and populate function metadata.
         /// </summary>
@@ -77,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _functionErrors.Clear();
             var options = _scriptOptions.Value;
-            return ReadFunctionsMetadata(options.RootScriptDirectorySnapshot, options.Functions, LanguageWorkerConfigs, _logger, _functionErrors);
+            return ReadFunctionsMetadata(options.RootScriptDirectorySnapshot, options.Functions, options.LanguageWorkerConfigs, _logger, _functionErrors);
         }
 
         internal static FunctionMetadata ReadFunctionMetadata(string scriptDir, ICollection<string> functionsWhiteList, IEnumerable<WorkerConfig> workerConfigs, Dictionary<string, ICollection<string>> functionErrors, IFileSystem fileSystem = null)

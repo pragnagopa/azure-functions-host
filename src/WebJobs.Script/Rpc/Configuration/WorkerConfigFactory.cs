@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -17,19 +18,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     // Gets fully configured WorkerConfigs from IWorkerProviders
     internal class WorkerConfigFactory
     {
-        private readonly IConfiguration _config;
+        private readonly IConfigurationSection _languageWokersSection;
         private readonly ILogger _logger;
         private Dictionary<string, IWorkerProvider> _workerProviderDictionary = new Dictionary<string, IWorkerProvider>();
 
-        public WorkerConfigFactory(IConfiguration config, ILogger logger)
+        public WorkerConfigFactory(IConfigurationSection languageWokerSection, ILogger logger)
         {
-            _config = config;
-            _logger = logger;
+            _languageWokersSection = languageWokerSection;
+            _logger = logger ?? NullLogger.Instance;
             WorkersDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
-            var workersDirectorySection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}");
-            if (!string.IsNullOrEmpty(workersDirectorySection.Value))
+            if (_languageWokersSection != null)
             {
-                WorkersDirPath = workersDirectorySection.Value;
+                var workersDirectorySection = _languageWokersSection.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}");
+                if (!string.IsNullOrEmpty(workersDirectorySection.Value))
+                {
+                    WorkersDirPath = workersDirectorySection.Value;
+                }
             }
         }
 
@@ -53,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
                 }
 
-                if (provider.TryConfigureArguments(arguments, _config, _logger))
+                if (provider.TryConfigureArguments(arguments, _logger))
                 {
                     yield return new WorkerConfig()
                     {
@@ -101,8 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void AddProvidersFromAppSettings(ILogger logger)
         {
-            var languagesSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}");
-            foreach (var languageSection in languagesSection.GetChildren())
+            foreach (var languageSection in _languageWokersSection.GetChildren())
             {
                 var workerDirectorySection = languageSection.GetSection(LanguageWorkerConstants.WorkerDirectorySectionName);
                 if (workerDirectorySection.Value != null)
@@ -129,7 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 JObject workerConfig = JObject.Parse(json);
                 WorkerDescription workerDescription = workerConfig.Property(LanguageWorkerConstants.WorkerDescription).Value.ToObject<WorkerDescription>();
                 workerDescription.WorkerDirectory = workerDir;
-                var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                 workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
 
                 descriptionProfiles = GetWorkerDescriptionProfiles(workerConfig);
@@ -138,8 +140,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     //Overwrite default Description with AppServiceEnv profile
                     workerDescription = GetWorkerDescriptionFromProfiles(LanguageWorkerConstants.WorkerDescriptionAppServiceEnvProfileName, descriptionProfiles, workerDescription);
                 }
-                GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
-                AddArgumentsFromAppSettings(workerDescription, languageSection);
+                if (_languageWokersSection != null)
+                {
+                    GetDefaultExecutablePathFromAppSettings(workerDescription, _languageWokersSection);
+                    AddArgumentsFromAppSettings(workerDescription, _languageWokersSection);
+                }
                 if (File.Exists(workerDescription.GetWorkerPath()))
                 {
                     logger.LogTrace($"Will load worker provider for language: {workerDescription.Language}");

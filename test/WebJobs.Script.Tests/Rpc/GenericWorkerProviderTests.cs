@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             var provider = new GenericWorkerProvider(new WorkerDescription(), string.Empty);
             var args = new WorkerProcessArguments();
-            Assert.True(provider.TryConfigureArguments(args, null, null));
+            Assert.True(provider.TryConfigureArguments(args, null));
         }
 
         [Fact]
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
-                var configFactory = new WorkerConfigFactory(config, testLogger);
+                var configFactory = new WorkerConfigFactory(config.GetSection(LanguageWorkerConstants.LanguageWorkersSectionName), testLogger);
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>

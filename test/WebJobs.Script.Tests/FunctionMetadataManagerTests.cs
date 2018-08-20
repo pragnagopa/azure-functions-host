@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Text;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -209,8 +211,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample");
             var functionErrors = new Dictionary<string, ICollection<string>>();
             var functionDirectories = Directory.EnumerateDirectories(functionsPath);
-            var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, ScriptHost.GetWorkerConfigs(string.Empty, NullLogger.Instance), NullLogger.Instance, functionErrors);
+            var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, GetTestWorkerConfigs(), NullLogger.Instance, functionErrors);
             Assert.Equal(36, metadata.Count);
+        }
+
+        private static IEnumerable<WorkerConfig> GetTestWorkerConfigs()
+        {
+            var nodeWorkerDesc = GetTestWorkerDescription("node", ".js");
+            var javaWorkerDesc = GetTestWorkerDescription("java", ".jar");
+
+            return new List<WorkerConfig>()
+            {
+                new WorkerConfig() { Description = nodeWorkerDesc },
+                new WorkerConfig() { Description = javaWorkerDesc },
+            };
+        }
+
+        private static WorkerDescription GetTestWorkerDescription(string language, string extension)
+        {
+            return new WorkerDescription()
+            {
+                Extensions = new List<string>()
+                 {
+                     { extension }
+                 },
+                Language = language
+            };
         }
     }
 }

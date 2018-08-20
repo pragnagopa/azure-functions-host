@@ -134,9 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             // TODO: DI (FACAVAL) Follow up with ahmels - Since loading of function metadata is no longer tied to the script host, we
             // should be able to inject an IFunctionMedatadaManager here and bypass this step.
-            // TODO: pgopa remove any flag and provide list of all workerConfigs
-            var workerConfigs = ScriptHost.GetWorkerConfigs("any", _logger);
-            var functionMetadata = FunctionMetadataManager.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), null, workerConfigs, new Dictionary<string, ICollection<string>>(), fileSystem: FileUtility.Instance);
+            var functionMetadata = FunctionMetadataManager.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), null, _config.LanguageWorkerConfigs, new Dictionary<string, ICollection<string>>(), fileSystem: FileUtility.Instance);
             if (functionMetadata != null)
             {
                 return (true, await functionMetadata.ToFunctionMetadataResponse(request, _config, router));
@@ -249,10 +247,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
-            // TODO: pgopa remove any flag and provide list of all workerConfigs
-            var workerConfigs = ScriptHost.GetWorkerConfigs("any", _logger);
             return FunctionMetadataManager
-                .ReadFunctionsMetadata(FileUtility.EnumerateDirectories(_config.RootScriptPath), null, workerConfigs, _logger, fileSystem: FileUtility.Instance);
+                .ReadFunctionsMetadata(FileUtility.EnumerateDirectories(_config.RootScriptPath), null, _config.LanguageWorkerConfigs, _logger, fileSystem: FileUtility.Instance);
         }
 
         private async Task<Dictionary<string, string>> ReadDurableTaskConfig()

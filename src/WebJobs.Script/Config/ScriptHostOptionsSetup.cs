@@ -2,7 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Rpc.LanguageWorkerConstants;
@@ -13,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
     {
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
+        private readonly ILanguageWorkerService _languageWorkerService;
         private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
 
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
@@ -24,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             _configuration = configuration;
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
+            _languageWorkerService = new LanguageWorkerService(configuration);
         }
 
         public void Configure(ScriptJobHostOptions options)
@@ -91,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureLanguageWorkers(IConfigurationSection rootConfig, ScriptJobHostOptions scriptOptions)
         {
+            scriptOptions.LanguageWorkerConfigs = new List<WorkerConfig>();
             var languageWorkersSection = rootConfig.GetSection(LanguageWorkersSectionName);
             int requestedGrpcMaxMessageLength = _environment.IsDynamic() ? DefaultMaxMessageLengthBytesDynamicSku : DefaultMaxMessageLengthBytes;
             if (languageWorkersSection.Exists())
@@ -124,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
             }
             scriptOptions.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
+            scriptOptions.LanguageWorkerConfigs = _languageWorkerService.LanguageWorkerConfigs;
         }
 
         // TODO: DI (FACAVAL) Moved this from ScriptHost. Validate we're applying all configuration
