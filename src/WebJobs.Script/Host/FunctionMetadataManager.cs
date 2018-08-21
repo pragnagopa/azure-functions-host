@@ -268,13 +268,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "dll":
                     return "DotNetAssembly";
             }
-            if (string.IsNullOrEmpty(language))
+            var workerConfig = workerConfigs.FirstOrDefault(config => config.Extensions.Contains("." + extension));
+            if (workerConfig != null)
             {
-                var workerConfig = workerConfigs.FirstOrDefault(config => config.Extensions.Contains(extension));
-                if (workerConfig != null)
-                {
-                    return workerConfig.Language;
-                }
+                return workerConfig.Language;
             }
             return "Unknown";
         }
