@@ -670,14 +670,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionMetadata func1 = new FunctionMetadata()
             {
                 Name = "funcJs1",
-                ScriptType = ScriptType.Javascript,
-                Language = ScriptType.Javascript.ToString()
+                Language = "node"
             };
             FunctionMetadata func2 = new FunctionMetadata()
             {
                 Name = "funcJs2",
-                ScriptType = ScriptType.Javascript,
-                Language = ScriptType.Javascript.ToString()
+                Language = "node"
             };
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {
@@ -692,15 +690,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionMetadata proxy = new FunctionMetadata()
             {
                 Name = "proxy",
-                ScriptType = ScriptType.Unknown,
-                Language = ScriptType.Unknown.ToString(),
+                Language = ScriptTypes.Unknown,
                 IsProxy = true
             };
             FunctionMetadata funcJs = new FunctionMetadata()
             {
                 Name = "funcJs",
-                ScriptType = ScriptType.Javascript,
-                Language = ScriptType.Javascript.ToString()
+                Language = "node"
             };
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {
@@ -715,14 +711,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionMetadata funcJs1 = new FunctionMetadata()
             {
                 Name = "funcJs1",
-                ScriptType = ScriptType.Javascript,
-                Language = ScriptType.Javascript.ToString()
+                Language = "node"
             };
             FunctionMetadata funcPython1 = new FunctionMetadata()
             {
                 Name = "funcPython1",
                 Language = "python",
-                ScriptType = ScriptType.Unknown
             };
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {

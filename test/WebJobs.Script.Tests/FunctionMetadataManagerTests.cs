@@ -215,6 +215,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(36, metadata.Count);
         }
 
+        [Theory]
+        [InlineData("node", "test.js")]
+        [InlineData("java", "test.jar")]
+        [InlineData("CSharp", "test.cs")]
+        [InlineData("CSharp", "test.csx")]
+        [InlineData("FSharp", "test.fsx")]
+        [InlineData("DotNetAssembly", "test.dll")]
+        [InlineData("Unknown", "test.x")]
+        public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile)
+        {
+            Assert.Equal(language, FunctionMetadataManager.ParseLanguage(scriptFile, GetTestWorkerConfigs()));
+        }
+
         private static IEnumerable<WorkerConfig> GetTestWorkerConfigs()
         {
             var nodeWorkerDesc = GetTestWorkerDescription("node", ".js");

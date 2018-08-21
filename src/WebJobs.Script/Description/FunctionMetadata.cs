@@ -34,8 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public string EntryPoint { get; set; }
 
-        public ScriptType ScriptType { get; set; }
-
         public string Language { get; set; }
 
         /// <summary>

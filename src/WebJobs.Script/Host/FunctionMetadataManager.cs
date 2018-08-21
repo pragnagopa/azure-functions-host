@@ -149,13 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 error = exc.Message;
                 return false;
             }
-
-            // determine the script type based on the primary script file extension
-            string extension = Path.GetExtension(functionMetadata.ScriptFile).ToLowerInvariant().TrimStart('.');
-            functionMetadata.ScriptType = ParseScriptType(extension);
-
-            // TODO: pgopa remove ScriptType and only keep language?
-            functionMetadata.Language = ParseLanguage(functionMetadata.ScriptType, workerConfigs, extension);
+            functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs);
             functionMetadata.EntryPoint = (string)functionConfig["entryPoint"];
 
             return true;
@@ -259,40 +253,30 @@ namespace Microsoft.Azure.WebJobs.Script
             return Path.GetFullPath(functionPrimary);
         }
 
-        private static ScriptType ParseScriptType(string extension)
+        internal static string ParseLanguage(string scriptFilePath, IEnumerable<WorkerConfig> workerConfigs)
         {
+            // determine the script type based on the primary script file extension
+            string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
+            string language = string.Empty;
             switch (extension)
             {
                 case "csx":
                 case "cs":
-                    return ScriptType.CSharp;
-                case "js":
-                    return ScriptType.Javascript;
-                case "ts":
-                    return ScriptType.TypeScript;
+                    return "CSharp";
                 case "fsx":
-                    return ScriptType.FSharp;
+                    return "FSharp";
                 case "dll":
-                    return ScriptType.DotNetAssembly;
-                case "jar":
-                    return ScriptType.JavaArchive;
-                default:
-                    return ScriptType.Unknown;
+                    return "DotNetAssembly";
             }
-        }
-
-        private static string ParseLanguage(ScriptType scriptType, IEnumerable<WorkerConfig> workerConfigs, string extension)
-        {
-            if (scriptType == ScriptType.Unknown)
+            if (string.IsNullOrEmpty(language))
             {
                 var workerConfig = workerConfigs.FirstOrDefault(config => config.Extensions.Contains(extension));
                 if (workerConfig != null)
                 {
                     return workerConfig.Language;
                 }
-                return string.Empty;
             }
-            return scriptType.ToString();
+            return "Unknown";
         }
     }
 }
