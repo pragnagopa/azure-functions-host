@@ -660,7 +660,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (!Utility.IsSingleLanguage(functions, _language))
             {
-                _startupLogger.LogError($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                _logger.LogError($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
                 return functionDescriptors;
             }
 
