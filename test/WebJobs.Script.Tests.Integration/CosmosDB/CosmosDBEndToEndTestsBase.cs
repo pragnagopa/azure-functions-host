@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -83,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
     public abstract class CosmosDBTestFixture : EndToEndTestFixture
     {
         protected CosmosDBTestFixture(string rootPath, string testId) :
-            base(rootPath, testId, "Microsoft.Azure.WebJobs.Extensions.CosmosDB", "3.0.0-beta9*")
+            base(rootPath, testId, LanguageWorkerConstants.NodeLanguageWorkerName, "Microsoft.Azure.WebJobs.Extensions.CosmosDB", "3.0.0-beta9*")
         {
         }
 
