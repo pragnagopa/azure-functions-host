@@ -436,15 +436,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string language)
         {
-            // TODO: pgopa remove any flag after refactoring tests to run in groups
-            if (!string.IsNullOrEmpty(language) || language == "any")
+            if (string.IsNullOrEmpty(language))
             {
-                return true;
-            }
-            if (functions != null && functions.Any())
-            {
-                var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false);
-                return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
+                if (functions != null && functions.Any())
+                {
+                    var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false);
+                    return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
+                }
             }
             return true;
         }

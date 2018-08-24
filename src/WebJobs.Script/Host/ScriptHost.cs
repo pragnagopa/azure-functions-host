@@ -430,8 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal void InitializeFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            // TODO: pgopa remove any flag after refactoring tests to run in groups
-            if (string.IsNullOrEmpty(_language) || _language == "any")
+            if (string.IsNullOrEmpty(_language))
             {
                 _logger.LogTrace("Adding Function descriptor providers for all languages.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));

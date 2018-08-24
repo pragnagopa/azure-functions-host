@@ -52,8 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return false;
             }
-            // TODO: pgopa remove any flag after refactoring tests to run in groups
-            if (string.IsNullOrEmpty(_language) || _language == "any")
+            if (string.IsNullOrEmpty(_language))
             {
                 return true;
             }
