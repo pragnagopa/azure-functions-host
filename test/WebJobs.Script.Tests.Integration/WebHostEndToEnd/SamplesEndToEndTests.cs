@@ -886,11 +886,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             static TestFixture()
             {
                 Environment.SetEnvironmentVariable("AzureWebJobs.HttpTrigger-Disabled.Disabled", "1");
-                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, "any");
             }
 
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples")
+                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples", "any")
             {
             }
 

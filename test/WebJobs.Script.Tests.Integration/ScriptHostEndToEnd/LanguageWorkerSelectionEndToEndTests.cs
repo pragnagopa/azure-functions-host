@@ -62,11 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
 
         private class TestFixture : NodeScriptHostTests.TestFixture
         {
-            static TestFixture()
-            {
-                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, "any");
-            }
-
             public TestFixture(ICollection<string> functions, string functionsWorkerLanguage)
                 : base(functions, functionsWorkerLanguage)
             {

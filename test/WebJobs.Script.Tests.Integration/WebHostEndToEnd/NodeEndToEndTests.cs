@@ -31,11 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
     public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
-        static NodeEndToEndTests()
-        {
-            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, "any");
-        }
-
         public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }
@@ -876,7 +871,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 #endif
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Node", "node")
+            public TestFixture() : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName)
             {
             }
 
