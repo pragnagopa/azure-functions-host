@@ -10,10 +10,8 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -118,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             return new LanguageWorkerOptions
             {
-                LanguageWorkerConfigs = TestHelpers.GetTestWorkerConfigs()
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
         }
 

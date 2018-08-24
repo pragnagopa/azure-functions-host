@@ -10,7 +10,6 @@ using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -260,8 +259,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
             public ImmutableArray<FunctionMetadata> Functions => _functions.ToImmutableArray();
-
-            public ImmutableArray<WorkerConfig> LanguageWorkerConfigs { get; set; }
         }
     }
 }

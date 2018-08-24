@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _config = webSettings.Value.ToScriptHostConfiguration();
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
             _client = client;
-            _workerConfigs = workerConfigOptions.Value.LanguageWorkerConfigs;
+            _workerConfigs = workerConfigOptions.Value.WorkerConfigs;
         }
 
         /// <summary>

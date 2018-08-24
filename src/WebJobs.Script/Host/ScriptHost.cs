@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
 
         public ScriptHost(IOptions<JobHostOptions> options,
-            IOptions<LanguageWorkerOptions> workerConfigOptions,
+            IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _functionMetadataManager = functionMetadataManager;
             _hostIdProvider = hostIdProvider;
             _proxyMetadataManager = proxyMetadataManager;
-            _workerConfigs = workerConfigOptions.Value.LanguageWorkerConfigs;
+            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
 
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostEnvironment = scriptHostEnvironment;
