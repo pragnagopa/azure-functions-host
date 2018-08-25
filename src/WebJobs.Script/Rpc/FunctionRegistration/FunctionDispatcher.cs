@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             });
                             _workerStateSubscriptions.Add(state.Functions.Subscribe(reg =>
                             {
-                                state.RegisteredFunctions.Add(reg);
+                                state.AddRegistration(reg);
                                 reg.InputBuffer.LinkTo(errorBlock);
                             }));
                             _eventManager.Publish(new WorkerProcessErrorEvent(state.Channel.Id, config.Language, languageWorkerChannelException));

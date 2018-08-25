@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 WorkerConfig workerConfig = kvp.Key;
                 LanguageWorkerState workerState = kvp.Value;
-                foreach (var functionRegistrationContext in workerState.RegisteredFunctions)
+                foreach (var functionRegistrationContext in workerState.GetRegistrations())
                 {
                     var exMessage = $"Failed to start language worker process for: {workerConfig.Language}";
                     var languageWorkerChannelException = workerState.Errors != null && workerState.Errors.Count > 0 ? new LanguageWorkerChannelException(exMessage, workerState.Errors[workerState.Errors.Count - 1]) : new LanguageWorkerChannelException(exMessage);
@@ -462,7 +462,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private async Task InitializeWorkersAsync()
         {
-            var serverImpl = new FunctionRpcService(EventManager);
+            var serverImpl = new FunctionRpcService(EventManager, _logger);
             var server = new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes);
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGrpcServerLatency))

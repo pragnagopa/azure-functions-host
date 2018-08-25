@@ -10,7 +10,7 @@ using System.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("reject", t.Exception.InnerException.InnerException.Message);
         }
 
-        [Fact (Skip = "Investigate test hang")]
+        [Fact]
         public async Task ExecutionContext_IsProvided()
         {
             TestHelpers.ClearFunctionLogs("Scenarios");
@@ -213,17 +213,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Node", "node")
+            static TestFixture()
             {
             }
 
-            internal TestFixture(bool startHost) : base(@"TestScripts\Node", "node", null, startHost)
+            //public TestFixture() : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName)
+            //{
+            //}
+
+            public TestFixture() : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName,
+                startHost: true, functions: new[] { "Scenarios" })
             {
             }
 
-            internal TestFixture(ICollection<string> functions, string functionsWorkerLanguage = null)
-                : base(@"TestScripts\Node", "node", null, true, functions, functionsWorkerLanguage)
+            protected override Task CreateTestStorageEntities()
             {
+                // No need for this.
+                return Task.CompletedTask;
             }
         }
     }

@@ -38,8 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ICollection<string> _functions;
         private readonly string _functionsWorkerLanguage;
 
-        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null,
-            bool startHost = true, ICollection<string> functions = null, string functionsWorkerLanguage = null)
+        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, string functionsWorkerLanguage, ProxyClientExecutor proxyClient = null,
+            bool startHost = true, ICollection<string> functions = null)
         {
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
@@ -141,6 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureLogging(b =>
                 {
                     b.AddProvider(LoggerProvider);
+                    b.AddConsole();
                 })
                 .Build();
 
@@ -241,6 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await Host.StopAsync();
                 Host.Dispose();
             }
+            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
         }
 
         private class TestEntity : TableEntity
