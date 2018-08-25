@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //}
 
             public TestFixture() : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName,
-                startHost: true, functions: new[] { "Scenarios" })
+                startHost: true, functions: new[] { "Scenarios", "HttpTrigger", "HttpTriggerShared", "HttpTriggerByteArray" })
             {
             }
 
