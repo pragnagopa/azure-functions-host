@@ -5,7 +5,10 @@ using System.IO.Abstractions;
 using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
@@ -68,8 +71,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Core script host services
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
+
+            // Add Language Worker Server
+            //services.AddSingleton<IHostedService, LanguageWorkerChannelInitializationService>();
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
+            services.AddSingleton<IRpcServer, GrpcServer>(p =>
+            {
+                var eventManager = p.GetService<IScriptEventManager>();
+                var functionRpcService = new FunctionRpcService(eventManager);
+                return new GrpcServer(functionRpcService, int.MaxValue);
+            });
             services.AddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
 
@@ -99,7 +111,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Management services
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
-
             services.AddSingleton(_ => new HttpClient());
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
@@ -132,6 +143,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 return NullHostedService.Instance;
             });
+
+            // Add Grpc Server
+            services.AddSingleton<IHostedService, RpcServerInitializationService>();
         }
 
         private static void AddLinuxContainerServices(this IServiceCollection services)

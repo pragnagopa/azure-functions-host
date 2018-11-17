@@ -990,8 +990,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var scriptHost = host.GetScriptHost();
             await scriptHost.InitializeAsync();
 
-            IDictionary<WorkerConfig, LanguageWorkerState> channelState = scriptHost.FunctionDispatcher.LanguageWorkerChannelStates;
-            var nodeWorkerChannel = channelState.Where(w => w.Key.Language.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
+            IDictionary<string, LanguageWorkerState> channelState = scriptHost.FunctionDispatcher.LanguageWorkerChannelStates;
+            var nodeWorkerChannel = channelState.Where(w => w.Key.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
 
             var nodeWorkerId = nodeWorkerChannel.FirstOrDefault().Value.Channel.Id;
 
@@ -1022,15 +1022,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return functionsList;
         }
 
-        [Fact]
-        public async Task InitializeRpcService_Throws()
-        {
-            var ex = await Assert.ThrowsAsync<HostInitializationException>(async () =>
-            {
-                await _fixture.ScriptHost.InitializeRpcServiceAsync(new TestRpcServer());
-            });
-            Assert.Equal("Failed to start Grpc Service. Check if your app is hitting connection limits.", ex.Message);
-        }
+        //[Fact]
+        //public async Task InitializeRpcService_Throws()
+        //{
+        //    var ex = await Assert.ThrowsAsync<HostInitializationException>(async () =>
+        //    {
+        //        await _fixture.ScriptHost.InitializeRpcServiceAsync(new TestRpcServer());
+        //    });
+        //    Assert.Equal("Failed to start Grpc Service. Check if your app is hitting connection limits.", ex.Message);
+        //}
 
         [Fact]
         public void ValidateFunction_ValidatesHttpRoutes()

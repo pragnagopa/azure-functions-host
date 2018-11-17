@@ -14,18 +14,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         string Id { get; }
 
-        IRpcServer RpcServer { get; set; }
-
-        RpcEvent InitEvent { get; }
-
         WorkerConfig Config { get; }
 
-        void WorkerReady(IObservable<FunctionRegistrationContext> functionRegistrations);
+        bool IsPlaceHolderChannel { get;  }
 
-        void StartWorkerProcess(string scriptRootPath);
+        void SetFunctionRegistrations(IObservable<FunctionRegistrationContext> functionRegistrations);
 
-        void InitializeWorker();
+        void RegisterFunctions();
 
-        void SetupLanguageWorkerChannel(ILogger logger);
+        void SendFunctionEnvironmentRequest();
+
+        void CreateWorkerContextAndStartProcess();
     }
 }

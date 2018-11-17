@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,9 +25,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockConfiguration = new Mock<IConfigurationRoot>();
             var mockOptionsMonitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             var mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
+            var mockRootServiceProvider = new Mock<IServiceProvider>();
+            var mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
             var mockEnvironment = new TestEnvironment();
 
-            var manager = new StandbyManager(mockHostManager.Object, mockConfiguration.Object, mockWebHostEnvironment.Object, mockEnvironment, mockOptionsMonitor.Object, null, NullLogger<StandbyManager>.Instance);
+            var manager = new StandbyManager(mockHostManager.Object, mockLanguageWorkerChannelManager.Object, mockRootServiceProvider.Object, mockConfiguration.Object, mockWebHostEnvironment.Object, mockEnvironment, mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance);
 
             await manager.SpecializeHostAsync();
 

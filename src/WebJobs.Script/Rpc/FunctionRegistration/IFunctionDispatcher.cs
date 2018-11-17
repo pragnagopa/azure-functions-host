@@ -7,9 +7,9 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal interface IFunctionDispatcher : IDisposable
+    public interface IFunctionDispatcher : IDisposable
     {
-        IDictionary<WorkerConfig, LanguageWorkerState> LanguageWorkerChannelStates { get; }
+        IDictionary<string, LanguageWorkerState> LanguageWorkerChannelStates { get; }
 
         // Tests if the function metadata is supported by a known language worker
         bool IsSupported(FunctionMetadata metadata);
@@ -17,6 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         // Registers a supported function with the dispatcher
         void Register(FunctionRegistrationContext context);
 
-        LanguageWorkerState CreateWorkerState(WorkerConfig config, ILanguageWorkerChannel languageWorkerChannel);
+        void RegisterFunctions();
+
+        LanguageWorkerState CreateWorkerStateWithExistingChannel(string language, ILanguageWorkerChannel languageWorkerChannel);
+
+        LanguageWorkerState CreateWorkerState(string language);
     }
 }

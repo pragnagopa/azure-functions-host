@@ -51,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
+        private readonly string _currentRuntimelanguage;
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
@@ -67,13 +68,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private ILogger _logger = null;
 
-        private IRpcServer _rpcService;
+        private IRpcServer _rpcServer;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
-        private IDictionary<string, ILanguageWorkerChannel> _languageWorkerChannels;
-        private IOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
-        private string _currentRuntimelanguage;
+        private ILanguageWorkerChannelManager _languageWorkerChannelManager;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -81,18 +80,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHost(IOptions<JobHostOptions> options,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            ILanguageWorkerChannelManager languageWorkerChannelManager,
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
-            ILanguageWorkerService languageWorkerService,
             ILoggerFactory loggerFactory,
+            IFunctionDispatcher functionDispatcher,
             IFunctionMetadataManager functionMetadataManager,
             IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ITypeLocator typeLocator,
             IScriptJobHostEnvironment scriptHostEnvironment,
             IDebugStateProvider debugManager,
@@ -100,15 +99,16 @@ namespace Microsoft.Azure.WebJobs.Script
             IPrimaryHostStateProvider primaryHostStateProvider,
             IJobHostMetadataProvider metadataProvider,
             IHostIdProvider hostIdProvider,
+            IRpcServer rpcServer,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
             _environment = environment;
             _typeLocator = typeLocator as ScriptTypeLocator
                 ?? throw new ArgumentException(nameof(typeLocator), $"A {nameof(ScriptTypeLocator)} instance is required.");
+
             _instanceId = Guid.NewGuid().ToString();
             _hostOptions = options;
-            _scriptApplicationHostOptions = applicationHostOptions;
             _configuration = configuration;
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
@@ -116,15 +116,13 @@ namespace Microsoft.Azure.WebJobs.Script
             _hostIdProvider = hostIdProvider;
             _proxyMetadataManager = proxyMetadataManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-
+            _languageWorkerChannelManager = languageWorkerChannelManager;
             ScriptOptions = scriptHostOptions.Value;
-            _currentRuntimelanguage = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            _languageWorkerChannels = languageWorkerService.LanguageWorkerChannels;
             _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
-
+            _rpcServer = rpcServer;
             EventManager = eventManager;
-
+            _functionDispatcher = functionDispatcher;
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
 
             _metricsLogger = metricsLogger;
@@ -236,13 +234,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void AddLanguageWorkerChannelErrors(IFunctionDispatcher functionDispatcher, IDictionary<string, ICollection<string>> functionErrors)
         {
-            foreach (KeyValuePair<WorkerConfig, LanguageWorkerState> kvp in functionDispatcher.LanguageWorkerChannelStates)
+            foreach (KeyValuePair<string, LanguageWorkerState> kvp in functionDispatcher.LanguageWorkerChannelStates)
             {
-                WorkerConfig workerConfig = kvp.Key;
+                string language = kvp.Key;
                 LanguageWorkerState workerState = kvp.Value;
                 foreach (var functionRegistrationContext in workerState.GetRegistrations())
                 {
-                    var exMessage = $"Failed to start language worker process for: {workerConfig.Language}";
+                    var exMessage = $"Failed to start language worker process for: {language}";
                     var languageWorkerChannelException = workerState.Errors != null && workerState.Errors.Count > 0 ? new LanguageWorkerChannelException(exMessage, workerState.Errors[workerState.Errors.Count - 1]) : new LanguageWorkerChannelException(exMessage);
                     Utility.AddFunctionError(functionErrors, functionRegistrationContext.Metadata.Name, Utility.FlattenException(languageWorkerChannelException, includeSource: false));
                 }
@@ -273,21 +271,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
-
-                if (functions != null && functions.Count() > 0)
+                if (Utility.ShouldInitiliazeLanguageWorkers(functions, _currentRuntimelanguage))
                 {
-                    if (string.IsNullOrEmpty(_currentRuntimelanguage))
-                    {
-                        if (functions != null && functions.Count() > 0)
-                        {
-                            _currentRuntimelanguage = functions.FirstOrDefault().Language;
-                            if (_currentRuntimelanguage == "CSharp")
-                            {
-                                _currentRuntimelanguage = LanguageWorkerConstants.DotNetLanguageWorkerName;
-                            }
-                        }
-                    }
-                    InitializeWorkersAsync(functions);
+                    InitializeWorkers();
                 }
                 var directTypes = GetDirectTypes(functions);
                 await InitializeFunctionDescriptorsAsync(functions);
@@ -515,46 +501,29 @@ namespace Microsoft.Azure.WebJobs.Script
                 functions = await GetFunctionDescriptorsAsync(functionMetadata, _descriptorProviders);
                 _logger.LogDebug("Function descriptors created.");
             }
-
+            // TODO : pgopa to this only for non dotnet
+            // _functionDispatcher.RegisterFunctions();
             Functions = functions;
         }
 
-        private void InitializeWorkersAsync(IEnumerable<FunctionMetadata> functions)
+        private void InitializeWorkers()
         {
-            _logger.LogInformation("in InitializeWorkersAsync");
-            if (_currentRuntimelanguage != LanguageWorkerConstants.DotNetLanguageWorkerName)
+            _languageWorkerChannelManager.InitializeMetricsLogger(_metricsLogger);
+            ILanguageWorkerChannel initializedChannel = null;
+            if (_languageWorkerChannelManager.InitializedChannels.TryGetValue(_currentRuntimelanguage, out initializedChannel))
             {
-                _logger.LogInformation($"_currentRuntimelanguage: {_currentRuntimelanguage}");
-                ILanguageWorkerChannel languageWorkerChannel = _languageWorkerChannels[_currentRuntimelanguage];
-                _logger.LogInformation($"is _languageWorkerChannel null: {languageWorkerChannel == null}");
-                _logger.LogInformation($"is _workerConfigs null: {_workerConfigs == null}");
-                _logger.LogInformation($"is languageWorkerChannel.RpcServer.Uri : {languageWorkerChannel.RpcServer.Uri}");
-                languageWorkerChannel.SetupLanguageWorkerChannel(_logger);
-                _functionDispatcher = new FunctionDispatcher(EventManager, languageWorkerChannel.RpcServer, _logger, _workerConfigs, _currentRuntimelanguage);
-                _functionDispatcher.CreateWorkerState(languageWorkerChannel.Config, languageWorkerChannel);
-                _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
-                    .Subscribe(evt =>
-                    {
-                        HandleHostError(evt.Exception);
-                    }));
+                _functionDispatcher.CreateWorkerStateWithExistingChannel(_currentRuntimelanguage, initializedChannel);
             }
-        }
-
-        internal async Task InitializeRpcServiceAsync(IRpcServer rpcService)
-        {
-            _rpcService = rpcService;
-
-            using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGrpcServerLatency))
+            else
             {
-                try
-                {
-                    await _rpcService.StartAsync();
-                }
-                catch (Exception grpcInitEx)
-                {
-                    throw new HostInitializationException($"Failed to start Grpc Service. Check if your app is hitting connection limits.", grpcInitEx);
-                }
+                _functionDispatcher.CreateWorkerState(_currentRuntimelanguage, 0);
             }
+
+            _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
+                .Subscribe(evt =>
+                {
+                    HandleHostError(evt.Exception);
+                }));
         }
 
         /// <summary>

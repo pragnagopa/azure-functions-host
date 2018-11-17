@@ -119,6 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
+                services.AddSingleton<IFunctionDispatcher, FunctionDispatcher>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
@@ -172,8 +173,9 @@ namespace Microsoft.Azure.WebJobs.Script
             // initially created in placeholder mode and live on through the
             // specialized app.
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
-            //services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
-            services.TryAddSingleton<ILanguageWorkerService, LanguageWorkerService>();
+            // TODO : pgopa
+            services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.AddSingleton<ILanguageWorkerChannelManager, LanguageWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);

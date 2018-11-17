@@ -72,9 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             ScriptInvocationResult result;
-            _logger.LogInformation($"In _invocationBuffer is null {_invocationBuffer == null}");
-            _logger.LogInformation($"In InvokeCore posting to _invocationBuffer.count {_invocationBuffer.Count}");
-            _logger.LogInformation($"In InvokeCore posting to _invocationBuffer");
             _invocationBuffer.Post(invocationContext);
             result = await invocationContext.ResultSource.Task;
 

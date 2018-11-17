@@ -475,6 +475,15 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
+        public static bool IsDotNetLanguageFunction(FunctionMetadata function)
+        {
+            if (function != null)
+            {
+                return dotNetLanguages.Any(lang => string.Equals(lang, function.Language, StringComparison.OrdinalIgnoreCase));
+            }
+            return false;
+        }
+
         private static bool ContainsFunctionWithCurrentLanguage(IEnumerable<FunctionMetadata> functions, string currentLanguage)
         {
             if (functions != null && functions.Any())
