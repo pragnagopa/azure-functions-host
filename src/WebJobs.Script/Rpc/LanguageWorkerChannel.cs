@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -306,10 +307,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _initEvent = initEvent;
         }
 
+        internal void SetupFunctionInvocationSubscriptions(FunctionEnvironmentResponse res)
+        {
+            _eventSubscriptions.Add(_functionRegistrations.Subscribe(LoadFunction));
+        }
+
         public void WorkerReady(IObservable<FunctionRegistrationContext> functionRegistrations)
         {
-            //_startLatencyMetric.Dispose();
-            //_startLatencyMetric = null;
             _functionRegistrations = functionRegistrations;
             var initMessage = _initEvent.Message.WorkerInitResponse;
             if (initMessage.Result.IsFailure(out Exception exc))
@@ -318,8 +322,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 return;
             }
 
+            LoadEnvironment();
+
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentResponse)
+                .Subscribe((msg) => SetupFunctionInvocationSubscriptions(msg.Message.FunctionEnvironmentResponse)));
+
             // subscript to all function registrations in order to load functions
-            _eventSubscriptions.Add(_functionRegistrations.Subscribe(Register));
+            _eventSubscriptions.Add(_functionRegistrations.Subscribe(LoadFunction));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                 .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
@@ -336,7 +345,24 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        public void Register(FunctionRegistrationContext context)
+        public void LoadEnvironment()
+        {
+            System.Collections.IDictionary processEnv = Environment.GetEnvironmentVariables();
+
+            // send a load request for the registered function
+            FunctionEnvironmentRequest request = new FunctionEnvironmentRequest();
+            foreach (DictionaryEntry entry in processEnv)
+            {
+                request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
+            }
+
+            Send(new StreamingMessage
+            {
+                FunctionEnvironmentRequest = request
+            });
+        }
+
+        public void LoadFunction(FunctionRegistrationContext context)
         {
             FunctionMetadata metadata = context.Metadata;
 

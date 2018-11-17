@@ -22,6 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         void WorkerReady(IObservable<FunctionRegistrationContext> functionRegistrations);
 
+        void LoadEnvironment();
+
         void StartWorkerProcess(string scriptRootPath);
 
         void InitializeWorker();
