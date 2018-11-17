@@ -67,6 +67,8 @@ message StreamingMessage {
     RpcLog rpc_log = 2;
 
     FunctionEnvironmentRequest function_environment_request = 25;
+
+    FunctionEnvironmentResponse function_environment_response = 26;
   }
 }
 
