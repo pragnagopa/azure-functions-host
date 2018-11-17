@@ -187,6 +187,8 @@ message FunctionEnvironmentRequest {
   map<string, string> environment_variables = 1;
 }
 
+message FunctionEnvironmentResponse {}
+
 // Host tells the worker to load a Function
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
