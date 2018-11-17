@@ -189,7 +189,10 @@ message FunctionEnvironmentRequest {
   map<string, string> environment_variables = 1;
 }
 
-message FunctionEnvironmentResponse {}
+message FunctionEnvironmentResponse {
+  // Status of the response
+  StatusResult result = 3;
+}
 
 // Host tells the worker to load a Function
 message FunctionLoadRequest {
