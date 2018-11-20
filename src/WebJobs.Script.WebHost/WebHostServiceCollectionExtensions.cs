@@ -5,7 +5,9 @@ using System.IO.Abstractions;
 using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
@@ -71,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
             services.AddSingleton<IStandbyManager, StandbyManager>();
+            services.AddSingleton<IRpcServer, GrpcServer>();
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
 
             // Linux container services
@@ -131,6 +134,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 return NullHostedService.Instance;
+            });
+
+            // Add Grpc Server
+            services.AddSingleton<IHostedService>(p =>
+            {
+                    var rpcServer = p.GetService<IRpcServer>();
+                    return new RpcServerInitializationService(rpcServer);
+            });
+
+            // Add Language Worker Server
+            services.AddSingleton<IHostedService>(p =>
+            {
+                var languageWorkerService = p.GetService<ILanguageWorkerService>();
+                var rpcServer = p.GetService<IRpcServer>();
+                return new LanguageWorkerInitializationService(rpcServer, languageWorkerService);
             });
         }
 

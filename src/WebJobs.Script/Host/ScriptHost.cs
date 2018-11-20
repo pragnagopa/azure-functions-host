@@ -72,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private IFunctionDispatcher _functionDispatcher;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
         private IDictionary<string, ILanguageWorkerChannel> _languageWorkerChannels;
+        private ILanguageWorkerService _languageWorkerService;
         private IOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
         private string _currentRuntimelanguage;
 
@@ -120,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptOptions = scriptHostOptions.Value;
             _currentRuntimelanguage = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
             _languageWorkerChannels = languageWorkerService.LanguageWorkerChannels;
+            _languageWorkerService = languageWorkerService;
             _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -274,22 +276,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
 
-                if (functions != null && functions.Count() > 0)
-                {
-                    if (string.IsNullOrEmpty(_currentRuntimelanguage))
-                    {
-                        if (functions != null && functions.Count() > 0)
-                        {
-                            _currentRuntimelanguage = functions.FirstOrDefault().Language;
-                            if (_currentRuntimelanguage == "CSharp")
-                            {
-                                _currentRuntimelanguage = LanguageWorkerConstants.DotNetLanguageWorkerName;
-                            }
-                        }
-                    }
-                    InitializeWorkersAsync(functions);
-                }
                 var directTypes = GetDirectTypes(functions);
+                if (!SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+                {
+                    SetCurrentRuntimeLanguage(functions);
+                    CleanUpLanguagWorkerChannels();
+                }
+                if (Utility.ShouldInitiliazeLanguageWorkers(functions, _currentRuntimelanguage))
+                {
+                    RegisterFunctionsWithLanguageWorkerChannel(functions);
+                }
                 await InitializeFunctionDescriptorsAsync(functions);
                 GenerateFunctions(directTypes);
 
@@ -519,25 +515,70 @@ namespace Microsoft.Azure.WebJobs.Script
             Functions = functions;
         }
 
-        private void InitializeWorkersAsync(IEnumerable<FunctionMetadata> functions)
+        internal void CleanUpLanguagWorkerChannels()
         {
             _logger.LogInformation("in InitializeWorkersAsync");
-            if (_currentRuntimelanguage != LanguageWorkerConstants.DotNetLanguageWorkerName)
+            _logger.LogInformation($"_currentRuntimelanguage: {_currentRuntimelanguage}");
+            _logger.LogInformation($"IsPlaceholderModeEnabled: {SystemEnvironment.Instance.IsPlaceholderModeEnabled()}");
+            if (_currentRuntimelanguage == LanguageWorkerConstants.DotNetLanguageWorkerName)
             {
-                _logger.LogInformation($"_currentRuntimelanguage: {_currentRuntimelanguage}");
-                ILanguageWorkerChannel languageWorkerChannel = _languageWorkerChannels[_currentRuntimelanguage];
-                _logger.LogInformation($"is _languageWorkerChannel null: {languageWorkerChannel == null}");
-                _logger.LogInformation($"is _workerConfigs null: {_workerConfigs == null}");
-                _logger.LogInformation($"is languageWorkerChannel.RpcServer.Uri : {languageWorkerChannel.RpcServer.Uri}");
-                languageWorkerChannel.SetupLanguageWorkerChannel(_logger);
-                _functionDispatcher = new FunctionDispatcher(EventManager, languageWorkerChannel.RpcServer, _logger, _workerConfigs, _currentRuntimelanguage);
-                _functionDispatcher.CreateWorkerState(languageWorkerChannel.Config, languageWorkerChannel);
-                _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
-                    .Subscribe(evt =>
-                    {
-                        HandleHostError(evt.Exception);
-                    }));
+                // Close all language workers and grpc service
+                foreach (ILanguageWorkerChannel languageWorkerChannel in _languageWorkerChannels.Values)
+                {
+                    languageWorkerChannel.Dispose();
+                }
+                _languageWorkerService.Dispose();
             }
+            else
+            {
+                // Dispose langauge workers started in placeholder except one for _currentRuntimeLanguage
+                var placeHolderLanguageWorkerChannels = _languageWorkerChannels.Where(channel => channel.Key != _currentRuntimelanguage)
+                                                        .Select(channel => channel.Value)
+                                                        .ToList();
+
+                foreach (ILanguageWorkerChannel languageWorkerChannel in placeHolderLanguageWorkerChannels)
+                {
+                    languageWorkerChannel.Dispose();
+                }
+                if (_languageWorkerChannels.Count() == placeHolderLanguageWorkerChannels.Count())
+                {
+                    _languageWorkerService.Dispose();
+                }
+            }
+        }
+
+        internal void SetCurrentRuntimeLanguage(IEnumerable<FunctionMetadata> functions)
+        {
+            if (string.IsNullOrEmpty(_currentRuntimelanguage) && Utility.IsSingleLanguage(functions, _currentRuntimelanguage))
+            {
+                if (functions != null && functions.Count() > 0)
+                {
+                    if (Utility.IsDotNetLanguageFunction(functions.FirstOrDefault()))
+                    {
+                        _currentRuntimelanguage = LanguageWorkerConstants.DotNetLanguageWorkerName;
+                    }
+                    else
+                    {
+                        _currentRuntimelanguage = functions.FirstOrDefault().Language;
+                    }
+                }
+            }
+        }
+
+        private void RegisterFunctionsWithLanguageWorkerChannel(IEnumerable<FunctionMetadata> functions)
+        {
+            ILanguageWorkerChannel languageWorkerChannel = _languageWorkerChannels[_currentRuntimelanguage];
+            _logger.LogInformation($"is _languageWorkerChannel null: {languageWorkerChannel == null}");
+            _logger.LogInformation($"is _workerConfigs null: {_workerConfigs == null}");
+            _logger.LogInformation($"is languageWorkerChannel.RpcServer.Uri : {languageWorkerChannel.RpcServer.Uri}");
+            languageWorkerChannel.SetupLanguageWorkerChannel(_logger);
+            _functionDispatcher = new FunctionDispatcher(EventManager, languageWorkerChannel.RpcServer, _logger, _workerConfigs, _currentRuntimelanguage);
+            _functionDispatcher.CreateWorkerState(languageWorkerChannel.Config, languageWorkerChannel);
+            _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
+                .Subscribe(evt =>
+                {
+                    HandleHostError(evt.Exception);
+                }));
         }
 
         internal async Task InitializeRpcServiceAsync(IRpcServer rpcService)

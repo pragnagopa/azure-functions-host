@@ -4,14 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public interface ILanguageWorkerService : IDisposable
+    public interface ILanguageWorkerRpcService
     {
-        IDictionary<string, ILanguageWorkerChannel> LanguageWorkerChannels { get; }
-
-        Task InitializeLanguageWorkerChannelsAsync(IRpcServer rpcServer);
+        Task InitializeAsync();
     }
 }

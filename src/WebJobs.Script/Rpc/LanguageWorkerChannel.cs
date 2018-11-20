@@ -14,7 +14,6 @@ using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -189,7 +188,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 if (_process.ExitCode != 0)
                 {
-                    var processExitEx = new LanguageWorkerProcessExitException($"{_process.StartInfo.FileName} exited with code {_process.ExitCode}\n {exceptionMessage}");
+                    LanguageWorkerProcessExitException processExitEx = new LanguageWorkerProcessExitException($"{_process.StartInfo.FileName} exited with code {_process.ExitCode}\n {exceptionMessage}");
+                    processExitEx.ExitCode = _process.ExitCode;
                     HandleWorkerError(processExitEx);
                     workerErrorHandled = true;
                 }
@@ -305,6 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void SetWorkerInitEvent(RpcEvent initEvent)
         {
             _initEvent = initEvent;
+            _eventManager.Publish(initEvent);
         }
 
         internal void SetupFunctionInvocationSubscriptions(FunctionEnvironmentResponse res)
@@ -511,8 +512,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void HandleWorkerError(Exception exc)
         {
+            LanguageWorkerProcessExitException langExc = exc as LanguageWorkerProcessExitException;
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            _workerChannelLogger.LogError(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
+            if (langExc != null && langExc.ExitCode == -1)
+            {
+                _workerChannelLogger.LogDebug(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
+            }
+            else
+            {
+                _workerChannelLogger.LogError(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
+            }
             _eventManager.Publish(new WorkerErrorEvent(Id, exc));
         }
 
