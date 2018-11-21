@@ -17,6 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         // Registers a supported function with the dispatcher
         void Register(FunctionRegistrationContext context);
 
-        LanguageWorkerState CreateWorkerState(WorkerConfig config, ILanguageWorkerChannel languageWorkerChannel);
+        LanguageWorkerState CreateWorkerStateWithExistingChannel(WorkerConfig config, ILanguageWorkerChannel languageWorkerChannel);
     }
 }

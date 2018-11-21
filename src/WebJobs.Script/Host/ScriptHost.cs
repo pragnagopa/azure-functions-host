@@ -29,7 +29,6 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -52,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
+        private readonly string _currentRuntimelanguage;
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
@@ -68,14 +68,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private ILogger _logger = null;
 
-        private IRpcServer _rpcService;
+        private IRpcServer _rpcServer;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
-        private IPlaceHolderLanguageWorkerService _placeHolderlanguageWorkerService;
-        private IJobHostLanguageWorkerService _jobHostLanguageWorkerService;
-        private IOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
-        private string _currentRuntimelanguage;
+        private IPlaceHolderLanguageWorkerService _placeHolderLanguageWorkerService;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -83,19 +80,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHost(IOptions<JobHostOptions> options,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IPlaceHolderLanguageWorkerService placeHolderLanguageWorkerService,
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
-            IPlaceHolderLanguageWorkerService placeHolderLanguageWorkerService,
-            IJobHostLanguageWorkerService jobHostLanguageWorkerService,
             ILoggerFactory loggerFactory,
             IFunctionMetadataManager functionMetadataManager,
             IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ITypeLocator typeLocator,
             IScriptJobHostEnvironment scriptHostEnvironment,
             IDebugStateProvider debugManager,
@@ -103,16 +98,16 @@ namespace Microsoft.Azure.WebJobs.Script
             IPrimaryHostStateProvider primaryHostStateProvider,
             IJobHostMetadataProvider metadataProvider,
             IHostIdProvider hostIdProvider,
-            IServiceProvider rootServiceProvider,
+            IRpcServer rpcServer,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
             _environment = environment;
             _typeLocator = typeLocator as ScriptTypeLocator
                 ?? throw new ArgumentException(nameof(typeLocator), $"A {nameof(ScriptTypeLocator)} instance is required.");
+
             _instanceId = Guid.NewGuid().ToString();
             _hostOptions = options;
-            _scriptApplicationHostOptions = applicationHostOptions;
             _configuration = configuration;
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
@@ -120,14 +115,11 @@ namespace Microsoft.Azure.WebJobs.Script
             _hostIdProvider = hostIdProvider;
             _proxyMetadataManager = proxyMetadataManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-
+            _placeHolderLanguageWorkerService = placeHolderLanguageWorkerService;
             ScriptOptions = scriptHostOptions.Value;
-            _currentRuntimelanguage = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            _placeHolderlanguageWorkerService = placeHolderLanguageWorkerService;
-            _jobHostLanguageWorkerService = jobHostLanguageWorkerService;
             _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
-
+            _rpcServer = rpcServer;
             EventManager = eventManager;
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
@@ -278,42 +270,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
-
-                var directTypes = GetDirectTypes(functions);
-                if (!SystemEnvironment.Instance.IsPlaceholderModeEnabled())
-                {
-                    SetCurrentRuntimeLanguage(functions);
-                    //CleanUpLanguagWorkerChannels();
-                }
                 if (Utility.ShouldInitiliazeLanguageWorkers(functions, _currentRuntimelanguage))
                 {
-                    ILanguageWorkerChannel languageWorkerChannel = null;
-                    _placeHolderlanguageWorkerService.PlaceHolderChannels.TryGetValue(_currentRuntimelanguage, out languageWorkerChannel);
-                    if (languageWorkerChannel == null)
-                    {
-                        await _jobHostLanguageWorkerService.InitializeJobHostChannelAsync();
-                    }
-
-                    _eventSubscriptions.Add(EventManager.OfType<RpcChannelReadyEvent>()
-                   .Timeout(TimeSpan.FromSeconds(30))
-                   .Subscribe(async evt =>
-                   {
-                       RegisterFunctionsWithLanguageWorkerChannel(functions, evt.LanguageWorkerChannel);
-                       // TODO store
-                       //_jobHostChannels.Add(evt.Language, evt.LanguageWorkerChannel);
-                       await InitializeFunctionDescriptorsAsync(functions);
-                       GenerateFunctions(directTypes);
-
-                       CleanupFileSystem();
-                   }));
+                    await InitializeWorkersAsync();
                 }
-                else
-                {
-                    await InitializeFunctionDescriptorsAsync(functions);
-                    GenerateFunctions(directTypes);
+                var directTypes = GetDirectTypes(functions);
+                await InitializeFunctionDescriptorsAsync(functions);
+                GenerateFunctions(directTypes);
 
-                    CleanupFileSystem();
-                }
+                CleanupFileSystem();
             }
         }
 
@@ -539,65 +504,50 @@ namespace Microsoft.Azure.WebJobs.Script
             Functions = functions;
         }
 
-        // TODO: when and how to clean up
-        //internal void CleanUpLanguagWorkerChannels()
-        //{
-        //    _logger.LogInformation("in InitializeWorkersAsync");
-        //    _logger.LogInformation($"_currentRuntimelanguage: {_currentRuntimelanguage}");
-        //    _logger.LogInformation($"IsPlaceholderModeEnabled: {SystemEnvironment.Instance.IsPlaceholderModeEnabled()}");
-        //    if (_currentRuntimelanguage == LanguageWorkerConstants.DotNetLanguageWorkerName)
-        //    {
-        //        // Close all language workers and grpc service
-        //        foreach (ILanguageWorkerChannel languageWorkerChannel in _languageWorkerChannels.Values)
-        //        {
-        //            languageWorkerChannel.Dispose();
-        //        }
-        //        _languageWorkerService.Dispose();
-        //    }
-        //    else
-        //    {
-        //        // Dispose langauge workers started in placeholder except one for _currentRuntimeLanguage
-        //        var placeHolderLanguageWorkerChannels = _languageWorkerChannels.Where(channel => channel.Key != _currentRuntimelanguage)
-        //                                                .Select(channel => channel.Value)
-        //                                                .ToList();
-
-        //        foreach (ILanguageWorkerChannel languageWorkerChannel in placeHolderLanguageWorkerChannels)
-        //        {
-        //            languageWorkerChannel.Dispose();
-        //        }
-        //        if (_languageWorkerChannels.Count() == placeHolderLanguageWorkerChannels.Count())
-        //        {
-        //            _languageWorkerService.Dispose();
-        //        }
-        //    }
-        //}
-
-        internal void SetCurrentRuntimeLanguage(IEnumerable<FunctionMetadata> functions)
+        private async Task InitializeWorkersAsync()
         {
-            if (string.IsNullOrEmpty(_currentRuntimelanguage) && Utility.IsSingleLanguage(functions, _currentRuntimelanguage))
+            if (_rpcServer == null)
             {
-                if (functions != null && functions.Count() > 0)
-                {
-                    if (Utility.IsDotNetLanguageFunction(functions.FirstOrDefault()))
-                    {
-                        _currentRuntimelanguage = LanguageWorkerConstants.DotNetLanguageWorkerName;
-                    }
-                    else
-                    {
-                        _currentRuntimelanguage = functions.FirstOrDefault().Language;
-                    }
-                }
+                var serverImpl = new FunctionRpcService(EventManager);
+                await InitializeRpcServiceAsync(new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes));
             }
-        }
 
-        private void RegisterFunctionsWithLanguageWorkerChannel(IEnumerable<FunctionMetadata> functions, ILanguageWorkerChannel languageWorkerChannel)
-        {
-            _logger.LogInformation($"is _languageWorkerChannel null: {languageWorkerChannel == null}");
-            _logger.LogInformation($"is _workerConfigs null: {_workerConfigs == null}");
-            _logger.LogInformation($"is languageWorkerChannel.RpcServer.Uri : {languageWorkerChannel.RpcServer.Uri}");
-            languageWorkerChannel.SetupLanguageWorkerChannel(_logger);
-            _functionDispatcher = new FunctionDispatcher(EventManager, languageWorkerChannel.RpcServer, _logger, _workerConfigs, _currentRuntimelanguage);
-            _functionDispatcher.CreateWorkerState(languageWorkerChannel.Config, languageWorkerChannel);
+            var processFactory = new DefaultWorkerProcessFactory();
+            try
+            {
+                _processRegistry = ProcessRegistryFactory.Create();
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Unable to create process registry");
+            }
+
+            CreateChannel channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
+            {
+                return new LanguageWorkerChannel(
+                    ScriptOptions,
+                    EventManager,
+                    processFactory,
+                    _processRegistry,
+                    registrations,
+                    languageWorkerConfig,
+                    _rpcServer.Uri,
+                    _loggerFactory, // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
+                    _metricsLogger,
+                    attemptCount);
+            };
+            ILanguageWorkerChannel placeHolderChannel = null;
+            if (_placeHolderLanguageWorkerService.PlaceHolderChannels.TryGetValue(_currentRuntimelanguage, out placeHolderChannel))
+            {
+                WorkerConfig placeHolerWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(_currentRuntimelanguage, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+                _functionDispatcher = new FunctionDispatcher(EventManager, _rpcServer, _logger, _workerConfigs, _currentRuntimelanguage);
+                _functionDispatcher.CreateWorkerStateWithExistingChannel(placeHolerWorkerConfig, placeHolderChannel);
+            }
+            else
+            {
+                _functionDispatcher = new FunctionDispatcher(EventManager, _rpcServer, _logger, channelFactory, _workerConfigs, _currentRuntimelanguage);
+            }
+
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
                 {
@@ -607,13 +557,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal async Task InitializeRpcServiceAsync(IRpcServer rpcService)
         {
-            _rpcService = rpcService;
+            _rpcServer = rpcService;
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGrpcServerLatency))
             {
                 try
                 {
-                    await _rpcService.StartAsync();
+                    await _rpcServer.StartAsync();
                 }
                 catch (Exception grpcInitEx)
                 {

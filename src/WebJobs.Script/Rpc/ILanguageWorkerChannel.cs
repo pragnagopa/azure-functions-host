@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         WorkerConfig Config { get; }
 
-        void WorkerReady(IObservable<FunctionRegistrationContext> functionRegistrations);
+        void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations);
 
         void LoadEnvironment();
 

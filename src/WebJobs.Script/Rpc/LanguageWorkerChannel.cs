@@ -14,6 +14,7 @@ using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
+        private readonly ScriptJobHostOptions _scriptConfig;
         private IScriptEventManager _eventManager;
         private IWorkerProcessFactory _processFactory;
         private IProcessRegistry _processRegistry;
@@ -54,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
-        // private IDisposable _startLatencyMetric;
+        private IDisposable _startLatencyMetric;
 
         private JsonSerializerSettings _verboseSerializerSettings = new JsonSerializerSettings()
         {
@@ -69,6 +71,56 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal LanguageWorkerChannel()
         {
             // To help with unit tests
+        }
+
+        public LanguageWorkerChannel(
+           ScriptJobHostOptions scriptConfig,
+           IScriptEventManager eventManager,
+           IWorkerProcessFactory processFactory,
+           IProcessRegistry processRegistry,
+           IObservable<FunctionRegistrationContext> functionRegistrations,
+           WorkerConfig workerConfig,
+           Uri serverUri,
+           ILoggerFactory loggerFactory,
+           IMetricsLogger metricsLogger,
+           int attemptCount)
+        {
+            _workerId = Guid.NewGuid().ToString();
+
+            _scriptConfig = scriptConfig;
+            _eventManager = eventManager;
+            _processFactory = processFactory;
+            _processRegistry = processRegistry;
+            _functionRegistrations = functionRegistrations;
+            _workerConfig = workerConfig;
+            ServerUri = serverUri;
+
+            _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
+            _userLogsConsoleLogger = loggerFactory.CreateLogger(LanguageWorkerConstants.FunctionConsoleLogCategoryName);
+
+            _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
+                .Where(msg => msg.WorkerId == _workerId);
+
+            _eventSubscriptions.Add(_inboundWorkerEvents
+                .Where(msg => msg.MessageType == MsgType.RpcLog)
+                .Subscribe(Log));
+
+            _eventSubscriptions.Add(_eventManager.OfType<RpcEvent>()
+                .Where(msg => msg.WorkerId == _workerId)
+                    .Subscribe(msg =>
+                    {
+                        var jsonMsg = JsonConvert.SerializeObject(msg, _verboseSerializerSettings);
+                        _userLogsConsoleLogger.LogDebug(jsonMsg);
+                    }));
+
+            _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
+                .Where(msg => Config.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
+                .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
+                .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
+
+            _startLatencyMetric = metricsLogger.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
+
+            StartWorker();
         }
 
         public LanguageWorkerChannel(
@@ -305,6 +357,45 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
+        internal void StartWorker()
+        {
+            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
+                .Timeout(processStartTimeout)
+                .Take(1)
+                .Subscribe(InitWorker, HandleWorkerError);
+
+            var workerContext = new WorkerCreateContext()
+            {
+                RequestId = Guid.NewGuid().ToString(),
+                MaxMessageLength = _scriptConfig.MaxMessageLengthBytes,
+                WorkerId = _workerId,
+                Arguments = _workerConfig.Arguments,
+                WorkingDirectory = _scriptConfig.RootScriptPath,
+                ServerUri = ServerUri,
+            };
+
+            _process = _processFactory.CreateWorkerProcess(workerContext);
+            StartProcess();
+            _processRegistry?.Register(_process);
+        }
+
+        // send capabilities to worker, wait for WorkerInitResponse
+        internal void InitWorker(RpcEvent startEvent)
+        {
+            _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
+                .Timeout(workerInitTimeout)
+                .Take(1)
+                .Subscribe(WorkerReady, HandleWorkerError);
+
+            Send(new StreamingMessage
+            {
+                WorkerInitRequest = new WorkerInitRequest()
+                {
+                    HostVersion = ScriptHost.Version
+                }
+            });
+        }
+
         internal void SetWorkerInitEvent(RpcEvent initEvent)
         {
             _initEvent = initEvent;
@@ -318,7 +409,37 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventSubscriptions.Add(_functionRegistrations.Subscribe(LoadFunction));
         }
 
-        public void WorkerReady(IObservable<FunctionRegistrationContext> functionRegistrations)
+        internal void WorkerReady(RpcEvent initEvent)
+        {
+            _startLatencyMetric.Dispose();
+            _startLatencyMetric = null;
+
+            var initMessage = initEvent.Message.WorkerInitResponse;
+            if (initMessage.Result.IsFailure(out Exception exc))
+            {
+                HandleWorkerError(exc);
+                return;
+            }
+
+            // subscript to all function registrations in order to load functions
+            _eventSubscriptions.Add(_functionRegistrations.Subscribe(LoadFunction));
+
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
+
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
+                .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
+
+            _eventManager.Publish(new WorkerReadyEvent
+            {
+                Id = _workerId,
+                Version = initMessage.WorkerVersion,
+                Capabilities = initMessage.Capabilities,
+                Config = _workerConfig,
+            });
+        }
+
+        public void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations)
         {
             _functionRegistrations = functionRegistrations;
             var initMessage = _initEvent.Message.WorkerInitResponse;
@@ -327,16 +448,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 HandleWorkerError(exc);
                 return;
             }
-            if (_isPlaceHolderChannel)
-            {
-                LoadEnvironment();
-                _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentResponse)
-                .Subscribe((msg) => SetupFunctionInvocationSubscriptions(msg.Message.FunctionEnvironmentResponse)));
-            }
-            else
-            {
-                _eventSubscriptions.Add(_functionRegistrations.Subscribe(LoadFunction));
-            }
+            LoadEnvironment();
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentResponse)
+            .Subscribe((msg) => SetupFunctionInvocationSubscriptions(msg.Message.FunctionEnvironmentResponse)));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                 .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));

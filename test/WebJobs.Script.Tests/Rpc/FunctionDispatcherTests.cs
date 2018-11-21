@@ -25,7 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Name = "func1",
                 Language = funcMetadataLanguage
             };
-            FunctionDispatcher functionDispatcher = new FunctionDispatcher(eventManager.Object, new TestRpcServer(), null, workerConfigs, language);
+
+            // TODO
+            FunctionDispatcher functionDispatcher = new FunctionDispatcher(eventManager.Object, new TestRpcServer(), null, null,  workerConfigs, language);
             Assert.True(functionDispatcher.IsSupported(func1));
         }
 
@@ -42,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Name = "func1",
                 Language = funcMetadataLanguage
             };
-            FunctionDispatcher functionDispatcher = new FunctionDispatcher(eventManager.Object, new TestRpcServer(),  null, workerConfigs, language);
+            FunctionDispatcher functionDispatcher = new FunctionDispatcher(eventManager.Object, new TestRpcServer(), null, workerConfigs, language);
             Assert.False(functionDispatcher.IsSupported(func1));
         }
     }

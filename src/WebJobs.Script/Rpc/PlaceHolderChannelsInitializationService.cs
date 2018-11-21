@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public Task StopAsync(CancellationToken cancellationToken)
         {
             //TODO Dispose language workers
-            _languageWorkerService.Dispose();
+            //_languageWorkerService.Dispose();
             return Task.CompletedTask;
         }
     }

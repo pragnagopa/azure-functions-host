@@ -94,10 +94,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void Dispose()
         {
-            foreach (ILanguageWorkerChannel languageWorkerChannel in _placeholderChannels.Values)
-            {
-                languageWorkerChannel.Dispose();
-            }
+            // TODO
+            //foreach (ILanguageWorkerChannel languageWorkerChannel in _placeholderChannels.Values)
+            //{
+            //    languageWorkerChannel.Dispose();
+            //}
         }
     }
 }

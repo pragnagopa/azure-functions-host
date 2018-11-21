@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private IScriptEventManager _eventManager;
         private IRpcServer _server;
+        private CreateChannel _channelFactory;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private ConcurrentDictionary<WorkerConfig, LanguageWorkerState> _channelStates = new ConcurrentDictionary<WorkerConfig, LanguageWorkerState>();
         private ConcurrentDictionary<string, LanguageWorkerState> _workerChannelStates = new ConcurrentDictionary<string, LanguageWorkerState>();
@@ -47,6 +48,23 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Subscribe(WorkerError);
         }
 
+        public FunctionDispatcher(
+           IScriptEventManager manager,
+           IRpcServer server,
+           ILogger logger,
+           CreateChannel channelFactory,
+           IEnumerable<WorkerConfig> workerConfigs,
+           string language)
+        {
+            _eventManager = manager;
+            _server = server;
+            _channelFactory = channelFactory;
+            _language = language;
+            _workerConfigs = workerConfigs ?? throw new ArgumentNullException("workerConfigs");
+            _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
+                .Subscribe(WorkerError);
+        }
+
         public IDictionary<WorkerConfig, LanguageWorkerState> LanguageWorkerChannelStates => _channelStates;
 
         public bool IsSupported(FunctionMetadata functionMetadata)
@@ -62,16 +80,24 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return functionMetadata.Language.Equals(_language, StringComparison.OrdinalIgnoreCase);
         }
 
-        public LanguageWorkerState CreateWorkerState(WorkerConfig config, ILanguageWorkerChannel languageWorkerChannel)
+        public LanguageWorkerState CreateWorkerStateWithExistingChannel(WorkerConfig config, ILanguageWorkerChannel languageWorkerChannel)
         {
             _logger?.LogInformation("In CreateWorkerState ");
             var state = new LanguageWorkerState();
             state.Channel = languageWorkerChannel;
             _logger?.LogInformation($"state.Channel {state.Channel.Id} ");
-            state.Channel.WorkerReady(state.Functions);
+            state.Channel.RegisterFunctions(state.Functions);
             _channelsDictionary[state.Channel.Id] = state.Channel;
             _workerChannelStates[config.Language] = state;
             _logger?.LogInformation($"Added  workerState workerId: {state.Channel.Id}");
+            return state;
+        }
+
+        internal LanguageWorkerState CreateWorkerState(WorkerConfig config)
+        {
+            var state = new LanguageWorkerState();
+            state.Channel = _channelFactory(config, state.Functions, 0);
+            _channelsDictionary[state.Channel.Id] = state.Channel;
             return state;
         }
 
@@ -81,12 +107,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             string language = context.Metadata.Language;
             _logger?.LogInformation($"Register language {language}");
             WorkerConfig workerConfig = _workerConfigs.Where(c => c.Language == language).FirstOrDefault();
-            LanguageWorkerState workerState = _workerChannelStates[workerConfig.Language];
-            _logger?.LogInformation($"Register workerState workerId: {workerState.Channel.Id}");
-            var state = _channelStates.GetOrAdd(workerConfig, workerState);
+            LanguageWorkerState workerState = null;
+            if (_workerChannelStates.TryGetValue(workerConfig.Language, out workerState))
+            {
+                _logger?.LogInformation($"Register workerState workerId: {workerState.Channel.Id}");
+            }
+            else
+            {
+                workerState = _channelStates.GetOrAdd(workerConfig, CreateWorkerState);
+                _workerChannelStates[language] = workerState;
+            }
             _logger?.LogInformation($"Register state.Functions.OnNext:context.InputBuffer.Count: {context.InputBuffer.Count}");
-            _logger?.LogInformation($"Register state.Functions.Count(): {state.Functions.Count()}");
-            state.Functions.OnNext(context);
+            _logger?.LogInformation($"Register state.Functions.Count(): {workerState.Functions.Count()}");
+            workerState.Functions.OnNext(context);
         }
 
         public void WorkerError(WorkerErrorEvent workerError)
