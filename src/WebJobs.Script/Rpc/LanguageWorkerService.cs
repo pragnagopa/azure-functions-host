@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IEnumerable<WorkerConfig> _workerConfigs;
         private Dictionary<string, ILanguageWorkerChannel> _languageWorkerChannels = new Dictionary<string, ILanguageWorkerChannel>();
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
-        private IObservable<InboundEvent> _workerInitEvents;
 
         public LanguageWorkerService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider)
         {
@@ -32,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerService.init");
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
-            
         }
 
         public IDictionary<string, ILanguageWorkerChannel> LanguageWorkerChannels => _languageWorkerChannels;
@@ -61,10 +59,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 languageWorkerChannel.StartWorkerProcess(scriptRootPath);
                 languageWorkerChannel.InitializeWorker();
                 languageWorkerChannel.RpcServer = rpcServer;
-                _eventSubscriptions.Add(_eventManager.OfType<RpcEvent>()
+                _eventSubscriptions.Add(_eventManager.OfType<RpcChannelReadyEvent>()
                 .Subscribe(evt =>
                 {
-                    _languageWorkerChannels.Add(workerConfig.Language, languageWorkerChannel);
+                    _languageWorkerChannels.Add(evt.Language, evt.LanguageWorkerChannel);
                 }));
             }
             catch (Exception grpcInitEx)

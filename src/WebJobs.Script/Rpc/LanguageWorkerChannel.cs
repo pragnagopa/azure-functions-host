@@ -38,11 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private WorkerConfig _workerConfig;
         private Uri serverUri;
         private IRpcServer rpcServer;
-        private RpcEvent _initEvent;
         private ILogger _workerChannelLogger;
         private ILogger _userLogsConsoleLogger;
         private bool _disposed;
         private string _workerId;
+        private RpcEvent _initEvent;
         private Process _process;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
         private int _maxNumberOfErrorMessages = 3;
@@ -305,7 +305,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void SetWorkerInitEvent(RpcEvent initEvent)
         {
             _initEvent = initEvent;
-            _eventManager.Publish(initEvent);
+            RpcChannelReadyEvent readyEvent = new RpcChannelReadyEvent(_workerConfig.Language, this);
+            _eventManager.Publish(readyEvent);
         }
 
         internal void SetupFunctionInvocationSubscriptions(FunctionEnvironmentResponse res)
