@@ -23,10 +23,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IEnumerable<WorkerConfig> _workerConfigs;
         private Dictionary<string, ILanguageWorkerChannel> _languageWorkerChannels = new Dictionary<string, ILanguageWorkerChannel>();
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
+        private IRpcServer _rpcServer;
 
         public LanguageWorkerService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider)
         {
             _eventManager = (IScriptEventManager)rootServiceProvider.GetService(typeof(IScriptEventManager));
+            _rpcServer = (IRpcServer)rootServiceProvider.GetService(typeof(IRpcServer));
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerService.init");
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
@@ -35,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public IDictionary<string, ILanguageWorkerChannel> LanguageWorkerChannels => _languageWorkerChannels;
 
-        public Task InitializeLanguageWorkerChannelsAsync(IRpcServer rpcServer)
+        public Task InitializeLanguageWorkerChannelsAsync()
         {
             _logger?.LogInformation("in InitializeLanguageWorkerProcess...");
             string scriptRootPath = _applicationHostOptions.CurrentValue.ScriptPath;
@@ -43,22 +45,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             IProcessRegistry processRegistry = ProcessRegistryFactory.Create();
             foreach (WorkerConfig workerConfig in _workerConfigs)
             {
-                InitializeLanguageWorkerChannel(processFactory, processRegistry, workerConfig, scriptRootPath, rpcServer);
+                InitializeLanguageWorkerChannel(processFactory, processRegistry, workerConfig, scriptRootPath);
             }
             return Task.CompletedTask;
         }
 
-        private void InitializeLanguageWorkerChannel(IWorkerProcessFactory processFactory, IProcessRegistry processRegistry, WorkerConfig workerConfig, string scriptRootPath, IRpcServer rpcServer)
+        private void InitializeLanguageWorkerChannel(IWorkerProcessFactory processFactory, IProcessRegistry processRegistry, WorkerConfig workerConfig, string scriptRootPath)
         {
             try
             {
                 string workerId = Guid.NewGuid().ToString();
                 _logger.LogInformation("Creating languageChannelWorker...");
-                ILanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel(_eventManager, _logger, processFactory, processRegistry, workerConfig, workerId, rpcServer);
+                ILanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel(_eventManager, _logger, processFactory, processRegistry, workerConfig, workerId, _rpcServer);
                 _logger.LogInformation($"_languageWorkerChannel null...{languageWorkerChannel == null}");
                 languageWorkerChannel.StartWorkerProcess(scriptRootPath);
                 languageWorkerChannel.InitializeWorker();
-                languageWorkerChannel.RpcServer = rpcServer;
+                languageWorkerChannel.RpcServer = _rpcServer;
                 _eventSubscriptions.Add(_eventManager.OfType<RpcChannelReadyEvent>()
                 .Subscribe(evt =>
                 {

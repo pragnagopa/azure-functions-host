@@ -11,18 +11,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class LanguageWorkerInitializationService : IHostedService
     {
-        private IRpcServer _rpcServer;
         private ILanguageWorkerService _languageWorkerService;
 
-        public LanguageWorkerInitializationService(IRpcServer rpcServer, ILanguageWorkerService languageWorkerService)
+        public LanguageWorkerInitializationService(ILanguageWorkerService languageWorkerService)
         {
-            _rpcServer = rpcServer;
             _languageWorkerService = languageWorkerService;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            return _languageWorkerService.InitializeLanguageWorkerChannelsAsync(_rpcServer);
+            return _languageWorkerService.InitializeLanguageWorkerChannelsAsync();
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

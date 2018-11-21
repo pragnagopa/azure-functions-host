@@ -12,6 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         IDictionary<string, ILanguageWorkerChannel> LanguageWorkerChannels { get; }
 
-        Task InitializeLanguageWorkerChannelsAsync(IRpcServer rpcServer);
+        Task InitializeLanguageWorkerChannelsAsync();
     }
 }

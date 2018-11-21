@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -72,8 +73,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
+            services.AddSingleton<IRpcServer, GrpcServer>(p =>
+            {
+                var eventManager = p.GetService<IScriptEventManager>();
+                var functionRpcService = new FunctionRpcService(eventManager);
+                return new GrpcServer(functionRpcService, int.MaxValue);
+            });
             services.AddSingleton<IStandbyManager, StandbyManager>();
-            services.AddSingleton<IRpcServer, GrpcServer>();
+            services.AddSingleton<IScriptEventManager, ScriptEventManager>();
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
 
             // Linux container services
@@ -139,16 +146,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Add Grpc Server
             services.AddSingleton<IHostedService>(p =>
             {
-                    var rpcServer = p.GetService<IRpcServer>();
-                    return new RpcServerInitializationService(rpcServer);
+                var rpcServer = p.GetService<IRpcServer>();
+                return new RpcServerInitializationService(rpcServer);
             });
 
             // Add Language Worker Server
             services.AddSingleton<IHostedService>(p =>
             {
                 var languageWorkerService = p.GetService<ILanguageWorkerService>();
-                var rpcServer = p.GetService<IRpcServer>();
-                return new LanguageWorkerInitializationService(rpcServer, languageWorkerService);
+                return new LanguageWorkerInitializationService(languageWorkerService);
             });
         }
 

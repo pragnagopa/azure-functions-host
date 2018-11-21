@@ -18,12 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     // TODO: move to WebJobs.Script.Grpc package and provide event stream abstraction
     internal class FunctionRpcService : FunctionRpc.FunctionRpcBase
     {
-        private ILogger _logger;
-
-        public FunctionRpcService(IScriptEventManager eventManager, ILogger logger)
+        public FunctionRpcService(IScriptEventManager eventManager)
         {
             EventManager = eventManager;
-            _logger = logger;
         }
 
         public IScriptEventManager EventManager { get; set; }

@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .ConfigureServices(services =>
                 {
                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
-                    services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+                    //services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
                 })
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
