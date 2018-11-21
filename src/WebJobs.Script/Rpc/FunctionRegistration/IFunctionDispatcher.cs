@@ -7,7 +7,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal interface IFunctionDispatcher : IDisposable
+    public interface IFunctionDispatcher : IDisposable
     {
         IDictionary<WorkerConfig, LanguageWorkerState> LanguageWorkerChannelStates { get; }
 
@@ -18,5 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         void Register(FunctionRegistrationContext context);
 
         LanguageWorkerState CreateWorkerStateWithExistingChannel(WorkerConfig config, ILanguageWorkerChannel languageWorkerChannel);
+
+        LanguageWorkerState CreateWorkerState(WorkerConfig config);
     }
 }

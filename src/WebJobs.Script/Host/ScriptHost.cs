@@ -87,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
+            IFunctionDispatcher functionDispatcher,
             IFunctionMetadataManager functionMetadataManager,
             IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
@@ -121,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
             _rpcServer = rpcServer;
             EventManager = eventManager;
-
+            _functionDispatcher = functionDispatcher;
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
 
             _metricsLogger = metricsLogger;
@@ -272,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
                 if (Utility.ShouldInitiliazeLanguageWorkers(functions, _currentRuntimelanguage))
                 {
-                    await InitializeWorkersAsync();
+                    InitializeWorkers();
                 }
                 var directTypes = GetDirectTypes(functions);
                 await InitializeFunctionDescriptorsAsync(functions);
@@ -504,48 +505,17 @@ namespace Microsoft.Azure.WebJobs.Script
             Functions = functions;
         }
 
-        private async Task InitializeWorkersAsync()
+        private void InitializeWorkers()
         {
-            if (_rpcServer == null)
-            {
-                var serverImpl = new FunctionRpcService(EventManager);
-                await InitializeRpcServiceAsync(new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes));
-            }
-
-            var processFactory = new DefaultWorkerProcessFactory();
-            try
-            {
-                _processRegistry = ProcessRegistryFactory.Create();
-            }
-            catch (Exception e)
-            {
-                _logger.LogWarning(e, "Unable to create process registry");
-            }
-
-            CreateChannel channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
-            {
-                return new LanguageWorkerChannel(
-                    ScriptOptions,
-                    EventManager,
-                    processFactory,
-                    _processRegistry,
-                    registrations,
-                    languageWorkerConfig,
-                    _rpcServer.Uri,
-                    _loggerFactory, // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
-                    _metricsLogger,
-                    attemptCount);
-            };
             ILanguageWorkerChannel placeHolderChannel = null;
+            WorkerConfig curretnLangWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(_currentRuntimelanguage, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (_placeHolderLanguageWorkerService.PlaceHolderChannels.TryGetValue(_currentRuntimelanguage, out placeHolderChannel))
             {
-                WorkerConfig placeHolerWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(_currentRuntimelanguage, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-                _functionDispatcher = new FunctionDispatcher(EventManager, _rpcServer, _logger, _workerConfigs, _currentRuntimelanguage);
-                _functionDispatcher.CreateWorkerStateWithExistingChannel(placeHolerWorkerConfig, placeHolderChannel);
+                _functionDispatcher.CreateWorkerStateWithExistingChannel(curretnLangWorkerConfig, placeHolderChannel);
             }
             else
             {
-                _functionDispatcher = new FunctionDispatcher(EventManager, _rpcServer, _logger, channelFactory, _workerConfigs, _currentRuntimelanguage);
+                _functionDispatcher.CreateWorkerState(curretnLangWorkerConfig);
             }
 
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
@@ -553,23 +523,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     HandleHostError(evt.Exception);
                 }));
-        }
-
-        internal async Task InitializeRpcServiceAsync(IRpcServer rpcService)
-        {
-            _rpcServer = rpcService;
-
-            using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGrpcServerLatency))
-            {
-                try
-                {
-                    await _rpcServer.StartAsync();
-                }
-                catch (Exception grpcInitEx)
-                {
-                    throw new HostInitializationException($"Failed to start Grpc Service. Check if your app is hitting connection limits.", grpcInitEx);
-                }
-            }
         }
 
         /// <summary>

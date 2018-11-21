@@ -9,18 +9,20 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class FunctionDispatcher : IFunctionDispatcher
+    public class FunctionDispatcher : IFunctionDispatcher
     {
         private IScriptEventManager _eventManager;
-        private IRpcServer _server;
         private CreateChannel _channelFactory;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private ConcurrentDictionary<WorkerConfig, LanguageWorkerState> _channelStates = new ConcurrentDictionary<WorkerConfig, LanguageWorkerState>();
@@ -30,39 +32,35 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ConcurrentDictionary<string, ILanguageWorkerChannel> _channelsDictionary = new ConcurrentDictionary<string, ILanguageWorkerChannel>();
         private string _language;
         private ILogger _logger;
+        private ILoggerFactory _loggerFactory;
+        private ScriptJobHostOptions _scriptOptions;
+        private IWorkerProcessFactory _processFactory;
+        private IProcessRegistry _processRegistry;
         private bool disposedValue = false;
+        private IRpcServer _rpcServer;
+        private IMetricsLogger _metricsLogger;
 
-        public FunctionDispatcher(
-            IScriptEventManager manager,
-            IRpcServer server,
-            ILogger logger,
-            IEnumerable<WorkerConfig> workerConfigs,
-            string language)
+        public FunctionDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions, IScriptEventManager eventManager, IRpcServer rpcServer, IMetricsLogger metricsLogger, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions)
         {
-            _eventManager = manager;
-            _server = server;
-            _logger = logger;
-            _language = language;
-            _workerConfigs = workerConfigs ?? throw new ArgumentNullException("workerConfigs");
+            _scriptOptions = scriptHostOptions.Value;
+            _rpcServer = rpcServer;
+            _eventManager = eventManager;
+            _metricsLogger = metricsLogger;
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger("Host.FunctionDispatcher");
+            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _language = Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _processFactory = new DefaultWorkerProcessFactory();
+            try
+            {
+                _processRegistry = ProcessRegistryFactory.Create();
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Unable to create process registry");
+            }
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
-                .Subscribe(WorkerError);
-        }
-
-        public FunctionDispatcher(
-           IScriptEventManager manager,
-           IRpcServer server,
-           ILogger logger,
-           CreateChannel channelFactory,
-           IEnumerable<WorkerConfig> workerConfigs,
-           string language)
-        {
-            _eventManager = manager;
-            _server = server;
-            _channelFactory = channelFactory;
-            _language = language;
-            _workerConfigs = workerConfigs ?? throw new ArgumentNullException("workerConfigs");
-            _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
-                .Subscribe(WorkerError);
+               .Subscribe(WorkerError);
         }
 
         public IDictionary<WorkerConfig, LanguageWorkerState> LanguageWorkerChannelStates => _channelStates;
@@ -93,9 +91,26 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return state;
         }
 
-        internal LanguageWorkerState CreateWorkerState(WorkerConfig config)
+        public LanguageWorkerState CreateWorkerState(WorkerConfig config)
         {
             var state = new LanguageWorkerState();
+            if (_channelFactory == null)
+            {
+                _channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
+                {
+                    return new LanguageWorkerChannel(
+                        _scriptOptions,
+                        _eventManager,
+                        _processFactory,
+                        _processRegistry,
+                        registrations,
+                        languageWorkerConfig,
+                        _rpcServer.Uri,
+                        _loggerFactory,
+                        _metricsLogger,
+                        attemptCount);
+                };
+            }
             state.Channel = _channelFactory(config, state.Functions, 0);
             _channelsDictionary[state.Channel.Id] = state.Channel;
             return state;
@@ -127,18 +142,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             ILanguageWorkerChannel erroredChannel;
             if (_channelsDictionary.TryGetValue(workerError.WorkerId, out erroredChannel))
             {
-                LanguageWorkerState workerState = _workerChannelStates[erroredChannel.Config.Language];
                 // TODO: move retry logic, possibly into worker channel decorator
                 _channelStates.AddOrUpdate(erroredChannel.Config,
-                    workerState,
+                    CreateWorkerState,
                     (config, state) =>
                     {
                         erroredChannel.Dispose();
                         state.Errors.Add(workerError.Exception);
                         if (state.Errors.Count < 3)
                         {
-                            // TODO: figure out process restarts
-                            state.Channel = null;
+                            state.Channel = _channelFactory(config, state.Functions, state.Errors.Count);
                             _channelsDictionary[state.Channel.Id] = state.Channel;
                         }
                         else
