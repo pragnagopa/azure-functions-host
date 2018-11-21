@@ -158,6 +158,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Hosted services
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
+                // TODO not working Add Language Worker for the current language
+                //services.AddHostedService<JobHostChannelInitializationService>();
             });
 
             return builder;
@@ -171,8 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // initially created in placeholder mode and live on through the
             // specialized app.
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
-            //services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
-            services.TryAddSingleton<ILanguageWorkerService, LanguageWorkerService>();
+            services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.TryAddSingleton<IJobHostLanguageWorkerService, JobHostLanguageWorkerService>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);

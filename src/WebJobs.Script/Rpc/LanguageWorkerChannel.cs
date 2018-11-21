@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ILogger _workerChannelLogger;
         private ILogger _userLogsConsoleLogger;
         private bool _disposed;
+        private bool _isPlaceHolderChannel;
         private string _workerId;
         private RpcEvent _initEvent;
         private Process _process;
@@ -77,7 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             IProcessRegistry processRegistry,
             WorkerConfig workerConfig,
             string workerId,
-            IRpcServer rpcServer)
+            IRpcServer rpcServer,
+            bool isPlaceHolderChannel)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -85,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _processRegistry = processRegistry;
             _workerConfig = workerConfig;
             ServerUri = rpcServer.Uri;
+            _isPlaceHolderChannel = isPlaceHolderChannel;
             _workerChannelLogger = logger;
             _userLogsConsoleLogger = logger;
 
@@ -305,7 +308,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void SetWorkerInitEvent(RpcEvent initEvent)
         {
             _initEvent = initEvent;
-            RpcChannelReadyEvent readyEvent = new RpcChannelReadyEvent(_workerConfig.Language, this);
+            RpcChannelReadyEvent readyEvent = new RpcChannelReadyEvent(_workerConfig.Language, this, _isPlaceHolderChannel);
+
             _eventManager.Publish(readyEvent);
         }
 
@@ -323,14 +327,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 HandleWorkerError(exc);
                 return;
             }
-
-            LoadEnvironment();
-
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentResponse)
+            if (_isPlaceHolderChannel)
+            {
+                LoadEnvironment();
+                _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentResponse)
                 .Subscribe((msg) => SetupFunctionInvocationSubscriptions(msg.Message.FunctionEnvironmentResponse)));
-
-            // subscript to all function registrations in order to load functions
-            _eventSubscriptions.Add(_functionRegistrations.Subscribe(LoadFunction));
+            }
+            else
+            {
+                _eventSubscriptions.Add(_functionRegistrations.Subscribe(LoadFunction));
+            }
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                 .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));

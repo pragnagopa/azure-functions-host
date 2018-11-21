@@ -9,23 +9,23 @@ using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class LanguageWorkerInitializationService : IHostedService
+    internal class PlaceHolderChannelsInitializationService : IHostedService
     {
-        private ILanguageWorkerService _languageWorkerService;
+        private IPlaceHolderLanguageWorkerService _languageWorkerService;
 
-        public LanguageWorkerInitializationService(ILanguageWorkerService languageWorkerService)
+        public PlaceHolderChannelsInitializationService(IPlaceHolderLanguageWorkerService languageWorkerService)
         {
             _languageWorkerService = languageWorkerService;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            return _languageWorkerService.InitializeLanguageWorkerChannelsAsync();
+            return _languageWorkerService.InitializePlaceHolderChannelsAsync();
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            // Dispose language workers
+            //TODO Dispose language workers
             _languageWorkerService.Dispose();
             return Task.CompletedTask;
         }

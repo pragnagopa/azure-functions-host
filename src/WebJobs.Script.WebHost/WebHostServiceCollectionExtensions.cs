@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
+            services.TryAddSingleton<IPlaceHolderLanguageWorkerService, PlaceHolderLanguageWorkerService>();
             services.AddSingleton<IRpcServer, GrpcServer>(p =>
             {
                 var eventManager = p.GetService<IScriptEventManager>();
@@ -80,7 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return new GrpcServer(functionRpcService, int.MaxValue);
             });
             services.AddSingleton<IStandbyManager, StandbyManager>();
-            services.AddSingleton<IScriptEventManager, ScriptEventManager>();
+            // TODO
+            //services.AddSingleton<IScriptEventManager, ScriptEventManager>();
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
 
             // Linux container services
@@ -153,8 +155,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Add Language Worker Server
             services.AddSingleton<IHostedService>(p =>
             {
-                var languageWorkerService = p.GetService<ILanguageWorkerService>();
-                return new LanguageWorkerInitializationService(languageWorkerService);
+                var languageWorkerService = p.GetService<IPlaceHolderLanguageWorkerService>();
+                return new PlaceHolderChannelsInitializationService(languageWorkerService);
             });
         }
 
