@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
         private readonly IEnumerable<WorkerConfig> _workerConfigs;
+        private IPlaceHolderLanguageWorkerService _placeHolderLanguageWorkerService;
 
         private readonly TimeSpan _specializationTimerInterval = TimeSpan.FromMilliseconds(500);
         private Timer _specializationTimer;
@@ -38,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         public StandbyManager(IScriptHostManager scriptHostManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<StandbyManager> logger)
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<StandbyManager> logger,
+            IPlaceHolderLanguageWorkerService placeHolderLanguageWorkerService)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -47,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _placeHolderLanguageWorkerService = placeHolderLanguageWorkerService;
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
         }
 
@@ -68,7 +71,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Trigger a configuration reload to pick up all current settings
             _configuration?.Reload();
-
+            foreach (ILanguageWorkerChannel phChannel in _placeHolderLanguageWorkerService.PlaceHolderChannels.Values)
+            {
+                phChannel.LoadEnvironment();
+            }
+            // TODO should wait for envronment load response?
             NotifyChange();
 
             await _scriptHostManager.RestartHostAsync();

@@ -408,7 +408,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void SetupFunctionInvocationSubscriptions(FunctionEnvironmentResponse res)
         {
-            _eventSubscriptions.Add(_functionRegistrations.Subscribe(LoadFunction));
+            // TODO publish environment loaded event
         }
 
         internal void WorkerReady(RpcEvent initEvent)
@@ -450,7 +450,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 HandleWorkerError(exc);
                 return;
             }
-            LoadEnvironment();
+
+            _eventSubscriptions.Add(_functionRegistrations.Subscribe(LoadFunction));
+
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentResponse)
             .Subscribe((msg) => SetupFunctionInvocationSubscriptions(msg.Message.FunctionEnvironmentResponse)));
 
