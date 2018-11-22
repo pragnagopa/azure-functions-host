@@ -990,8 +990,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var scriptHost = host.GetScriptHost();
             await scriptHost.InitializeAsync();
 
-            IDictionary<WorkerConfig, LanguageWorkerState> channelState = scriptHost.FunctionDispatcher.LanguageWorkerChannelStates;
-            var nodeWorkerChannel = channelState.Where(w => w.Key.Language.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
+            IDictionary<string, LanguageWorkerState> channelState = scriptHost.FunctionDispatcher.LanguageWorkerChannelStates;
+            var nodeWorkerChannel = channelState.Where(w => w.Key.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
 
             var nodeWorkerId = nodeWorkerChannel.FirstOrDefault().Value.Channel.Id;
 

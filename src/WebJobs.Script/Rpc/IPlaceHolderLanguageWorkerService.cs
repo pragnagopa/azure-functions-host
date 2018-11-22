@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public interface IPlaceHolderLanguageWorkerService : IDisposable
+    public interface IPlaceHolderLanguageWorkerService
     {
-        IDictionary<string, ILanguageWorkerChannel> PlaceHolderChannels { get; }
+        IDictionary<string, ILanguageWorkerChannel> PlaceHolderChannels { get; set; }
 
         Task InitializePlaceHolderChannelsAsync();
     }

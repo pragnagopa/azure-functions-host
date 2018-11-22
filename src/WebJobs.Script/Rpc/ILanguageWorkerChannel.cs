@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         WorkerConfig Config { get; }
 
+        bool IsPlaceHolderChannel { get;  }
+
         void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations);
 
         void LoadEnvironment();

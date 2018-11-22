@@ -170,6 +170,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public string Id => _workerId;
 
+        public bool IsPlaceHolderChannel => _isPlaceHolderChannel;
+
         public WorkerConfig Config => _workerConfig;
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;

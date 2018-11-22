@@ -234,13 +234,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void AddLanguageWorkerChannelErrors(IFunctionDispatcher functionDispatcher, IDictionary<string, ICollection<string>> functionErrors)
         {
-            foreach (KeyValuePair<WorkerConfig, LanguageWorkerState> kvp in functionDispatcher.LanguageWorkerChannelStates)
+            foreach (KeyValuePair<string, LanguageWorkerState> kvp in functionDispatcher.LanguageWorkerChannelStates)
             {
-                WorkerConfig workerConfig = kvp.Key;
+                string language = kvp.Key;
                 LanguageWorkerState workerState = kvp.Value;
                 foreach (var functionRegistrationContext in workerState.GetRegistrations())
                 {
-                    var exMessage = $"Failed to start language worker process for: {workerConfig.Language}";
+                    var exMessage = $"Failed to start language worker process for: {language}";
                     var languageWorkerChannelException = workerState.Errors != null && workerState.Errors.Count > 0 ? new LanguageWorkerChannelException(exMessage, workerState.Errors[workerState.Errors.Count - 1]) : new LanguageWorkerChannelException(exMessage);
                     Utility.AddFunctionError(functionErrors, functionRegistrationContext.Metadata.Name, Utility.FlattenException(languageWorkerChannelException, includeSource: false));
                 }
@@ -508,14 +508,13 @@ namespace Microsoft.Azure.WebJobs.Script
         private void InitializeWorkers()
         {
             ILanguageWorkerChannel placeHolderChannel = null;
-            WorkerConfig curretnLangWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(_currentRuntimelanguage, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (_placeHolderLanguageWorkerService.PlaceHolderChannels.TryGetValue(_currentRuntimelanguage, out placeHolderChannel))
             {
-                _functionDispatcher.CreateWorkerStateWithExistingChannel(curretnLangWorkerConfig, placeHolderChannel);
+                _functionDispatcher.CreateWorkerStateWithExistingChannel(_currentRuntimelanguage, placeHolderChannel);
             }
             else
             {
-                _functionDispatcher.CreateWorkerState(curretnLangWorkerConfig);
+                _functionDispatcher.CreateWorkerState(_currentRuntimelanguage);
             }
 
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()

@@ -21,12 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILogger _logger;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private IEnumerable<WorkerConfig> _workerConfigs;
-        private Dictionary<string, ILanguageWorkerChannel> _placeholderChannels = new Dictionary<string, ILanguageWorkerChannel>();
-        private Dictionary<string, ILanguageWorkerChannel> _jobHostChannels = new Dictionary<string, ILanguageWorkerChannel>();
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IRpcServer _rpcServer;
         private IWorkerProcessFactory _processFactory;
         private IProcessRegistry _processRegistry;
+        private IDictionary<string, ILanguageWorkerChannel> _placeHolderChannels = new Dictionary<string, ILanguageWorkerChannel>();
 
         public PlaceHolderLanguageWorkerService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider)
         {
@@ -40,9 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _processRegistry = ProcessRegistryFactory.Create();
         }
 
-        public IDictionary<string, ILanguageWorkerChannel> PlaceHolderChannels => _placeholderChannels;
-
-        public IDictionary<string, ILanguageWorkerChannel> JobHostChannels => _jobHostChannels;
+        public IDictionary<string, ILanguageWorkerChannel> PlaceHolderChannels { get => _placeHolderChannels; set => _placeHolderChannels = value; }
 
         public Task InitializePlaceHolderChannelsAsync()
         {
@@ -76,29 +73,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _eventSubscriptions.Add(_eventManager.OfType<RpcChannelReadyEvent>()
                 .Subscribe(evt =>
                 {
-                    if (evt.IsPlaceHolderChannel)
-                    {
-                        _placeholderChannels.Add(evt.Language, evt.LanguageWorkerChannel);
-                    }
-                    else
-                    {
-                        _jobHostChannels.Add(evt.Language, evt.LanguageWorkerChannel);
-                    }
+                    _placeHolderChannels.Add(evt.Language, evt.LanguageWorkerChannel);
                 }));
             }
             catch (Exception grpcInitEx)
             {
                 throw new HostInitializationException($"Failed to start Grpc Service. Check if your app is hitting connection limits.", grpcInitEx);
             }
-        }
-
-        public void Dispose()
-        {
-            // TODO
-            //foreach (ILanguageWorkerChannel languageWorkerChannel in _placeholderChannels.Values)
-            //{
-            //    languageWorkerChannel.Dispose();
-            //}
         }
     }
 }
