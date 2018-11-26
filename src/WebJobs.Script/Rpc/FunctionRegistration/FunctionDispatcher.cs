@@ -48,7 +48,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _language = Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
             _channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
              {
-                 return _languageWorkerChannelManager.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _language, true, 0);
+                 var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _language, registrations,  true, 0);
+                 languageWorkerChannel.CreateWorkerContextAndStartProcess();
+                 return languageWorkerChannel;
              };
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);

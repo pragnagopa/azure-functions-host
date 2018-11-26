@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ILogger _userLogsConsoleLogger;
         private bool _disposed;
         private WorkerInitResponse _initMessage;
-        private bool _isPlaceHolderChannel;
+        private bool _isJobHostChannel;
         private string _workerId;
         private Process _process;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
@@ -64,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public LanguageWorkerChannel(
            string rootScriptPath,
            IScriptEventManager eventManager,
+           IObservable<FunctionRegistrationContext> functionRegistrations,
            IWorkerProcessFactory processFactory,
            IProcessRegistry processRegistry,
            WorkerConfig workerConfig,
@@ -74,14 +75,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            int attemptCount)
         {
             _workerId = Guid.NewGuid().ToString();
-
+            _functionRegistrations = functionRegistrations;
             _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
             _processFactory = processFactory;
             _processRegistry = processRegistry;
             _workerConfig = workerConfig;
             ServerUri = serverUri;
-            _isPlaceHolderChannel = isPlaceHolderChannel;
+            _isJobHostChannel = isPlaceHolderChannel;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
             _userLogsConsoleLogger = loggerFactory.CreateLogger(LanguageWorkerConstants.FunctionConsoleLogCategoryName);
 
@@ -106,13 +107,25 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
+        }
 
-            CreateWorkerContextAndStartProcess();
+        public LanguageWorkerChannel(
+           string rootScriptPath,
+           IScriptEventManager eventManager,
+           IWorkerProcessFactory processFactory,
+           IProcessRegistry processRegistry,
+           WorkerConfig workerConfig,
+           Uri serverUri,
+           ILoggerFactory loggerFactory,
+           IMetricsLogger metricsLogger,
+           bool isPlaceHolderChannel,
+           int attemptCount) : this(rootScriptPath, eventManager, null, processFactory, processRegistry, workerConfig, serverUri, loggerFactory, metricsLogger, isPlaceHolderChannel, attemptCount)
+        {
         }
 
         public string Id => _workerId;
 
-        public bool IsPlaceHolderChannel => _isPlaceHolderChannel;
+        public bool IsPlaceHolderChannel => _isJobHostChannel;
 
         public WorkerConfig Config => _workerConfig;
 
@@ -285,9 +298,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 HandleWorkerError(exc);
                 return;
             }
-
-            RpcChannelReadyEvent readyEvent = new RpcChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities, _isPlaceHolderChannel);
-            _eventManager.Publish(readyEvent);
+            if (_isJobHostChannel)
+            {
+                RegisterFunctions();
+            }
+            else
+            {
+                RpcChannelReadyEvent readyEvent = new RpcChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities, _isJobHostChannel);
+                _eventManager.Publish(readyEvent);
+            }
         }
 
         public void SetFunctionRegistrations(IObservable<FunctionRegistrationContext> functionRegistrations)

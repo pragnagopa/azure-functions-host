@@ -52,6 +52,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, bool isJobHostChannel, int attemptCount)
         {
+            return CreateLanguageWorkerChannel(scriptRootPath, language, null, isJobHostChannel, attemptCount);
+        }
+
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, bool isJobHostChannel, int attemptCount)
+        {
             var languageWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (languageWorkerConfig == null)
             {
@@ -60,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return new LanguageWorkerChannel(
                          scriptRootPath,
                          _eventManager,
+                         functionRegistrations,
                          _processFactory,
                          _processRegistry,
                          languageWorkerConfig,

@@ -516,7 +516,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                _functionDispatcher.CreateWorkerState(_currentRuntimelanguage, 0);
+                _functionDispatcher.CreateWorkerState(_currentRuntimelanguage);
             }
 
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
