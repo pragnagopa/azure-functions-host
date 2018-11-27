@@ -135,17 +135,24 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void StartProcess()
         {
-            _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
-            _process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
-            _process.Exited += (sender, e) => OnProcessExited(sender, e);
-            _process.EnableRaisingEvents = true;
+            try
+            {
+                _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
+                _process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
+                _process.Exited += (sender, e) => OnProcessExited(sender, e);
+                _process.EnableRaisingEvents = true;
 
-            _workerChannelLogger?.LogInformation($"Starting language worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
-            _process.Start();
-            _workerChannelLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
+                _workerChannelLogger?.LogInformation($"Starting language worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
+                _process.Start();
+                _workerChannelLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
 
-            _process.BeginErrorReadLine();
-            _process.BeginOutputReadLine();
+                _process.BeginErrorReadLine();
+                _process.BeginOutputReadLine();
+            }
+            catch (Exception ex)
+            {
+                throw new HostInitializationException($"Failed to start Language Worker Channel for language :{_workerConfig.Language}", ex);
+            }
         }
 
         private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)

@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .AddXmlDataContractSerializerFormatters();
 
             // Standby services
-            services.AddStandbyServices();
+            services.AddWebHostServices();
 
             // Core script host services
             services.AddSingleton<WebJobsScriptHostService>();
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
         }
 
-        private static void AddStandbyServices(this IServiceCollection services)
+        private static void AddWebHostServices(this IServiceCollection services)
         {
             services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, StandbyChangeTokenSource>();
 

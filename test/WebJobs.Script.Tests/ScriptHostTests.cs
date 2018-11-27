@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
         private readonly TestFixture _fixture;
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly TestEnvironment _testEnvironment = new TestEnvironment();
 
         private readonly ILoggerFactory _loggerFactory = new LoggerFactory();
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
@@ -834,25 +835,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_NotSet_Returns_False()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), null));
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, GetDotNetFunctionsMetadata(), null));
         }
 
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_Set_Returns_False()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.DotNetLanguageWorkerName));
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, GetDotNetFunctionsMetadata(), LanguageWorkerConstants.DotNetLanguageWorkerName));
         }
 
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_Set_DotNetFunctions_Returns_False()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, GetDotNetFunctionsMetadata(), LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_Set_EmptyFunctions_Returns_False()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(null, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, null, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -872,7 +873,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcJs1, funcCS1
             };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -887,7 +888,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcJs1
             };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
+            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, functionsList, null));
         }
 
         [Fact]
@@ -912,7 +913,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcCS1, proxy1, funcJS1
             };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -932,7 +933,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcCS1, proxy1
             };
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -952,7 +953,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 proxy2, proxy1
             };
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -972,7 +973,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcJs1, proxy1
             };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
+            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(_testEnvironment, functionsList, null));
         }
 
         [Fact]

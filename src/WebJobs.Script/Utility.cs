@@ -452,8 +452,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static bool ShouldInitiliazeLanguageWorkers(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
+        internal static bool ShouldInitiliazeLanguageWorkers(IEnvironment environment, IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
         {
+            if (environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
+            {
+                return false;
+            }
             if (!string.IsNullOrEmpty(currentRuntimeLanguage) && currentRuntimeLanguage.Equals(LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 return false;

@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IEnvironment _environment;
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
+        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(5);
 
         private readonly TimeSpan _specializationTimerInterval = TimeSpan.FromMilliseconds(500);
         private Timer _specializationTimer;
@@ -79,17 +80,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogInformation($"In SpecializeHostCoreAsync language:{currentLanguageRuntime}");
             if (_placeHolderChannels.TryGetValue(currentLanguageRuntime, out languageWorkerChannel))
             {
+                IObservable<WorkerProcessReadyEvent> processReadyEvents = _eventManager.OfType<WorkerProcessReadyEvent>()
+                .Where(msg => msg.Language == currentLanguageRuntime)
+                .Timeout(workerInitTimeout);
                 languageWorkerChannel.SendFunctionEnvironmentRequest();
-                _eventSubscriptions.Add(_eventManager.OfType<WorkerProcessReadyEvent>()
-                .Subscribe(evt =>
-                {
-                    NotifyChange();
-                }));
+                WorkerProcessReadyEvent readyEvent = await processReadyEvents.FirstAsync();
             }
-            else
-            {
-                NotifyChange();
-            }
+            NotifyChange();
             await _scriptHostManager.RestartHostAsync();
             await _scriptHostManager.DelayUntilHostReady();
         }

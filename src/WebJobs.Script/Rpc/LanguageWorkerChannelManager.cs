@@ -113,9 +113,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 RpcChannelReadyEvent readyEvent = await channelReadyEvents.FirstAsync();
                 _webhostChannels.Add(readyEvent.Language, readyEvent.LanguageWorkerChannel);
             }
-            catch (Exception grpcInitEx)
+            catch (Exception ex)
             {
-                throw new HostInitializationException($"Failed to start Grpc Service. Check if your app is hitting connection limits.", grpcInitEx);
+                throw new HostInitializationException($"Failed to start Language Worker Channel for language :{language}", ex);
             }
         }
     }

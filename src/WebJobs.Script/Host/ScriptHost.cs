@@ -271,7 +271,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
-                if (Utility.ShouldInitiliazeLanguageWorkers(functions, _currentRuntimelanguage))
+
+                if (Utility.ShouldInitiliazeLanguageWorkers(_environment, functions, _currentRuntimelanguage))
                 {
                     _currentRuntimelanguage = Utility.GetCurrentLanguageRuntime(functions);
                     InitializeWorkers();
