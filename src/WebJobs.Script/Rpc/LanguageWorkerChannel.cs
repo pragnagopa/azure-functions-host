@@ -38,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IProcessRegistry _processRegistry;
         private IObservable<FunctionRegistrationContext> _functionRegistrations;
         private WorkerConfig _workerConfig;
-        private Uri serverUri;
         private ILogger _workerChannelLogger;
         private ILogger _userLogsConsoleLogger;
         private bool _disposed;
@@ -55,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
+        private Uri _serverUri;
 
         internal LanguageWorkerChannel()
         {
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _processFactory = processFactory;
             _processRegistry = processRegistry;
             _workerConfig = workerConfig;
-            ServerUri = serverUri;
+            _serverUri = serverUri;
             _isJobHostChannel = isPlaceHolderChannel;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
             _userLogsConsoleLogger = loggerFactory.CreateLogger(LanguageWorkerConstants.FunctionConsoleLogCategoryName);
@@ -132,8 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public WorkerConfig Config => _workerConfig;
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
-
-        internal Uri ServerUri { get => serverUri; set => serverUri = value; }
 
         internal void StartProcess()
         {
@@ -258,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 WorkerId = _workerId,
                 Arguments = _workerConfig.Arguments,
                 WorkingDirectory = _rootScriptPath,
-                ServerUri = ServerUri,
+                ServerUri = _serverUri,
             };
 
             _process = _processFactory.CreateWorkerProcess(workerContext);

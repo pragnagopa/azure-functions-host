@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return NullHostedService.Instance;
             });
 
-            // Add Grpc Server
+            // TODO: pgopa Language Worker Services
             services.AddSingleton<IHostedService, RpcServerInitializationService>();
             services.AddSingleton<IHostedService, LanguageWorkerChannelInitializationService>();
         }

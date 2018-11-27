@@ -3,12 +3,7 @@
 
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
-using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -75,9 +70,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .ConfigureLogging((context, loggingBuilder) =>
                 {
                     loggingBuilder.ClearProviders();
-                    loggingBuilder.AddConsole();
                     loggingBuilder.AddDefaultWebJobsFilters();
                     loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
+                    loggingBuilder.AddConsoleIfEnabled(context);
                 })
                 .UseStartup<Startup>();
         }

@@ -94,7 +94,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 await InitializeLanguageWorkerChannel(lang, _applicationHostOptions.CurrentValue.ScriptPath, false);
             }
-            //return Task.CompletedTask;
         }
 
         private async Task InitializeLanguageWorkerChannel(string language, string scriptRootPath, bool isJobHostChannel)
@@ -108,16 +107,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _logger.LogInformation($"_languageWorkerChannel null...{languageWorkerChannel == null}");
                 languageWorkerChannel.CreateWorkerContextAndStartProcess();
 
-                //IObservable<InboundEvent> inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
-                //.Where(msg => msg.WorkerId == workerId);
-
-                //inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
-                //.Timeout(workerInitTimeout)
-                //.Take(1)
-                //.Subscribe(PublishRpcChannelReadyEvent);
-
-                //await inboundWorkerEvents.FirstAsync();
-
                 IObservable<RpcChannelReadyEvent> channelReadyEvents = _eventManager.OfType<RpcChannelReadyEvent>()
                 .Where(msg => msg.Language == language);
 
@@ -129,10 +118,5 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 throw new HostInitializationException($"Failed to start Grpc Service. Check if your app is hitting connection limits.", grpcInitEx);
             }
         }
-
-        //internal void PublishRpcChannelReadyEvent(RpcEvent initEvent)
-        //{
-        //    // TODO add channel
-        //}
     }
 }
