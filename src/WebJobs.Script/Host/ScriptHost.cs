@@ -502,8 +502,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 functions = await GetFunctionDescriptorsAsync(functionMetadata, _descriptorProviders);
                 _logger.LogDebug("Function descriptors created.");
             }
-            // TODO : pgopa to this only for non dotnet
-            // _functionDispatcher.RegisterFunctions();
             Functions = functions;
         }
 

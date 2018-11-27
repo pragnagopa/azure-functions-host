@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 var eventManager = p.GetService<IScriptEventManager>();
                 var functionRpcService = new FunctionRpcService(eventManager);
-                return new GrpcServer(functionRpcService, int.MaxValue);
+                return new GrpcServer(functionRpcService, LanguageWorkerConstants.DefaultMaxMessageLengthBytes);
             });
             services.AddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
