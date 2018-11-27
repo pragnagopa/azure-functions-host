@@ -18,9 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         bool IsPlaceHolderChannel { get;  }
 
-        void SetFunctionRegistrations(IObservable<FunctionRegistrationContext> functionRegistrations);
-
-        void RegisterFunctions();
+        void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations);
 
         void SendFunctionEnvironmentRequest();
 

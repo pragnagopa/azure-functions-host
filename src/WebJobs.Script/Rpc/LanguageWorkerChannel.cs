@@ -307,7 +307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             if (_isJobHostChannel)
             {
-                RegisterFunctions();
+                RegisterFunctions(_functionRegistrations);
             }
             else
             {
@@ -316,14 +316,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void SetFunctionRegistrations(IObservable<FunctionRegistrationContext> functionRegistrations)
+        public void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations)
         {
             _functionRegistrations = functionRegistrations;
-        }
-
-        public void RegisterFunctions()
-        {
-            //TODO check __functionRegistrations not null
             _eventSubscriptions.Add(_functionRegistrations.Subscribe(SendFunctionLoadRequest));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)

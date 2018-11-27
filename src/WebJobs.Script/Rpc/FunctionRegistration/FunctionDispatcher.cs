@@ -23,8 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     public class FunctionDispatcher : IFunctionDispatcher
     {
         private IScriptEventManager _eventManager;
-        private CreateChannel _channelFactory;
         private IEnumerable<WorkerConfig> _workerConfigs;
+        private CreateChannel _channelFactory;
         private ILanguageWorkerChannelManager _languageWorkerChannelManager;
         private ConcurrentDictionary<string, LanguageWorkerState> _channelStates = new ConcurrentDictionary<string, LanguageWorkerState>();
         private IDisposable _workerErrorSubscription;
@@ -67,37 +67,37 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public LanguageWorkerState CreateWorkerStateWithExistingChannel(string language, ILanguageWorkerChannel languageWorkerChannel)
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            _logger?.LogInformation("In CreateWorkerState ");
             var state = new LanguageWorkerState();
             state.Channel = languageWorkerChannel;
-            _logger?.LogInformation($"state.Channel {state.Channel.Id} ");
-            state.Channel.SetFunctionRegistrations(state.Functions);
-            state.Channel.RegisterFunctions();
+            state.Channel.RegisterFunctions(state.Functions);
             _channelsDictionary[state.Channel.Id] = state.Channel;
-            _logger?.LogInformation($"Added  workerState workerId: {state.Channel.Id}");
             _channelStates[CurrentLanguageRuntime] = state;
             return state;
         }
 
         public LanguageWorkerState CreateWorkerState(string language)
         {
+            CreateChannel channelFactory = GetChannelFactory();
+            var state = new LanguageWorkerState();
+            WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            state.Channel = channelFactory(config, state.Functions, 0);
+            _channelsDictionary[state.Channel.Id] = state.Channel;
+            _channelStates[CurrentLanguageRuntime] = state;
+            return state;
+        }
+
+        private CreateChannel GetChannelFactory()
+        {
             if (_channelFactory == null)
             {
-                //TODO:
                 _channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
                 {
-                    var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, CurrentLanguageRuntime, registrations, true, 0);
+                    var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, CurrentLanguageRuntime, registrations, true, attemptCount);
                     languageWorkerChannel.CreateWorkerContextAndStartProcess();
                     return languageWorkerChannel;
                 };
             }
-            // TODO: pgopa figure out attempt count
-            var state = new LanguageWorkerState();
-            WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            state.Channel = _channelFactory(config, state.Functions, 0);
-            _channelsDictionary[state.Channel.Id] = state.Channel;
-            _channelStates[CurrentLanguageRuntime] = state;
-            return state;
+            return _channelFactory;
         }
 
         public void Register(FunctionRegistrationContext context)
@@ -111,8 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void RegisterFunctions()
         {
             var state = _channelStates[CurrentLanguageRuntime];
-            state.Channel.SetFunctionRegistrations(state.Functions);
-            state.Channel.RegisterFunctions();
+            state.Channel.RegisterFunctions(state.Functions);
         }
 
         public void WorkerError(WorkerErrorEvent workerError)
@@ -121,16 +120,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (_channelsDictionary.TryGetValue(workerError.WorkerId, out erroredChannel))
             {
                 string language = erroredChannel.Config.Language;
-                if (erroredChannel.IsPlaceHolderChannel)
+                ILanguageWorkerChannel phChannel = null;
+                if (_languageWorkerChannelManager.WebhostChannels.TryGetValue(language, out phChannel))
                 {
-                    ILanguageWorkerChannel phChannel = null;
-                    if (_languageWorkerChannelManager.WebhostChannels.TryGetValue(language, out phChannel))
-                    {
-                        _languageWorkerChannelManager.WebhostChannels.Remove(erroredChannel.Config.Language);
-                        phChannel.Dispose();
-                    }
+                    _languageWorkerChannelManager.WebhostChannels.Remove(erroredChannel.Config.Language);
+                    phChannel.Dispose();
                 }
-                erroredChannel.Dispose();
+                else
+                {
+                    erroredChannel.Dispose();
+                }
                 LanguageWorkerState state = null;
                 if (_channelStates.TryGetValue(erroredChannel.Config.Language, out state))
                 {
@@ -138,10 +137,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     if (state.Errors.Count < 3)
                     {
                         WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-                        state.Channel = _channelFactory(config, state.Functions, state.Errors.Count);
-                        state.Channel.SetFunctionRegistrations(state.Functions);
-                        state.Channel.RegisterFunctions();
-                        _channelsDictionary[language] = state.Channel;
+                        CreateChannel channelFactory = GetChannelFactory();
+                        state.Channel = channelFactory(config, state.Functions, state.Errors.Count);
+                        state.Channel.RegisterFunctions(state.Functions);
+                        _channelsDictionary[state.Channel.Id] = state.Channel;
                     }
                     else
                     {
