@@ -106,9 +106,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (_channelStates.TryGetValue(workerError.Language, out erroredWorkerState))
             {
                 ILanguageWorkerChannel erroredChannel = null;
-                if (_languageWorkerChannelManager.WebhostChannels.TryGetValue(workerError.Language, out erroredChannel))
+                if (_languageWorkerChannelManager.WebHostChannels.TryGetValue(workerError.Language, out erroredChannel))
                 {
-                    _languageWorkerChannelManager.WebhostChannels.Remove(workerError.Language);
+                    _languageWorkerChannelManager.WebHostChannels.Remove(workerError.Language);
                 }
                 else
                 {

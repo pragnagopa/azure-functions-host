@@ -15,10 +15,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private Server _server;
         private bool _disposed = false;
 
-        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl, int grpcMaxMessageLength)
+        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
         {
-            ChannelOption maxReceiveMessageLength = new ChannelOption(ChannelOptions.MaxReceiveMessageLength, grpcMaxMessageLength);
-            ChannelOption maxSendMessageLength = new ChannelOption(ChannelOptions.MaxSendMessageLength, grpcMaxMessageLength);
+            ChannelOption maxReceiveMessageLength = new ChannelOption(ChannelOptions.MaxReceiveMessageLength, 128 * 1024 * 1024);
+            ChannelOption maxSendMessageLength = new ChannelOption(ChannelOptions.MaxSendMessageLength, 128 * 1024 * 1024);
             ChannelOption[] grpcChannelOptions = { maxReceiveMessageLength, maxSendMessageLength };
             _server = new Server(grpcChannelOptions)
             {

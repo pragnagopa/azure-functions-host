@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public IDictionary<string, ILanguageWorkerChannel> WebhostChannels { get => _webhostChannels; set => _webhostChannels = value; }
+        public IDictionary<string, ILanguageWorkerChannel> WebHostChannels { get => _webhostChannels; set => _webhostChannels = value; }
 
         public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, bool isJobHostChannel, int attemptCount)
         {
@@ -101,10 +101,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             try
             {
                 string workerId = Guid.NewGuid().ToString();
-                _logger.LogInformation("Creating languageChannelWorker...");
-                // TODO attempt count
+                _logger.LogInformation($"Creating language worker channel for language: {language}");
                 ILanguageWorkerChannel languageWorkerChannel = CreateLanguageWorkerChannel(workerId, scriptRootPath, language, isJobHostChannel, 0);
-                _logger.LogInformation($"_languageWorkerChannel null...{languageWorkerChannel == null}");
                 languageWorkerChannel.CreateWorkerContextAndStartProcess();
 
                 IObservable<RpcChannelReadyEvent> channelReadyEvents = _eventManager.OfType<RpcChannelReadyEvent>()

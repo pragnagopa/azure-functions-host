@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
@@ -74,12 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
-            services.AddSingleton<IRpcServer, GrpcServer>(p =>
-            {
-                var eventManager = p.GetService<IScriptEventManager>();
-                var functionRpcService = new FunctionRpcService(eventManager);
-                return new GrpcServer(functionRpcService, LanguageWorkerConstants.DefaultMaxMessageLengthBytes);
-            });
+            services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
+            services.AddSingleton<IRpcServer, GrpcServer>();
             services.AddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
 

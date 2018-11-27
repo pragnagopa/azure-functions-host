@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface ILanguageWorkerChannelManager
     {
-        IDictionary<string, ILanguageWorkerChannel> WebhostChannels { get; set; }
+        IDictionary<string, ILanguageWorkerChannel> WebHostChannels { get; set; }
 
         Task InitializeWebhostChannelsAsync(IEnumerable<string> languages);
 

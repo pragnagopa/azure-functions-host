@@ -39,10 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static CancellationTokenSource _standbyCancellationTokenSource = new CancellationTokenSource();
         private static IChangeToken _standbyChangeToken = new CancellationChangeToken(_standbyCancellationTokenSource.Token);
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
-        private IDictionary<string, ILanguageWorkerChannel> _placeHolderChannels = new Dictionary<string, ILanguageWorkerChannel>();
+        private IDictionary<string, ILanguageWorkerChannel> _webhostChannels = new Dictionary<string, ILanguageWorkerChannel>();
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
 
-        public StandbyManager(IScriptHostManager scriptHostManager, ILanguageWorkerChannelManager placeHolderLanguageWorkerService, IServiceProvider rootServiceProvider, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
+        public StandbyManager(IScriptHostManager scriptHostManager, ILanguageWorkerChannelManager languageWorkerChannelManager, IServiceProvider rootServiceProvider, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _placeHolderChannels = placeHolderLanguageWorkerService.WebhostChannels;
+            _webhostChannels = languageWorkerChannelManager.WebHostChannels;
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
         }
 
@@ -77,13 +77,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             ILanguageWorkerChannel languageWorkerChannel = null;
             string currentLanguageRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            _logger.LogInformation($"In SpecializeHostCoreAsync language:{currentLanguageRuntime}");
-            if (_placeHolderChannels.TryGetValue(currentLanguageRuntime, out languageWorkerChannel))
+            if (_webhostChannels.TryGetValue(currentLanguageRuntime, out languageWorkerChannel))
             {
+                _logger.LogInformation($"Loading environment variables for Language Worker :{currentLanguageRuntime})");
                 IObservable<WorkerProcessReadyEvent> processReadyEvents = _eventManager.OfType<WorkerProcessReadyEvent>()
                 .Where(msg => msg.Language == currentLanguageRuntime)
                 .Timeout(workerInitTimeout);
                 languageWorkerChannel.SendFunctionEnvironmentRequest();
+
+                // Wait for response from language worker process
                 WorkerProcessReadyEvent readyEvent = await processReadyEvents.FirstAsync();
             }
             NotifyChange();

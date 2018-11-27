@@ -511,7 +511,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _languageWorkerChannelManager.InitializeMetricsLogger(_metricsLogger);
             ILanguageWorkerChannel initializedChannel = null;
             _functionDispatcher.CurrentLanguageRuntime = _currentRuntimelanguage;
-            if (_languageWorkerChannelManager.WebhostChannels.TryGetValue(_currentRuntimelanguage, out initializedChannel))
+            if (_languageWorkerChannelManager.WebHostChannels.TryGetValue(_currentRuntimelanguage, out initializedChannel))
             {
                 _functionDispatcher.CreateWorkerStateWithExistingChannel(_currentRuntimelanguage, initializedChannel);
             }
