@@ -23,9 +23,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
-            return _languageWorkerChannelManager.InitializePlaceHolderChannelsAsync(_languages);
+            await _languageWorkerChannelManager.InitializeWebhostChannelsAsync(_languages);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

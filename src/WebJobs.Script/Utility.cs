@@ -466,6 +466,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return ContainsNonDotNetFunctions(functionsListWithoutProxies);
         }
 
+        internal static string GetCurrentLanguageRuntime(IEnumerable<FunctionMetadata> functions)
+        {
+            var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
+            return functionsListWithoutProxies.FirstOrDefault().Language;
+        }
+
         private static bool ContainsNonDotNetFunctions(IEnumerable<FunctionMetadata> functions)
         {
             if (functions != null && functions.Any())

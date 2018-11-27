@@ -10,9 +10,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface ILanguageWorkerChannelManager
     {
-        IDictionary<string, ILanguageWorkerChannel> InitializedChannels { get; set; }
+        IDictionary<string, ILanguageWorkerChannel> WebhostChannels { get; set; }
 
-        Task InitializePlaceHolderChannelsAsync(IEnumerable<string> languages);
+        Task InitializeWebhostChannelsAsync(IEnumerable<string> languages);
 
         void InitializeMetricsLogger(IMetricsLogger metricsLogger);
 

@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IRpcServer _rpcServer = null;
         private IMetricsLogger _metricsLogger = null;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
-        private IDictionary<string, ILanguageWorkerChannel> _placeHolderChannels = new Dictionary<string, ILanguageWorkerChannel>();
+        private IDictionary<string, ILanguageWorkerChannel> _webhostChannels = new Dictionary<string, ILanguageWorkerChannel>();
 
         public LanguageWorkerChannelManager(IScriptEventManager eventManager, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
         {
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public IDictionary<string, ILanguageWorkerChannel> InitializedChannels { get => _placeHolderChannels; set => _placeHolderChannels = value; }
+        public IDictionary<string, ILanguageWorkerChannel> WebhostChannels { get => _webhostChannels; set => _webhostChannels = value; }
 
         public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, bool isJobHostChannel, int attemptCount)
         {
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _metricsLogger = metricsLogger;
         }
 
-        public Task InitializePlaceHolderChannelsAsync(IEnumerable<string> languages)
+        public Task InitializeWebhostChannelsAsync(IEnumerable<string> languages)
         {
             _logger?.LogInformation("in InitializeLanguageWorkerProcess...");
             foreach (string lang in languages)
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _eventSubscriptions.Add(_eventManager.OfType<RpcChannelReadyEvent>()
                 .Subscribe(evt =>
                 {
-                    _placeHolderChannels.Add(evt.Language, evt.LanguageWorkerChannel);
+                    _webhostChannels.Add(evt.Language, evt.LanguageWorkerChannel);
                 }));
             }
             catch (Exception grpcInitEx)

@@ -72,8 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
-            // Add Language Worker Server
-            //services.AddSingleton<IHostedService, LanguageWorkerChannelInitializationService>();
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
             services.AddSingleton<IRpcServer, GrpcServer>(p =>
@@ -146,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Add Grpc Server
             services.AddSingleton<IHostedService, RpcServerInitializationService>();
+            services.AddSingleton<IHostedService, LanguageWorkerChannelInitializationService>();
         }
 
         private static void AddLinuxContainerServices(this IServiceCollection services)

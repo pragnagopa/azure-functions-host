@@ -51,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
-        private readonly string _currentRuntimelanguage;
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
@@ -67,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
         private ILogger _logger = null;
+        private string _currentRuntimelanguage;
 
         private IRpcServer _rpcServer;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
@@ -273,6 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
                 if (Utility.ShouldInitiliazeLanguageWorkers(functions, _currentRuntimelanguage))
                 {
+                    _currentRuntimelanguage = Utility.GetCurrentLanguageRuntime(functions);
                     InitializeWorkers();
                 }
                 var directTypes = GetDirectTypes(functions);
@@ -510,7 +511,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _languageWorkerChannelManager.InitializeMetricsLogger(_metricsLogger);
             ILanguageWorkerChannel initializedChannel = null;
-            if (_languageWorkerChannelManager.InitializedChannels.TryGetValue(_currentRuntimelanguage, out initializedChannel))
+            _functionDispatcher.CurrentLanguageRuntime = _currentRuntimelanguage;
+            if (_languageWorkerChannelManager.WebhostChannels.TryGetValue(_currentRuntimelanguage, out initializedChannel))
             {
                 _functionDispatcher.CreateWorkerStateWithExistingChannel(_currentRuntimelanguage, initializedChannel);
             }

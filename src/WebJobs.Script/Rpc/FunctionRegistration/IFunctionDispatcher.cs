@@ -9,6 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface IFunctionDispatcher : IDisposable
     {
+        string CurrentLanguageRuntime { get; set; }
+
         IDictionary<string, LanguageWorkerState> LanguageWorkerChannelStates { get; }
 
         // Tests if the function metadata is supported by a known language worker

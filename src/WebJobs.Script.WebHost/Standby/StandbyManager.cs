@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _placeHolderChannels = placeHolderLanguageWorkerService.InitializedChannels;
+            _placeHolderChannels = placeHolderLanguageWorkerService.WebhostChannels;
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
         }
 

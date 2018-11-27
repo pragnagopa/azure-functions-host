@@ -30,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private ConcurrentDictionary<string, ILanguageWorkerChannel> _channelsDictionary = new ConcurrentDictionary<string, ILanguageWorkerChannel>();
-        private string _language;
         private ILogger _logger;
         private ILoggerFactory _loggerFactory;
         private ScriptJobHostOptions _scriptOptions;
@@ -44,19 +43,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger("Host.FunctionDispatcher");
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-            //TODO:
-            _language = Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            _channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
-             {
-                 var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _language, registrations,  true, 0);
-                 languageWorkerChannel.CreateWorkerContextAndStartProcess();
-                 return languageWorkerChannel;
-             };
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
         }
 
         public IDictionary<string, LanguageWorkerState> LanguageWorkerChannelStates => _channelStates;
+
+        public string CurrentLanguageRuntime { get; set; }
 
         public bool IsSupported(FunctionMetadata functionMetadata)
         {
@@ -64,11 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return false;
             }
-            if (string.IsNullOrEmpty(_language))
+            if (string.IsNullOrEmpty(CurrentLanguageRuntime))
             {
                 return true;
             }
-            return functionMetadata.Language.Equals(_language, StringComparison.OrdinalIgnoreCase);
+            return functionMetadata.Language.Equals(CurrentLanguageRuntime, StringComparison.OrdinalIgnoreCase);
         }
 
         public LanguageWorkerState CreateWorkerStateWithExistingChannel(string language, ILanguageWorkerChannel languageWorkerChannel)
@@ -82,17 +75,28 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             state.Channel.RegisterFunctions();
             _channelsDictionary[state.Channel.Id] = state.Channel;
             _logger?.LogInformation($"Added  workerState workerId: {state.Channel.Id}");
+            _channelStates[CurrentLanguageRuntime] = state;
             return state;
         }
 
         public LanguageWorkerState CreateWorkerState(string language)
         {
+            if (_channelFactory == null)
+            {
+                //TODO:
+                _channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
+                {
+                    var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, CurrentLanguageRuntime, registrations, true, 0);
+                    languageWorkerChannel.CreateWorkerContextAndStartProcess();
+                    return languageWorkerChannel;
+                };
+            }
             // TODO: pgopa figure out attempt count
             var state = new LanguageWorkerState();
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             state.Channel = _channelFactory(config, state.Functions, 0);
             _channelsDictionary[state.Channel.Id] = state.Channel;
-            _channelStates[_language] = state;
+            _channelStates[CurrentLanguageRuntime] = state;
             return state;
         }
 
@@ -106,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void RegisterFunctions()
         {
-            var state = _channelStates[_language];
+            var state = _channelStates[CurrentLanguageRuntime];
             state.Channel.SetFunctionRegistrations(state.Functions);
             state.Channel.RegisterFunctions();
         }
@@ -120,9 +124,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (erroredChannel.IsPlaceHolderChannel)
                 {
                     ILanguageWorkerChannel phChannel = null;
-                    if (_languageWorkerChannelManager.InitializedChannels.TryGetValue(language, out phChannel))
+                    if (_languageWorkerChannelManager.WebhostChannels.TryGetValue(language, out phChannel))
                     {
-                        _languageWorkerChannelManager.InitializedChannels.Remove(erroredChannel.Config.Language);
+                        _languageWorkerChannelManager.WebhostChannels.Remove(erroredChannel.Config.Language);
                         phChannel.Dispose();
                     }
                 }
