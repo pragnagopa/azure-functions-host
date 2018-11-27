@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         }
 
         public LanguageWorkerChannel(
+           string workerId,
            string rootScriptPath,
            IScriptEventManager eventManager,
            IObservable<FunctionRegistrationContext> functionRegistrations,
@@ -74,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            bool isPlaceHolderChannel,
            int attemptCount)
         {
-            _workerId = Guid.NewGuid().ToString();
+            _workerId = workerId;
             _functionRegistrations = functionRegistrations;
             _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
@@ -110,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         }
 
         public LanguageWorkerChannel(
+           string workerId,
            string rootScriptPath,
            IScriptEventManager eventManager,
            IWorkerProcessFactory processFactory,
@@ -119,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            ILoggerFactory loggerFactory,
            IMetricsLogger metricsLogger,
            bool isPlaceHolderChannel,
-           int attemptCount) : this(rootScriptPath, eventManager, null, processFactory, processRegistry, workerConfig, serverUri, loggerFactory, metricsLogger, isPlaceHolderChannel, attemptCount)
+           int attemptCount) : this(workerId, rootScriptPath, eventManager, null, processFactory, processRegistry, workerConfig, serverUri, loggerFactory, metricsLogger, isPlaceHolderChannel, attemptCount)
         {
         }
 

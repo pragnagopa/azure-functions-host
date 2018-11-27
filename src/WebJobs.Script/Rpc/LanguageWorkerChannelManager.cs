@@ -9,8 +9,11 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
+using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -18,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
         private readonly ILogger _logger = null;
+        private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
+        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
         private IScriptEventManager _eventManager = null;
         private ILoggerFactory _loggerFactory = null;
@@ -50,12 +55,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public IDictionary<string, ILanguageWorkerChannel> WebhostChannels { get => _webhostChannels; set => _webhostChannels = value; }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, bool isJobHostChannel, int attemptCount)
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, bool isJobHostChannel, int attemptCount)
         {
-            return CreateLanguageWorkerChannel(scriptRootPath, language, null, isJobHostChannel, attemptCount);
+            return CreateLanguageWorkerChannel(workerId, scriptRootPath, language, null, isJobHostChannel, attemptCount);
         }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, bool isJobHostChannel, int attemptCount)
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, bool isJobHostChannel, int attemptCount)
         {
             var languageWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (languageWorkerConfig == null)
@@ -63,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 throw new InvalidOperationException($"WorkerCofig for language: {language} not found");
             }
             return new LanguageWorkerChannel(
+                         workerId,
                          scriptRootPath,
                          _eventManager,
                          functionRegistrations,
@@ -81,36 +87,52 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _metricsLogger = metricsLogger;
         }
 
-        public Task InitializeWebhostChannelsAsync(IEnumerable<string> languages)
+        public async Task InitializeWebhostChannelsAsync(IEnumerable<string> languages)
         {
             _logger?.LogInformation("in InitializeLanguageWorkerProcess...");
             foreach (string lang in languages)
             {
-                InitializeLanguageWorkerChannel(lang, _applicationHostOptions.CurrentValue.ScriptPath, false);
+                await InitializeLanguageWorkerChannel(lang, _applicationHostOptions.CurrentValue.ScriptPath, false);
             }
-            return Task.CompletedTask;
+            //return Task.CompletedTask;
         }
 
-        private void InitializeLanguageWorkerChannel(string language, string scriptRootPath, bool isJobHostChannel)
+        private async Task InitializeLanguageWorkerChannel(string language, string scriptRootPath, bool isJobHostChannel)
         {
             try
             {
                 string workerId = Guid.NewGuid().ToString();
                 _logger.LogInformation("Creating languageChannelWorker...");
                 // TODO attempt count
-                ILanguageWorkerChannel languageWorkerChannel = CreateLanguageWorkerChannel(scriptRootPath, language, isJobHostChannel, 0);
+                ILanguageWorkerChannel languageWorkerChannel = CreateLanguageWorkerChannel(workerId, scriptRootPath, language, isJobHostChannel, 0);
                 _logger.LogInformation($"_languageWorkerChannel null...{languageWorkerChannel == null}");
                 languageWorkerChannel.CreateWorkerContextAndStartProcess();
-                _eventSubscriptions.Add(_eventManager.OfType<RpcChannelReadyEvent>()
-                .Subscribe(evt =>
-                {
-                    _webhostChannels.Add(evt.Language, evt.LanguageWorkerChannel);
-                }));
+
+                //IObservable<InboundEvent> inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
+                //.Where(msg => msg.WorkerId == workerId);
+
+                //inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
+                //.Timeout(workerInitTimeout)
+                //.Take(1)
+                //.Subscribe(PublishRpcChannelReadyEvent);
+
+                //await inboundWorkerEvents.FirstAsync();
+
+                IObservable<RpcChannelReadyEvent> channelReadyEvents = _eventManager.OfType<RpcChannelReadyEvent>()
+                .Where(msg => msg.Language == language);
+
+                RpcChannelReadyEvent readyEvent = await channelReadyEvents.FirstAsync();
+                _webhostChannels.Add(readyEvent.Language, readyEvent.LanguageWorkerChannel);
             }
             catch (Exception grpcInitEx)
             {
                 throw new HostInitializationException($"Failed to start Grpc Service. Check if your app is hitting connection limits.", grpcInitEx);
             }
         }
+
+        //internal void PublishRpcChannelReadyEvent(RpcEvent initEvent)
+        //{
+        //    // TODO add channel
+        //}
     }
 }

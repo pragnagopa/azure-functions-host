@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 //TODO:
                 _channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
                 {
-                    var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, CurrentLanguageRuntime, registrations, true, 0);
+                    var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, CurrentLanguageRuntime, registrations, true, 0);
                     languageWorkerChannel.CreateWorkerContextAndStartProcess();
                     return languageWorkerChannel;
                 };

@@ -16,8 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         void InitializeMetricsLogger(IMetricsLogger metricsLogger);
 
-        ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, bool isJobHostChannel, int attemptCount);
+        ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, bool isJobHostChannel, int attemptCount);
 
-        ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, bool isJobHostChannel, int attemptCount);
+        ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, bool isJobHostChannel, int attemptCount);
     }
 }
