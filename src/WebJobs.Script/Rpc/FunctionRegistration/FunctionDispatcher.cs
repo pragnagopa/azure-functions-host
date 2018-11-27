@@ -4,15 +4,10 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -103,12 +98,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger?.LogInformation($"Register language {language}");
             var state = _channelStates.GetOrAdd(language, CreateWorkerState);
             state.Functions.OnNext(context);
-        }
-
-        public void RegisterFunctions()
-        {
-            var state = _channelStates[CurrentLanguageRuntime];
-            state.Channel.RegisterFunctions(state.Functions);
         }
 
         public void WorkerError(WorkerErrorEvent workerError)
