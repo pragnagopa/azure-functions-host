@@ -58,7 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             }
                             catch (Exception subscribeEventEx)
                             {
-                                EventManager?.Publish(new WorkerErrorEvent(workerId, subscribeEventEx));
+                                // TODO: pgopa
+                                EventManager?.Publish(new RpcChannelErrorEvent(workerId, subscribeEventEx));
                             }
                         });
 

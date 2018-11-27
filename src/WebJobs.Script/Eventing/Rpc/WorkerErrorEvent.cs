@@ -7,14 +7,17 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
     public class WorkerErrorEvent : ScriptEvent
     {
-        internal WorkerErrorEvent(string workerId, Exception exception)
+        internal WorkerErrorEvent(string language, string workerId, Exception exception)
             : base(nameof(WorkerErrorEvent), EventSources.Worker)
         {
             WorkerId = workerId ?? throw new ArgumentNullException(nameof(workerId));
             Exception = exception;
+            Language = language;
         }
 
         internal string WorkerId { get; private set; }
+
+        internal string Language { get; private set; }
 
         public Exception Exception { get; private set; }
     }

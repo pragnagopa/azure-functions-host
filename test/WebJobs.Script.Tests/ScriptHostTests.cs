@@ -998,10 +998,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Raise workerError events to force language worker process restarts
             var exc = new LanguageWorkerProcessExitException("TestEx");
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
+            scriptHost.EventManager.Publish(new WorkerErrorEvent("node", nodeWorkerId, exc));
+            scriptHost.EventManager.Publish(new WorkerErrorEvent("node", nodeWorkerId, exc));
+            scriptHost.EventManager.Publish(new WorkerErrorEvent("node", nodeWorkerId, exc));
+            scriptHost.EventManager.Publish(new WorkerErrorEvent("node", nodeWorkerId, exc));
 
             ICollection<string> actualFunctionErrors = scriptHost.FunctionErrors[functionName];
             Assert.NotNull(actualFunctionErrors);

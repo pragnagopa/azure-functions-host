@@ -507,7 +507,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 _workerChannelLogger.LogError(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
             }
-            _eventManager.Publish(new WorkerErrorEvent(Id, exc));
+            _eventManager.Publish(new WorkerErrorEvent(_workerConfig.Language, Id, exc));
         }
 
         private void SendStreamingMessage(StreamingMessage msg)

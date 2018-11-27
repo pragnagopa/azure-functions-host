@@ -29,7 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ConcurrentDictionary<string, LanguageWorkerState> _channelStates = new ConcurrentDictionary<string, LanguageWorkerState>();
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
-        private ConcurrentDictionary<string, ILanguageWorkerChannel> _channelsDictionary = new ConcurrentDictionary<string, ILanguageWorkerChannel>();
         private ILogger _logger;
         private ILoggerFactory _loggerFactory;
         private ScriptJobHostOptions _scriptOptions;
@@ -70,7 +69,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var state = new LanguageWorkerState();
             state.Channel = languageWorkerChannel;
             state.Channel.RegisterFunctions(state.Functions);
-            _channelsDictionary[state.Channel.Id] = state.Channel;
             _channelStates[CurrentLanguageRuntime] = state;
             return state;
         }
@@ -81,7 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var state = new LanguageWorkerState();
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             state.Channel = channelFactory(config, state.Functions, 0);
-            _channelsDictionary[state.Channel.Id] = state.Channel;
             _channelStates[CurrentLanguageRuntime] = state;
             return state;
         }
@@ -116,35 +113,34 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void WorkerError(WorkerErrorEvent workerError)
         {
-            ILanguageWorkerChannel erroredChannel;
-            if (_channelsDictionary.TryGetValue(workerError.WorkerId, out erroredChannel))
+            LanguageWorkerState erroredWorkerState;
+            if (_channelStates.TryGetValue(workerError.Language, out erroredWorkerState))
             {
-                string language = erroredChannel.Config.Language;
-                ILanguageWorkerChannel phChannel = null;
-                if (_languageWorkerChannelManager.WebhostChannels.TryGetValue(language, out phChannel))
+                ILanguageWorkerChannel erroredChannel = null;
+                if (_languageWorkerChannelManager.WebhostChannels.TryGetValue(workerError.Language, out erroredChannel))
                 {
-                    _languageWorkerChannelManager.WebhostChannels.Remove(erroredChannel.Config.Language);
-                    phChannel.Dispose();
+                    _languageWorkerChannelManager.WebhostChannels.Remove(workerError.Language);
                 }
                 else
                 {
-                    erroredChannel.Dispose();
+                    erroredChannel = erroredWorkerState.Channel;
                 }
+                erroredChannel.Dispose();
                 LanguageWorkerState state = null;
-                if (_channelStates.TryGetValue(erroredChannel.Config.Language, out state))
+                if (_channelStates.TryGetValue(workerError.Language, out state))
                 {
                     state.Errors.Add(workerError.Exception);
                     if (state.Errors.Count < 3)
                     {
-                        WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+                        WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(workerError.Language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
                         CreateChannel channelFactory = GetChannelFactory();
                         state.Channel = channelFactory(config, state.Functions, state.Errors.Count);
                         state.Channel.RegisterFunctions(state.Functions);
-                        _channelsDictionary[state.Channel.Id] = state.Channel;
+                        _channelStates[workerError.Language] = state;
                     }
                     else
                     {
-                        var exMessage = $"Failed to start language worker for: {language}";
+                        var exMessage = $"Failed to start language worker for: {workerError.Language}";
                         var languageWorkerChannelException = (state.Errors != null && state.Errors.Count > 0) ? new LanguageWorkerChannelException(exMessage, new AggregateException(state.Errors.ToList())) : new LanguageWorkerChannelException(exMessage);
                         var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
                         {
@@ -155,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             state.AddRegistration(reg);
                             reg.InputBuffer.LinkTo(errorBlock);
                         }));
-                        _eventManager.Publish(new WorkerProcessErrorEvent(state.Channel.Id, language, languageWorkerChannelException));
+                        _eventManager.Publish(new WorkerProcessErrorEvent(state.Channel.Id, workerError.Language, languageWorkerChannelException));
                     }
                 }
             }
