@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        internal void PublishWorkerProcessReadyEvent(FunctionEnvironmentResponse res)
+        internal void PublishWorkerProcessReadyEvent(FunctionEnvironmentLoadResponse res)
         {
             WorkerProcessReadyEvent wpEvent = new WorkerProcessReadyEvent(_workerConfig.Language);
             _eventManager.Publish(wpEvent);
@@ -330,13 +330,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void SendFunctionEnvironmentRequest()
         {
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentResponse)
-      .Subscribe((msg) => PublishWorkerProcessReadyEvent(msg.Message.FunctionEnvironmentResponse)));
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentLoadResponse)
+      .Subscribe((msg) => PublishWorkerProcessReadyEvent(msg.Message.FunctionEnvironmentLoadResponse)));
 
             System.Collections.IDictionary processEnv = Environment.GetEnvironmentVariables();
 
             // send a load request for the registered function
-            FunctionEnvironmentRequest request = new FunctionEnvironmentRequest();
+            FunctionEnvironmentLoadRequest request = new FunctionEnvironmentLoadRequest();
             foreach (DictionaryEntry entry in processEnv)
             {
                 request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
@@ -344,7 +344,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             SendStreamingMessage(new StreamingMessage
             {
-                FunctionEnvironmentRequest = request
+                FunctionEnvironmentLoadRequest = request
             });
         }
 
