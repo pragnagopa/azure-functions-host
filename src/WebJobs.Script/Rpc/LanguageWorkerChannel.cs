@@ -247,6 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         // send capabilities to worker, wait for WorkerInitResponse
         internal void SendWorkerInitRequest(RpcEvent startEvent)
         {
+            _workerChannelLogger.LogInformation("Sending Worker Init Request");
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
@@ -321,6 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void SendFunctionLoadRequest(FunctionRegistrationContext context)
         {
+            _workerChannelLogger.LogInformation("Sending Function Load Request for function:{functionName} with id:{functionId}", context.Metadata.Name, context.Metadata.FunctionId);
             FunctionMetadata metadata = context.Metadata;
 
             // associate the invocation input buffer with the function
@@ -356,6 +358,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
+            _workerChannelLogger.LogInformation("Receivec Function Load Response for function id:{functionId}", loadResponse.FunctionId);
+
             if (loadResponse.Result.IsFailure(out Exception ex))
             {
                 //Cache function load errors to replay error messages on invoking failed functions
@@ -370,6 +374,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void SendInvocationRequest(ScriptInvocationContext context)
         {
+            _workerChannelLogger.LogInformation("Sending Function Invocation Request for function:{functioname}", context.FunctionMetadata.Name);
             try
             {
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
