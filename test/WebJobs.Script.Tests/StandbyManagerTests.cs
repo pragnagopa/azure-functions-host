@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Specialize_ReloadsEnvironmentVariables()
         {
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
-            _mockLanguageWorkerChannelManager.Setup(m => m.SpecializeAsync()).Returns(async () =>
+            _mockLanguageWorkerChannelManager.Setup(m => m.SpecializeAsync(null)).Returns(async () =>
             {
                 _testEnvironment.SetEnvironmentVariable(_testSettingName, _testSettingValue);
                 await Task.Yield();

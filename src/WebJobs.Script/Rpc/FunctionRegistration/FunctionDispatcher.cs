@@ -93,15 +93,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void Initialize(string workerRuntime, IEnumerable<FunctionMetadata> functions)
         {
-            _languageWorkerChannelManager.ShutdownStandbyChannels(functions);
+            string runtime = workerRuntime ?? Utility.GetWorkerRuntime(functions);
+            _languageWorkerChannelManager.ShutdownStandbyChannels(runtime);
 
-            workerRuntime = workerRuntime ?? Utility.GetWorkerRuntime(functions);
-
-            if (Utility.IsSupportedRuntime(workerRuntime, _workerConfigs))
+            if (Utility.IsSupportedRuntime(runtime, _workerConfigs))
             {
                 ILanguageWorkerChannel initializedChannel = _languageWorkerChannelManager.GetChannel(workerRuntime);
                 if (initializedChannel != null)
                 {
+                    if (string.IsNullOrEmpty(workerRuntime) && SystemEnvironment.Instance.IsAppServiceEnvironment())
+                    {
+                        _languageWorkerChannelManager.ReloadEnvironment(runtime);
+                    }
                     CreateWorkerStateWithExistingChannel(workerRuntime, initializedChannel);
                 }
                 else

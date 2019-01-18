@@ -19,9 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         Task SpecializeAsync();
 
+        Task ReloadEnvironment(string runtime);
+
         bool ShutdownChannelIfExists(string language);
 
-        void ShutdownStandbyChannels(IEnumerable<FunctionMetadata> functions);
+        void ShutdownStandbyChannels(string runtime);
 
         void ShutdownChannels();
 

@@ -151,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 funcJs1, funcCS1
             };
 
-            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+            _languageWorkerChannelManager.ShutdownStandbyChannels(Utility.GetWorkerRuntime(functionsList));
 
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 funcJs1
             };
 
-            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+            _languageWorkerChannelManager.ShutdownStandbyChannels(Utility.GetWorkerRuntime(functionsList));
 
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
@@ -206,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 proxy1, funcJS1
             };
 
-            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+            _languageWorkerChannelManager.ShutdownStandbyChannels(Utility.GetWorkerRuntime(functionsList));
 
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 proxy2, proxy1
             };
-            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+            _languageWorkerChannelManager.ShutdownStandbyChannels(Utility.GetWorkerRuntime(functionsList));
 
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);

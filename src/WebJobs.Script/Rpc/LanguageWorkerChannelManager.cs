@@ -120,8 +120,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _logger.LogInformation(Resources.LanguageWorkerChannelSpecializationTrace);
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            await ReloadEnvironment(_workerRuntime);
+            _shutdownStandbyWorkerChannels();
+        }
+
+        public async Task ReloadEnvironment(string runtime)
+        {
             ILanguageWorkerChannel languageWorkerChannel = GetChannel(_workerRuntime);
-            if (_workerRuntime != null && languageWorkerChannel != null)
+            if (runtime != null && languageWorkerChannel != null)
             {
                 _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
                 IObservable<WorkerProcessReadyEvent> processReadyEvents = _eventManager.OfType<WorkerProcessReadyEvent>()
@@ -132,7 +138,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // Wait for response from language worker process
                 await processReadyEvents.FirstAsync();
             }
-            _shutdownStandbyWorkerChannels();
         }
 
         public bool ShutdownChannelIfExists(string language)
@@ -166,13 +171,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void ShutdownStandbyChannels(IEnumerable<FunctionMetadata> functions)
+        public void ShutdownStandbyChannels(string runtime)
         {
             if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
             {
                 return;
             }
-            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName) ?? Utility.GetWorkerRuntime(functions);
+            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName) ?? runtime;
             _logger.LogInformation("WorkerRuntime: {workerRuntime}. Will shutdown other standby channels", _workerRuntime);
             if (string.IsNullOrEmpty(_workerRuntime))
             {
