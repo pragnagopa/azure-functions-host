@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                     do
                     {
+                        //_eventManager.Publish(new LoadBalancerEvent(workerId, requestStream.Current));
                         _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
                     }
                     while (await messageAvailable());

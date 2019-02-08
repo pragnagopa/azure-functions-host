@@ -2,7 +2,8 @@
   "scriptFile" : "HttpTrigger-1.0-SNAPSHOT.jar",
   "entryPoint" : "Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.Function.run",
   "bindings" : [ {
-    "type" : "httpTrigger",
+    "type": "httpTrigger",
+    "authLevel": "anonymous",
     "direction" : "in",
     "methods" : [ "GET", "POST" ],
     "name" : "req"

@@ -103,10 +103,25 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (initializedChannel != null)
                 {
                     CreateWorkerStateWithExistingChannel(workerRuntime, initializedChannel);
+                    // TODO Part 2 - this mainly happens with java rather than node. In node we use the second part
                 }
                 else
                 {
-                    CreateWorkerState(workerRuntime);
+                    // TODO PART 1 / 2 - how should we register this
+                    LanguageWorkerState state = CreateWorkerState(workerRuntime);
+                    LanguageWorkerBuffer buffer = _languageWorkerChannelManager.CreateLanguageWorkerBuffer(state.Functions);
+                    buffer.Channel = state.Channel as LanguageWorkerChannel;
+                    buffer.AddChannel(state.Channel);
+                    int i = 0;
+                    //change this to increase the amount of workers AND BREAK THINGS :-)
+                    // THIS IS WHAT I NEED TO CHANGE TO INCREASE THE AMOUNT OF CHANNELS :D TODO: 2/6/2019
+                    // the problem is somewhere within the function worker start up sequence
+                    while (i < 4)
+                    {
+                        var newChannel = ChannelFactory(workerRuntime, state.Functions, 0);
+                        buffer.AddChannel(newChannel);
+                        i++;
+                    }
                 }
             }
         }

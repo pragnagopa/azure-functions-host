@@ -60,6 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                .Subscribe(AddOrUpdateWorkerChannels);
         }
 
+        public LanguageWorkerBuffer CreateLanguageWorkerBuffer(IObservable<FunctionRegistrationContext> functionRegistrations)
+        {
+            return new LanguageWorkerBuffer(_eventManager, functionRegistrations);
+        }
+
         public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, IMetricsLogger metricsLogger, int attemptCount)
         {
             var languageWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
@@ -81,10 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                          attemptCount);
         }
 
-        public async Task InitializeChannelAsync(string runtime)
+        public async Task InitializeChannelAsync(string runtime, int numWorkers)
         {
             _logger?.LogDebug("Initializing language worker channel for runtime:{runtime}", runtime);
-            await InitializeLanguageWorkerChannel(runtime, _applicationHostOptions.CurrentValue.ScriptPath);
+            for (int i = 0; i < numWorkers; i++)
+            {
+                await InitializeLanguageWorkerChannel(runtime, _applicationHostOptions.CurrentValue.ScriptPath);
+            }
         }
 
         private async Task InitializeLanguageWorkerChannel(string language, string scriptRootPath)

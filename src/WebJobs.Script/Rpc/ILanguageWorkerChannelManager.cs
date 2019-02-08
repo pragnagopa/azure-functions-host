@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface ILanguageWorkerChannelManager
     {
-        Task InitializeChannelAsync(string language);
+        Task InitializeChannelAsync(string language, int numWorkers);
 
         ILanguageWorkerChannel GetChannel(string language);
 
@@ -24,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         void ShutdownStandbyChannels(IEnumerable<FunctionMetadata> functions);
 
         void ShutdownChannels();
+
+        LanguageWorkerBuffer CreateLanguageWorkerBuffer(IObservable<FunctionRegistrationContext> functionRegistrations);
 
         ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, IMetricsLogger metricsLogger, int attemptCount);
     }
