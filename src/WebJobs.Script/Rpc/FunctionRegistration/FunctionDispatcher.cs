@@ -107,21 +107,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
-                    // TODO PART 1 / 2 - how should we register this
+                    // We can create the different language workers ..
+                    // CHECK - there isn't a race condition b/w creating the channel and the state --> I know how to fix this by seperating out what happens in
+                    // the create worker state
                     LanguageWorkerState state = CreateWorkerState(workerRuntime);
                     LanguageWorkerBuffer buffer = _languageWorkerChannelManager.CreateLanguageWorkerBuffer(state.Functions);
-                    buffer.Channel = state.Channel as LanguageWorkerChannel;
-                    buffer.AddChannel(state.Channel);
-                    int i = 0;
-                    //change this to increase the amount of workers AND BREAK THINGS :-)
-                    // THIS IS WHAT I NEED TO CHANGE TO INCREASE THE AMOUNT OF CHANNELS :D TODO: 2/6/2019
-                    // the problem is somewhere within the function worker start up sequence
-                    while (i < 4)
-                    {
-                        var newChannel = ChannelFactory(workerRuntime, state.Functions, 0);
-                        buffer.AddChannel(newChannel);
-                        i++;
-                    }
+                    buffer.MaxNumberWorkers = 5;
                 }
             }
         }

@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private bool _disposed;
         private int counter;
+
         // probably some way of keeping track of the invocations
         private List<LanguageWorkerChannel> _channels = new List<LanguageWorkerChannel>();
 
@@ -45,7 +46,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         }
 
         //keep track of the different language worker channels that we have:
-        internal LanguageWorkerChannel Channel { get; set; }
+        internal int MaxNumberWorkers { get; set; }
+
+        internal int CurrentNumberWorkers { get; set; }
 
         public void BufferSetup(FunctionRegistrationContext context)
         {
@@ -65,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             // Chose which language worker channel to send it to then emmit an event
             var c = context;
-            var ca = _channels[counter % 2];
+            var ca = _channels[counter % CurrentNumberWorkers];
             counter++;
             //Channel.SendInvocationRequest(c);
             ca.SendInvocationRequest(c);
@@ -90,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void AddChannel(ILanguageWorkerChannel channel)
         {
             _channels.Add(channel as LanguageWorkerChannel);
+            CurrentNumberWorkers++;
         }
     }
 }
