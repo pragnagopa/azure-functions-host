@@ -70,7 +70,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public LanguageWorkerBuffer CreateLanguageWorkerBuffer(IObservable<FunctionRegistrationContext> functionRegistrations)
         {
+            int max = 1;
+            int.TryParse(_environment.GetEnvironmentVariable("number_language_workers"), out max);
             _buffer = new LanguageWorkerBuffer(_eventManager, functionRegistrations, _logger);
+            max = (max < 1) ? 1 : max;
+            _buffer.MaxNumberWorkers = max;
             return _buffer;
         }
 
