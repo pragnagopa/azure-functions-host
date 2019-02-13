@@ -10,14 +10,14 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public class LanguageWorkerBuffer
     {
         private readonly IScriptEventManager _eventManager;
-
+        private readonly ILogger _logger = null;
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
 
         private IObservable<FunctionRegistrationContext> _functionRegistrations;
@@ -32,12 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         // probably some way of keeping track of the invocations
         private List<LanguageWorkerChannel> _channels = new List<LanguageWorkerChannel>();
 
-        public LanguageWorkerBuffer(IScriptEventManager eventManager, IObservable<FunctionRegistrationContext> functionRegistrations)
+        public LanguageWorkerBuffer(IScriptEventManager eventManager, IObservable<FunctionRegistrationContext> functionRegistrations, ILogger logger)
         {
             _disposed = false;
             counter = 0;
             _eventManager = eventManager;
-
+            _logger = logger;
             //_loadBalancerEvents = _eventManager.OfType<LoadBalancerEvent>();
 
             _functionRegistrations = functionRegistrations;
@@ -69,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             // Chose which language worker channel to send it to then emmit an event
             var c = context;
             var ca = _channels[counter % CurrentNumberWorkers];
+            _logger.LogInformation("Language worker channel {channel} was used to process this request.", ca.Id);
             counter++;
             //Channel.SendInvocationRequest(c);
             ca.SendInvocationRequest(c);

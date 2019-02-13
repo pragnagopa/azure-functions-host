@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public LanguageWorkerBuffer CreateLanguageWorkerBuffer(IObservable<FunctionRegistrationContext> functionRegistrations)
         {
-            _buffer = new LanguageWorkerBuffer(_eventManager, functionRegistrations);
+            _buffer = new LanguageWorkerBuffer(_eventManager, functionRegistrations, _logger);
             return _buffer;
         }
 
