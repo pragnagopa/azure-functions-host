@@ -274,6 +274,17 @@ message InvocationResponse {
   StatusResult result = 3;
 }
 
+enum Features {
+  Chunking = 0;
+}
+
+message ByteStream {
+  bytes chunk = 1;
+  bool last_chunk = 2;
+  bool first_chunk = 3;
+  int32 chunk_size = 4;
+}
+
 // Used to encapsulate data which could be a variety of types
 message TypedData {
   oneof data {
@@ -385,15 +396,4 @@ message RpcHttp {
   bool enable_content_negotiation= 16;
   TypedData rawBody = 17;
   repeated RpcClaimsIdentity identities = 18;
-}
-
-enum Features {
-  ByteStream = 1;
-}
-
-message ByteStream {
-  bytes chunk = 1;
-  bool last_chunk = 2;
-  bool first_chunk = 3;
-  int32 chunk_size = 4;
 }

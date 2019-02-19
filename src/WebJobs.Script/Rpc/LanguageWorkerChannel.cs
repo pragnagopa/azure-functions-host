@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IObservable<InboundEvent> _inboundWorkerEvents;
+        private List<Features> _workerFeatures = new List<Features>();
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
@@ -401,6 +402,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
+                    if (input.val is byte[] arr && _initMessage.SupportedFeatures.Contains(Features.Chunking))
+                    {
+                        typedData.Bytes = ByteString.CopyFrom(arr);
+                    }
                     SendStreamingMessage(new StreamingMessage
                     {
                         InvocationRequest = invocationRequest
