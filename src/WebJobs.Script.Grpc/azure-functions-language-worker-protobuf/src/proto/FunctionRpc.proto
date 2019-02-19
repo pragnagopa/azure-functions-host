@@ -10,6 +10,7 @@ option go_package ="github.com/Azure/azure-functions-go-worker/internal/rpc";
 package AzureFunctionsRpcMessages;
 
 import "google/protobuf/duration.proto";
+import "identity/ClaimsIdentityRpc.proto";
 
 // Interface exported by the server.
 service FunctionRpc {
@@ -105,6 +106,9 @@ message WorkerInitResponse {
 
   // Status of the response
   StatusResult result = 3;
+
+  //List of well known features
+  repeated Features supported_features = 4;
 }
 
 // Used by the host to determine success/failure/cancellation
@@ -280,6 +284,7 @@ message TypedData {
     RpcHttp http = 5;
 	  sint64 int = 6;
     double double = 7;
+    ByteStream byte_stream = 8;
   }
 }
 
@@ -379,4 +384,16 @@ message RpcHttp {
   map<string,string> query = 15;
   bool enable_content_negotiation= 16;
   TypedData rawBody = 17;
+  repeated RpcClaimsIdentity identities = 18;
+}
+
+enum Features {
+  ByteStream = 1;
+}
+
+message ByteStream {
+  bytes chunk = 1;
+  bool last_chunk = 2;
+  bool first_chunk = 3;
+  int32 chunk_size = 4;
 }
