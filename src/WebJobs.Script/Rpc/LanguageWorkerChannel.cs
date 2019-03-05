@@ -97,9 +97,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
-
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
                 .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
 

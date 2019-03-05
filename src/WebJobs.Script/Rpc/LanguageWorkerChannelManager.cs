@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                .Subscribe(AddOrUpdateWorkerChannels);
         }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false)
+        public LanguageWorkerBuffer CreateLanguageWorkerBuffer(IObservable<FunctionRegistrationContext> functionRegistrations)
         {
             int max = 1;
             int.TryParse(_environment.GetEnvironmentVariable("number_language_workers"), out max);
@@ -82,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return _buffer;
         }
 
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false)
         {
             var languageWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (languageWorkerConfig == null)
@@ -249,7 +250,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             _rpcServer.Uri,
                             _loggerFactory,
                             _metricsLogger,
-                            attemptCount);
+                            attemptCount,
+                            _consoleLogSource,
+                            false);
+
                 languageWorkerChannel.StartWorkerProcess();
             }
         }

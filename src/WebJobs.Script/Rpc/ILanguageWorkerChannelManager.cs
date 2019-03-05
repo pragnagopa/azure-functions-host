@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface ILanguageWorkerChannelManager
     {
-        Task InitializeChannelAsync(string language, int numWorkers);
+        Task InitializeChannelAsync(string language, int numWorkers = 1);
 
         ILanguageWorkerChannel GetChannel(string language);
 
