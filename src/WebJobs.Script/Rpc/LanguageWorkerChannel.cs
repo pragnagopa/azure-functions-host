@@ -25,8 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class LanguageWorkerChannel : ILanguageWorkerChannel
     {
-        private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
-        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
+        private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(120);
+        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(120);
         private readonly string _rootScriptPath;
         private readonly IScriptEventManager _eventManager;
         private readonly IWorkerProcessFactory _processFactory;
@@ -43,11 +43,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private string _workerId;
         private Process _process;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
-        private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
+
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IObservable<InboundEvent> _inboundWorkerEvents;
-        private List<IDisposable> _inputLinks = new List<IDisposable>();
+
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
@@ -327,9 +327,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             FunctionMetadata metadata = context.Metadata;
 
-            // associate the invocation input buffer with the function
-            _functionInputBuffers[context.Metadata.FunctionId] = context.InputBuffer;
-
             // send a load request for the registered function
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
@@ -354,20 +351,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 FunctionLoadRequest = request
             });
-        }
-
-        internal void LoadResponse(FunctionLoadResponse loadResponse)
-        {
-            if (loadResponse.Result.IsFailure(out Exception ex))
-            {
-                //Cache function load errors to replay error messages on invoking failed functions
-                _functionLoadErrors[loadResponse.FunctionId] = ex;
-            }
-            var inputBuffer = _functionInputBuffers[loadResponse.FunctionId];
-            // link the invocation inputs to the invoke call
-            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
-            var disposableLink = inputBuffer.LinkTo(invokeBlock);
-            _inputLinks.Add(disposableLink);
         }
 
         internal void SendInvocationRequest(ScriptInvocationContext context)
@@ -492,12 +475,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     _startLatencyMetric?.Dispose();
                     _startSubscription?.Dispose();
-
-                    // unlink function inputs
-                    foreach (var link in _inputLinks)
-                    {
-                        link.Dispose();
-                    }
 
                     // best effort process disposal
                     try

@@ -20,11 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
+        private readonly int numWorkers = 3;
 
-        private List<string> _languages = new List<string>()
-        {
-            LanguageWorkerConstants.JavaLanguageWorkerName
-        };
+        private List<string> _languages = new List<string>();
 
         public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, ILanguageWorkerChannelManager languageWorkerChannelManager, ILoggerFactory loggerFactory)
         {
@@ -80,11 +78,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (string.IsNullOrEmpty(workerRuntime) && _environment.IsPlaceholderModeEnabled())
             {
                 // Only warm up language workers in placeholder mode in worker runtime is not set
-                return Task.WhenAll(_languages.Select(runtime => _languageWorkerChannelManager.InitializeChannelAsync(runtime)));
+                return Task.WhenAll(_languages.Select(runtime => _languageWorkerChannelManager.InitializeChannelAsync(runtime, numWorkers)));
             }
             if (_languages.Contains(workerRuntime))
             {
-                return _languageWorkerChannelManager.InitializeChannelAsync(workerRuntime);
+                return _languageWorkerChannelManager.InitializeChannelAsync(workerRuntime, numWorkers);
+                // TODO : ADD NEW CHANNELS HERE AS PART OF THE INITIALIZATION (STEP 1)
+                // This is for java only and focusing on node atm
             }
             return Task.CompletedTask;
         }

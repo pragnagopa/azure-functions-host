@@ -102,11 +102,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime}", workerRuntime);
                     CreateWorkerStateWithExistingChannel(workerRuntime, initializedChannel);
+                    // TODO Part 2 - this mainly happens with java rather than node. In node we use the second part
                 }
                 else
                 {
-                    _logger.LogDebug("Creating new language worker channel for runtime:{workerRuntime}", workerRuntime);
-                    CreateWorkerState(workerRuntime);
+                    // We can create the different language workers ..
+                    // CHECK - there isn't a race condition b/w creating the channel and the state --> I know how to fix this by seperating out what happens in
+                    // the create worker state
+                    LanguageWorkerState state = CreateWorkerState(workerRuntime);
+                    LanguageWorkerBuffer buffer = _languageWorkerChannelManager.CreateLanguageWorkerBuffer(state.Functions);
+                    buffer.MaxNumberWorkers = 5;
                 }
             }
         }
