@@ -7,8 +7,8 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
     public class WorkerProcessErrorEvent : WorkerErrorEvent
     {
-        internal WorkerProcessErrorEvent(string workerId, string language, Exception exception)
-            : base(workerId, language, exception)
+        internal WorkerProcessErrorEvent(string language, Exception exception)
+            : base(string.Empty, language, exception)
         {
         }
     }

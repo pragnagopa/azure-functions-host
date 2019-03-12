@@ -85,8 +85,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             var state = new LanguageWorkerState();
-            state.Channel = languageWorkerChannel;
-            state.Channel.RegisterFunctions(state.Functions);
+            state.WorkerChannels.Add(languageWorkerChannel);
+            languageWorkerChannel.RegisterFunctions(state.Functions);
             _workerStates[language] = state;
             return state;
         }
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             var state = new LanguageWorkerState();
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            state.Channel = ChannelFactory(runtime, state.Functions, 0);
+            state.WorkerChannels.Add(ChannelFactory(runtime, state.Functions, 0));
             _workerStates[runtime] = state;
             return state;
         }
@@ -134,8 +134,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 bool isPreInitializedChannel = _languageWorkerChannelManager.ShutdownChannelIfExists(workerError.Language);
                 if (!isPreInitializedChannel)
                 {
-                    _logger.LogDebug("Disposing errored channel for workerId: {channelId}, for runtime:{language}", erroredWorkerState.Channel.Id, workerError.Language);
-                    erroredWorkerState.Channel.Dispose();
+                    _logger.LogDebug("Disposing errored channel for workerId: {channelId}, for runtime:{language}", workerError.WorkerId, workerError.Language);
+
+                    erroredWorkerState.WorkerChannels.Where(c => c.Id == workerError.WorkerId).FirstOrDefault()?.Dispose();
                 }
                 _logger.LogDebug("Restarting worker channel for runtime:{runtime}", workerError.Language);
                 RestartWorkerChannel(workerError.Language, erroredWorkerState);
@@ -146,13 +147,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (erroredWorkerState.Errors.Count < 3)
             {
-                erroredWorkerState.Channel = CreateNewChannelWithExistingWorkerState(runtime, erroredWorkerState);
+                erroredWorkerState.WorkerChannels.Add(CreateNewChannelWithExistingWorkerState(runtime, erroredWorkerState));
                 _workerStates[runtime] = erroredWorkerState;
             }
             else
             {
                 _logger.LogDebug("Exceeded language worker restart retry count for runtime:{runtime}", runtime);
-                PublishWorkerProcessErrorEvent(runtime, erroredWorkerState);
+                if (erroredWorkerState.WorkerChannels.Count < 1)
+                {
+                    PublishWorkerProcessErrorEvent(runtime, erroredWorkerState);
+                }
             }
         }
 
@@ -169,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 erroredWorkerState.AddRegistration(reg);
                 reg.InputBuffer.LinkTo(errorBlock);
             }));
-            _eventManager.Publish(new WorkerProcessErrorEvent(erroredWorkerState.Channel.Id, runtime, languageWorkerChannelException));
+            _eventManager.Publish(new WorkerProcessErrorEvent(runtime, languageWorkerChannelException));
         }
 
         private ILanguageWorkerChannel CreateNewChannelWithExistingWorkerState(string language, LanguageWorkerState erroredWorkerState)
@@ -193,11 +197,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     foreach (var pair in _workerStates)
                     {
-                        // TODO #3296 - send WorkerTerminate message to shut down language worker process gracefully (instead of just a killing)
-                        // WebhostLanguageWorkerChannels life time is managed by LanguageWorkerChannelManager
-                        if (!pair.Value.Channel.IsWebhostChannel)
+                        foreach (ILanguageWorkerChannel channel in pair.Value.WorkerChannels)
                         {
-                            pair.Value.Channel.Dispose();
+                            // TODO #3296 - send WorkerTerminate message to shut down language worker process gracefully (instead of just a killing)
+                            // WebhostLanguageWorkerChannels life time is managed by LanguageWorkerChannelManager
+                            if (!channel.IsWebhostChannel)
+                            {
+                                channel.Dispose();
+                            }
                         }
                         pair.Value.Functions.Dispose();
                     }

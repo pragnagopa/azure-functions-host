@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private LanguageWorkerChannel GetCurrentWorkerChannel()
         {
             var nodeWorkerChannels = _channelStates.Where(w => w.Key.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
-            return (LanguageWorkerChannel)nodeWorkerChannels.FirstOrDefault().Value.Channel;
+            return (LanguageWorkerChannel)nodeWorkerChannels.FirstOrDefault().Value.WorkerChannels.FirstOrDefault();
         }
 
         private bool FunctionErrorsAdded()
