@@ -107,6 +107,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
+        public IServiceProvider GetHostServices()
+        {
+            return Host.JobHostServices;
+        }
+
         public async Task<CloudQueue> GetNewQueue(string queueName)
         {
             var queue = QueueClient.GetQueueReference(string.Format("{0}-{1}", queueName, FixtureId));

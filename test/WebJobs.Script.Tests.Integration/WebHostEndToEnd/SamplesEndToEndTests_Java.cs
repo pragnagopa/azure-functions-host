@@ -40,10 +40,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task JavaProcess_Same_AfterHostRestart()
         {
-            IEnumerable<int> javaProcessesBefore = Process.GetProcessesByName("java").Select(p => p.Id);
+            string runtime = "java";
+            IEnumerable<int> javaProcessesBefore = Process.GetProcessesByName(runtime).Select(p => p.Id);
+            ILanguageWorkerChannelManager languageWorkerChannelManager = (ILanguageWorkerChannelManager)_fixture.GetHostServices().GetService(typeof(ILanguageWorkerChannelManager));
+            IFunctionDispatcher functionDispatcher = (IFunctionDispatcher)_fixture.GetHostServices().GetService(typeof(IFunctionDispatcher));
+            var languageWorkerState = GetWorkerState(functionDispatcher, runtime);
+
+            var workerIdBeforeRestart = languageWorkerState.Channel.WorkerId;
+
+            Assert.Null(languageWorkerChannelManager.GetChannel(runtime)?.WorkerId);
+            Assert.Null(languageWorkerState.WorkerProcess);
+
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
+            
+            // Verify function invocation succeeds
             await HttpTrigger_Java_Get_Succeeds();
+
+            // Verify LanguageWorkerChannel is reinitialized
+            languageWorkerState = GetWorkerState(functionDispatcher, runtime);
+            Assert.NotEqual(workerIdBeforeRestart, languageWorkerState.Channel.WorkerId);
+            Assert.Null(languageWorkerState.WorkerProcess);
+
             IEnumerable<int> javaProcessesAfter = Process.GetProcessesByName("java").Select(p => p.Id);
             // Verify number of java processes before and after restart are the same.
             Assert.Equal(javaProcessesBefore.Count(), javaProcessesAfter.Count());
@@ -61,6 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        private LanguageWorkerState GetWorkerState(IFunctionDispatcher functionDispatcher, string runtime)
+        {
+            return functionDispatcher.LanguageWorkerChannelStates.Where(lw => lw.Key == runtime).FirstOrDefault().Value;
         }
 
         public class TestFixture : EndToEndTestFixture

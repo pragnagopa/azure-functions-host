@@ -84,6 +84,12 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="TestScripts\Java\HttpTrigger\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestScripts\Java\HttpTrigger\HttpTrigger-1.0-SNAPSHOT.jar">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -91,6 +97,7 @@
   
   <ItemGroup>
     <Folder Include="TestScripts\Empty\" />
+    <Folder Include="TestScripts\Java\" />
   </ItemGroup>
   
   <ItemGroup>
