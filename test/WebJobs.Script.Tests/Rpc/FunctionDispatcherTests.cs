@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             var eventManager = new Mock<IScriptEventManager>();
             var metricsLogger = new Mock<IMetricsLogger>();
+            var testEnv = new Mock<IEnvironment>();
             var languageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
             var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
             var options = new ScriptJobHostOptions
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
-            return new FunctionDispatcher(scriptOptions, metricsLogger.Object, eventManager.Object, loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions), languageWorkerChannelManager.Object);
+            return new FunctionDispatcher(scriptOptions, testEnv.Object, metricsLogger.Object, eventManager.Object, loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions), languageWorkerChannelManager.Object);
         }
     }
 }

@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Action _shutdownStandbyWorkerChannels;
         private IDictionary<string, ILanguageWorkerChannel> _workerChannels = new Dictionary<string, ILanguageWorkerChannel>();
         private IDictionary<string, ILanguageWorkerProcess> _workerProcesses = new Dictionary<string, ILanguageWorkerProcess>();
+        private IDictionary<string, string> _initializedWorkerIds = new Dictionary<string, string>();
 
         public LanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerConsoleLogSource consoleLogSource)
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 string workerId = Guid.NewGuid().ToString();
                 _logger.LogInformation("Creating language worker channel for runtime:{runtime}", language);
                 ILanguageWorkerChannel languageWorkerChannel = CreateLanguageWorkerChannel(workerId, scriptRootPath, language, null, null, 0);
-
+                languageWorkerChannel.SetupStartupSub();
                 var languageWorkerProcess = StartWorkerProcess(workerId, language, scriptRootPath);
                 _workerProcesses.Add(language, languageWorkerProcess);
 
@@ -144,6 +145,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out initializedChannel))
             {
                 return initializedChannel;
+            }
+            return null;
+        }
+
+        public string GetInitializedChannelWorkerId(string language)
+        {
+            string workerId = null;
+            if (!string.IsNullOrEmpty(language) && _initializedWorkerIds.TryGetValue(language, out workerId))
+            {
+                return workerId;
             }
             return null;
         }
@@ -189,6 +200,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
 
             return false;
+        }
+
+        public bool ClearInitializedChannelIfExists(string language)
+        {
+            return _initializedWorkerIds.Remove(language);
         }
 
         internal void ScheduleShutdownStandbyChannels()
@@ -247,6 +263,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _workerProcesses[runtime]?.Dispose();
             }
             _workerProcesses.Clear();
+
+            _initializedWorkerIds.Clear();
+
             (_processRegistry as IDisposable)?.Dispose();
         }
 
@@ -254,6 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _logger.LogInformation("Adding language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
             _workerChannels.Add(rpcChannelReadyEvent.Language, rpcChannelReadyEvent.LanguageWorkerChannel);
+            _initializedWorkerIds.Add(rpcChannelReadyEvent.Language, rpcChannelReadyEvent.LanguageWorkerChannel.WorkerId);
         }
     }
 }

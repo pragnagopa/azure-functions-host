@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IObservable<FunctionRegistrationContext> _functionRegistrations;
         private WorkerInitResponse _initMessage;
         private string _workerId;
+        private string _id;
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
@@ -62,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            int attemptCount)
         {
             _workerId = workerId;
+            _id = Guid.NewGuid().ToString();
             _functionRegistrations = functionRegistrations;
             _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
@@ -72,11 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
-
-            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(processStartTimeout)
-                .Take(1)
-                .Subscribe(SendWorkerInitRequest, HandleWorkerChannelError);
 
             _eventSubscriptions.Add(_inboundWorkerEvents
                 .Where(msg => msg.MessageType == MsgType.RpcLog)
@@ -98,7 +95,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public string WorkerId => _workerId;
 
+        public string Id => _id;
+
         public string Runtime => _runtime;
+
+        public void SetupStartupSub()
+        {
+            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
+                           .Timeout(processStartTimeout)
+                           .Take(1)
+                           .Subscribe(SendWorkerInitRequest, HandleWorkerChannelError);
+        }
 
         // send capabilities to worker, wait for WorkerInitResponse
         internal void SendWorkerInitRequest(RpcEvent startEvent)
