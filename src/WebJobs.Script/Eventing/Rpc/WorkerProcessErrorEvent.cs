@@ -5,11 +5,16 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
-    public class WorkerProcessErrorEvent : WorkerErrorEvent
+    public class WorkerProcessErrorEvent : ScriptEvent
     {
-        internal WorkerProcessErrorEvent(string workerId, string language, Exception exception)
-            : base(workerId, language, exception)
+        internal WorkerProcessErrorEvent(string language, Exception exception) : base(nameof(WorkerProcessErrorEvent), EventSources.WorkerProcess)
         {
+            Exception = exception;
+            Language = language;
         }
+
+        internal string Language { get; private set; }
+
+        public Exception Exception { get; private set; }
     }
 }

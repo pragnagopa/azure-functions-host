@@ -9,8 +9,8 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -22,17 +22,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly BindingMetadata _trigger;
+        private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
-        private readonly BufferBlock<ScriptInvocationContext> _invocationBuffer;
+        private readonly IFunctionDispatcher _fuctionDispatcher;
 
         internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, BufferBlock<ScriptInvocationContext> invocationBuffer)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionDispatcher fuctionDispatcher)
             : base(host, functionMetadata, loggerFactory)
         {
             _trigger = trigger;
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _invocationBuffer = invocationBuffer;
+            _fuctionDispatcher = fuctionDispatcher;
+            _logger = loggerFactory.CreateLogger("WorkerLanguageInvoker");
 
             InitializeFileWatcherIfEnabled();
 
@@ -70,7 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             ScriptInvocationResult result;
-            _invocationBuffer.Post(invocationContext);
+            _logger.LogInformation($"Sending invocation id:{invocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+            _fuctionDispatcher.Invoke(invocationContext);
             result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);

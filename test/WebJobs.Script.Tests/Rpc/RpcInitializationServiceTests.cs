@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
             _mockLanguageWorkerChannelManager.Setup(m => m.InitializeChannelAsync(It.IsAny<string>()))
-                                             .Returns(Task.CompletedTask);
+                                             .Returns(Task.FromResult<ILanguageWorkerChannel>(new LanguageWorkerChannel()));
         }
 
         [Fact]

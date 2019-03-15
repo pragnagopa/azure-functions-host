@@ -2,10 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -22,19 +22,26 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
+        private readonly IDisposable _rpcChannelReadySubscriptions;
         private IScriptEventManager _eventManager;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private CreateChannel _channelFactory;
         private ILanguageWorkerChannelManager _languageWorkerChannelManager;
-        private ConcurrentDictionary<string, LanguageWorkerState> _workerStates = new ConcurrentDictionary<string, LanguageWorkerState>();
+        private LanguageWorkerState _workerState = new LanguageWorkerState();
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private ScriptJobHostOptions _scriptOptions;
+        private IObservable<RpcFunctionLoadedEvent> _rpcChannelFunctionLoadedEvents;
+        private int _maxProcessCount;
+        private IFunctionDispatcherLoadBalancer _functionDispatcherLoadBalancer;
         private bool disposedValue = false;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
+        private string _workerRuntime;
 
         public FunctionDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
+            IEnvironment environment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
@@ -43,17 +50,27 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
+            _environment = environment;
             _languageWorkerChannelManager = languageWorkerChannelManager;
             _eventManager = eventManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _managedDependencyOptions = managedDependencyOptions;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionDispatcher);
+
+            var processCount = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName);
+            _maxProcessCount = (processCount != null && int.Parse(processCount) > 1) ? int.Parse(processCount) : 1;
+            _functionDispatcherLoadBalancer = new FunctionDispatcherLoadBalancer(_maxProcessCount);
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
-            _managedDependencyOptions = managedDependencyOptions;
+
+            _rpcChannelFunctionLoadedEvents = _eventManager.OfType<RpcFunctionLoadedEvent>();
+            _rpcChannelReadySubscriptions = _eventManager.OfType<RpcJobHostChannelReadyEvent>().Subscribe(AddOrUpdateWorkerChannels);
         }
 
-        public IDictionary<string, LanguageWorkerState> LanguageWorkerChannelStates => _workerStates;
+        public LanguageWorkerState LanguageWorkerChannelState => _workerState;
+
+        internal List<Exception> Errors { get; set; } = new List<Exception>();
 
         internal CreateChannel ChannelFactory
         {
@@ -63,8 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     _channelFactory = (language, registrations, attemptCount) =>
                     {
-                        var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, language, registrations, _metricsLogger, attemptCount, false, _managedDependencyOptions);
+                        var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, language, _metricsLogger, attemptCount, false, _managedDependencyOptions);
                         languageWorkerChannel.StartWorkerProcess();
+                        languageWorkerChannel.RegisterFunctions(registrations);
                         return languageWorkerChannel;
                     };
                 }
@@ -85,103 +103,141 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
         }
 
-        public LanguageWorkerState CreateWorkerStateWithExistingChannel(string language, ILanguageWorkerChannel languageWorkerChannel)
+        public void RegisterFunctionsWithExistingChannel(ILanguageWorkerChannel languageWorkerChannel)
         {
-            WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            var state = new LanguageWorkerState();
-            state.Channel = languageWorkerChannel;
-            state.Channel.RegisterFunctions(state.Functions);
-            _workerStates[language] = state;
-            return state;
+            languageWorkerChannel.RegisterFunctions(_workerState.Functions);
         }
 
-        public void Initialize(string workerRuntime, IEnumerable<FunctionMetadata> functions)
+        public async void Initialize(string workerRuntime, IEnumerable<FunctionMetadata> functions)
         {
+            _workerRuntime = workerRuntime;
             _languageWorkerChannelManager.ShutdownStandbyChannels(functions);
 
             if (Utility.IsSupportedRuntime(workerRuntime, _workerConfigs))
             {
-                ILanguageWorkerChannel initializedChannel = _languageWorkerChannelManager.GetChannel(workerRuntime);
-                if (initializedChannel != null)
+                IEnumerable<ILanguageWorkerChannel> initializedChannels = _languageWorkerChannelManager.GetChannels(workerRuntime);
+                if (initializedChannels != null)
                 {
-                    _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime}", workerRuntime);
-                    CreateWorkerStateWithExistingChannel(workerRuntime, initializedChannel);
+                    foreach (var initializedChannel in initializedChannels)
+                    {
+                        _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", workerRuntime, initializedChannel.Id);
+                        RegisterFunctionsWithExistingChannel(initializedChannel);
+                    }
+
+                    for (var count = initializedChannels.Count(); count < _maxProcessCount; count++)
+                    {
+                        _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}. Count: {count}", workerRuntime, count);
+                        ILanguageWorkerChannel workerChannel = await _languageWorkerChannelManager.InitializeChannelAsync(workerRuntime);
+                        RegisterFunctionsWithExistingChannel(workerChannel);
+                    }
                 }
                 else
                 {
-                    _logger.LogDebug("Creating new language worker channel for runtime:{workerRuntime}", workerRuntime);
-                    CreateWorkerState(workerRuntime);
+                    for (var count = 0; count < _maxProcessCount; count++)
+                    {
+                        _logger.LogDebug("Creating new Jobhost language worker channel for runtime:{workerRuntime}. Count: {count}", workerRuntime, count);
+                        CreateWorkerState(workerRuntime);
+                    }
                 }
             }
         }
 
-        private LanguageWorkerState CreateWorkerState(string runtime)
+        private void CreateWorkerState(string runtime)
         {
-            var state = new LanguageWorkerState();
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            state.Channel = ChannelFactory(runtime, state.Functions, 0);
-            _workerStates[runtime] = state;
-            return state;
+            var languageWorkerChannel = ChannelFactory(runtime, _workerState.Functions, 0);
         }
 
-        public void Register(FunctionRegistrationContext context)
+        public void Register(FunctionMetadata context)
         {
-            _workerStates[context.Metadata.Language].Functions.OnNext(context);
+            _workerState.Functions.OnNext(context);
+        }
+
+        public async void Invoke(ScriptInvocationContext invocationContext)
+        {
+            if (_workerState.ProcessRestartCountExceedException != null)
+            {
+                invocationContext.ResultSource.TrySetException(_workerState.ProcessRestartCountExceedException);
+                return;
+            }
+            var webhostChannels = _languageWorkerChannelManager.GetChannels(_workerRuntime);
+            var workerChannels = webhostChannels == null ? _workerState.GetChannels() : webhostChannels.Union(_workerState.GetChannels());
+            if (workerChannels.Count() == 0)
+            {
+                //Wait for response from atleast one language worker process
+                await _rpcChannelFunctionLoadedEvents.FirstAsync();
+            }
+            var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
+            BufferBlock<ScriptInvocationContext> bufferBlock = null;
+            if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out bufferBlock))
+            {
+                _logger.LogInformation($"posting invocation id:{invocationContext.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+                languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+            }
+            else
+            {
+                throw new Exception("Function not loaded");
+            }
         }
 
         public void WorkerError(WorkerErrorEvent workerError)
         {
-            if (_workerStates.TryGetValue(workerError.Language, out LanguageWorkerState erroredWorkerState))
+            _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}", workerError.Language);
+            if (_workerState.Errors.TryGetValue(workerError.WorkerId, out List<Exception> errorsList))
             {
-                _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}", workerError.Language);
-                erroredWorkerState.Errors.Add(workerError.Exception);
-                bool isPreInitializedChannel = _languageWorkerChannelManager.ShutdownChannelIfExists(workerError.Language);
-                if (!isPreInitializedChannel)
-                {
-                    _logger.LogDebug("Disposing errored channel for workerId: {channelId}, for runtime:{language}", erroredWorkerState.Channel.Id, workerError.Language);
-                    erroredWorkerState.Channel.Dispose();
-                }
-                _logger.LogDebug("Restarting worker channel for runtime:{runtime}", workerError.Language);
-                RestartWorkerChannel(workerError.Language, erroredWorkerState);
-            }
-        }
-
-        private void RestartWorkerChannel(string runtime, LanguageWorkerState erroredWorkerState)
-        {
-            if (erroredWorkerState.Errors.Count < 3)
-            {
-                erroredWorkerState.Channel = CreateNewChannelWithExistingWorkerState(runtime, erroredWorkerState);
-                _workerStates[runtime] = erroredWorkerState;
+                errorsList.Add(workerError.Exception);
             }
             else
             {
+                _workerState.Errors.Add(workerError.WorkerId, new List<Exception>()
+                {
+                    workerError.Exception
+                });
+            }
+            bool isPreInitializedChannel = _languageWorkerChannelManager.ShutdownChannelsIfExist(workerError.Language);
+            if (!isPreInitializedChannel)
+            {
+                _logger.LogDebug("Disposing errored channel for workerId: {channelId}, for runtime:{language}", workerError.WorkerId, workerError.Language);
+                var erroredChannel = _workerState.GetChannels().Where(ch => ch.Id == workerError.WorkerId).FirstOrDefault();
+                _workerState.DisposeAndRemoveChannel(erroredChannel);
+            }
+            _logger.LogDebug("Restarting worker channel for runtime:{runtime}", workerError.Language);
+            RestartWorkerChannel(workerError.Language, workerError.WorkerId);
+        }
+
+        private void RestartWorkerChannel(string runtime, string workerId)
+        {
+            if (_workerState.Errors[workerId].Count < 3)
+            {
+                _workerState.AddChannel(CreateNewChannelWithExistingWorkerState(runtime));
+            }
+            else if (_workerState.GetChannels().Count() == 0)
+            {
                 _logger.LogDebug("Exceeded language worker restart retry count for runtime:{runtime}", runtime);
-                PublishWorkerProcessErrorEvent(runtime, erroredWorkerState);
+                PublishWorkerProcessErrorEvent(runtime);
             }
         }
 
-        private void PublishWorkerProcessErrorEvent(string runtime, LanguageWorkerState erroredWorkerState)
+        private void PublishWorkerProcessErrorEvent(string runtime)
         {
             var exMessage = $"Failed to start language worker for: {runtime}";
-            var languageWorkerChannelException = (erroredWorkerState.Errors != null && erroredWorkerState.Errors.Count > 0) ? new LanguageWorkerChannelException(exMessage, new AggregateException(erroredWorkerState.Errors.ToList())) : new LanguageWorkerChannelException(exMessage);
-            var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
-            {
-                ctx.ResultSource.TrySetException(languageWorkerChannelException);
-            });
-            _workerStateSubscriptions.Add(erroredWorkerState.Functions.Subscribe(reg =>
-            {
-                erroredWorkerState.AddRegistration(reg);
-                reg.InputBuffer.LinkTo(errorBlock);
-            }));
-            _eventManager.Publish(new WorkerProcessErrorEvent(erroredWorkerState.Channel.Id, runtime, languageWorkerChannelException));
+            _workerState.ProcessRestartCountExceedException = new LanguageWorkerChannelException(exMessage);
+            _eventManager.Publish(new WorkerProcessErrorEvent(runtime, _workerState.ProcessRestartCountExceedException));
         }
 
-        private ILanguageWorkerChannel CreateNewChannelWithExistingWorkerState(string language, LanguageWorkerState erroredWorkerState)
+        private ILanguageWorkerChannel CreateNewChannelWithExistingWorkerState(string language)
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            var newWorkerChannel = ChannelFactory(language, erroredWorkerState.Functions, erroredWorkerState.Errors.Count);
-            newWorkerChannel.RegisterFunctions(erroredWorkerState.Functions);
+            var newWorkerChannel = ChannelFactory(language, _workerState.Functions, _workerState.Errors.Count);
+            newWorkerChannel.RegisterFunctions(_workerState.Functions);
             return newWorkerChannel;
+        }
+
+        private void AddOrUpdateWorkerChannels(RpcJobHostChannelReadyEvent rpcChannelReadyEvent)
+        {
+            _logger.LogInformation("Adding jobhost language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
+            _workerState.AddChannel(rpcChannelReadyEvent.LanguageWorkerChannel);
+            rpcChannelReadyEvent.LanguageWorkerChannel.RegisterFunctions(_workerState.Functions);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -195,16 +251,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     {
                         subscription.Dispose();
                     }
-                    foreach (var pair in _workerStates)
+                    // TODO #3296 - send WorkerTerminate message to shut down language worker process gracefully (instead of just a killing)
+                    // WebhostLanguageWorkerChannels life time is managed by LanguageWorkerChannelManager
+                    foreach (var channel in _workerState.GetChannels())
                     {
-                        // TODO #3296 - send WorkerTerminate message to shut down language worker process gracefully (instead of just a killing)
-                        // WebhostLanguageWorkerChannels life time is managed by LanguageWorkerChannelManager
-                        if (!pair.Value.Channel.IsWebhostChannel)
-                        {
-                            pair.Value.Channel.Dispose();
-                        }
-                        pair.Value.Functions.Dispose();
+                        channel.Dispose();
                     }
+                    _workerState.Functions.Dispose();
                 }
                 disposedValue = true;
             }
