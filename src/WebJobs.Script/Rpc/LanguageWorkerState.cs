@@ -2,37 +2,49 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Subjects;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public class LanguageWorkerState
     {
         private object _lock = new object();
-        private IList<FunctionRegistrationContext> _registrations = new List<FunctionRegistrationContext>();
 
-        internal ILanguageWorkerChannel Channel { get; set; }
+        private IList<ILanguageWorkerChannel> _channels = new List<ILanguageWorkerChannel>();
 
-        internal List<Exception> Errors { get; set; } = new List<Exception>();
+        internal Exception ProcessRestartCountExceedException { get; set; }
+
+        internal IDictionary<string, List<Exception>> Errors { get; set; } = new Dictionary<string, List<Exception>>();
 
         // Registered list of functions which can be replayed if the worker fails to start / errors
-        internal ReplaySubject<FunctionRegistrationContext> Functions { get; set; } = new ReplaySubject<FunctionRegistrationContext>();
+        internal ReplaySubject<FunctionMetadata> Functions { get; set; } = new ReplaySubject<FunctionMetadata>();
 
-        internal void AddRegistration(FunctionRegistrationContext registration)
+        internal void AddChannel(ILanguageWorkerChannel channel)
         {
             lock (_lock)
             {
-                _registrations.Add(registration);
+                _channels.Add(channel);
             }
         }
 
-        internal IEnumerable<FunctionRegistrationContext> GetRegistrations()
+        internal void DisposeAndRemoveChannel(ILanguageWorkerChannel channel)
         {
             lock (_lock)
             {
-                return _registrations.ToList();
+                channel?.Dispose();
+                _channels.Remove(channel);
+            }
+        }
+
+        internal IEnumerable<ILanguageWorkerChannel> GetChannels()
+        {
+            lock (_lock)
+            {
+                return _channels.ToList();
             }
         }
     }

@@ -228,19 +228,13 @@ namespace Microsoft.Azure.WebJobs.Script
             await base.CallAsync(method, arguments, cancellationToken);
         }
 
-        internal static void AddLanguageWorkerChannelErrors(IFunctionDispatcher functionDispatcher, IDictionary<string, ICollection<string>> functionErrors)
+        internal void AddLanguageWorkerChannelErrors(IFunctionDispatcher functionDispatcher, IDictionary<string, ICollection<string>> functionErrors, string workerRuntime)
         {
-            foreach (KeyValuePair<string, LanguageWorkerState> kvp in functionDispatcher.LanguageWorkerChannelStates)
-            {
-                string language = kvp.Key;
-                LanguageWorkerState workerState = kvp.Value;
-                foreach (var functionRegistrationContext in workerState.GetRegistrations())
+                LanguageWorkerState workerState = functionDispatcher.LanguageWorkerChannelState;
+                foreach (var function in Functions)
                 {
-                    var exMessage = $"Failed to start language worker process for: {language}";
-                    var languageWorkerChannelException = workerState.Errors != null && workerState.Errors.Count > 0 ? new LanguageWorkerChannelException(exMessage, workerState.Errors[workerState.Errors.Count - 1]) : new LanguageWorkerChannelException(exMessage);
-                    Utility.AddFunctionError(functionErrors, functionRegistrationContext.Metadata.Name, Utility.FlattenException(languageWorkerChannelException, includeSource: false));
+                    Utility.AddFunctionError(functionErrors, function.Name, Utility.FlattenException(workerState.ProcessRestartCountExceedException, includeSource: false));
                 }
-            }
         }
 
         protected override async Task StartAsyncCore(CancellationToken cancellationToken)
@@ -793,7 +787,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else if (exception is LanguageWorkerChannelException)
             {
-                AddLanguageWorkerChannelErrors(_functionDispatcher, FunctionErrors);
+                AddLanguageWorkerChannelErrors(_functionDispatcher, FunctionErrors, _workerRuntime);
             }
             else
             {
