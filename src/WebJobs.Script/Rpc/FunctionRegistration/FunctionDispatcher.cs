@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -21,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
         private IScriptEventManager _eventManager;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private CreateChannel _channelFactory;
@@ -29,10 +29,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private ScriptJobHostOptions _scriptOptions;
+        private int _maxProcessCount;
+        private IFunctionDispatcherLoadBalancer _functionDispatcherLoadBalancer;
         private bool disposedValue = false;
 
         public FunctionDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
+            IEnvironment environment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
@@ -40,10 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
+            _environment = environment;
             _languageWorkerChannelManager = languageWorkerChannelManager;
             _eventManager = eventManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionDispatcher);
+            _maxProcessCount = int.Parse(_environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName));
+            _maxProcessCount = _maxProcessCount <= 0 ? 1 : _maxProcessCount;
+            _functionDispatcherLoadBalancer = new FunctionDispatcherLoadBalancer(_maxProcessCount);
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
@@ -85,9 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void CreateWorkerStateWithExistingChannel(string language, ILanguageWorkerChannel languageWorkerChannel)
         {
-            WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            _workerState.Channel = languageWorkerChannel;
-            _workerState.Channel.RegisterFunctions(_workerState.Functions);
+            languageWorkerChannel.RegisterFunctions(_workerState.Functions);
         }
 
         public void Initialize(string workerRuntime, IEnumerable<FunctionMetadata> functions)
@@ -104,8 +109,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
-                    _logger.LogDebug("Creating new language worker channel for runtime:{workerRuntime}", workerRuntime);
-                    CreateWorkerState(workerRuntime);
+                    for (var count = 0; count < _maxProcessCount; count++)
+                    {
+                        _logger.LogDebug("Creating new language worker channel for runtime:{workerRuntime}. Count: {count}", workerRuntime, count);
+                        CreateWorkerState(workerRuntime);
+                    }
                 }
             }
         }
@@ -113,7 +121,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private LanguageWorkerState CreateWorkerState(string runtime)
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            _workerState.Channel = ChannelFactory(runtime, _workerState.Functions, 0);
+            var laguageWorkerChannel = ChannelFactory(runtime, _workerState.Functions, 0);
+            _workerState.Channel = laguageWorkerChannel;
+            _workerState.AddChannel(laguageWorkerChannel);
             return _workerState;
         }
 
@@ -124,7 +134,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void Invoke(ScriptInvocationContext invocationContext)
         {
-            _workerState.Channel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+            // _workerState.Channel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+            var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(_workerState.GetChannels());
+            languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
         }
 
         public void WorkerError(WorkerErrorEvent workerError)
