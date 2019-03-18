@@ -48,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager = eventManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionDispatcher);
-            _maxProcessCount = int.Parse(_environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName));
+            var processCount = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName);
+            _maxProcessCount = (processCount != null && int.Parse(processCount) > 1) ? int.Parse(processCount) : 3;
             _maxProcessCount = _maxProcessCount <= 0 ? 1 : _maxProcessCount;
             _functionDispatcherLoadBalancer = new FunctionDispatcherLoadBalancer(_maxProcessCount);
 

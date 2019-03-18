@@ -53,6 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         {
                             try
                             {
+                                _logger.LogInformation($"WriteAsync ThreadID: {Thread.CurrentThread.ManagedThreadId}");
+                                _logger.LogInformation($"WriteAsync WorkerID: {workerId}");
                                 // WriteAsync only allows one pending write at a time
                                 // For each responseStream subscription, observe as a blocking write, in series, on a new thread
                                 // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
