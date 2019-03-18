@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
             var cancelSource = new TaskCompletionSource<bool>();
+            _logger.LogInformation($"ServerCallContext context.status: {context.Status} context.Peer: {context.Peer}");
             IDisposable outboundEventSubscription = null;
             try
             {
@@ -53,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         {
                             try
                             {
+                                _logger.LogInformation($"ServerCallContext inside onnext context.status: {context.Status} context.Peer: {context.Peer}");
                                 _logger.LogInformation($"WriteAsync ThreadID: {Thread.CurrentThread.ManagedThreadId}");
                                 _logger.LogInformation($"WriteAsync WorkerID: {workerId}");
                                 // WriteAsync only allows one pending write at a time
