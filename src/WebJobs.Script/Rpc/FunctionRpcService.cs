@@ -60,11 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                 // WriteAsync only allows one pending write at a time
                                 // For each responseStream subscription, observe as a blocking write, in series, on a new thread
                                 // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
-                                responseStream.WriteAsync(evt.Message).GetAwaiter().GetResult();
+                                responseStream.WriteAsync(evt.Message);
                             }
                             catch (Exception subscribeEventEx)
                             {
-                                _logger.LogError(subscribeEventEx, "Error reading message from Rpc channel");
+                                _logger.LogError(subscribeEventEx, "Error writing message from Rpc channel");
                             }
                         });
 
