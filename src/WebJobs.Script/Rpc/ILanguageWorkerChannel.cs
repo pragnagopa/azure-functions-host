@@ -16,6 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         bool IsWebhostChannel { get; }
 
+        LanguageWorkerChannelState State { get; }
+
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
         WorkerConfig Config { get; }

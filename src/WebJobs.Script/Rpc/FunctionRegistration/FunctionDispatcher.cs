@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
+        private readonly IDisposable _rpcChannelReadySubscriptions;
         private IScriptEventManager _eventManager;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private CreateChannel _channelFactory;
@@ -55,6 +56,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
+
+            _rpcChannelReadySubscriptions = _eventManager.OfType<RpcJobHostChannelReadyEvent>()
+               .Subscribe(AddOrUpdateWorkerChannels);
         }
 
         public LanguageWorkerState LanguageWorkerChannelState => _workerState;
@@ -119,13 +123,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        private LanguageWorkerState CreateWorkerState(string runtime)
+        private void CreateWorkerState(string runtime)
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            var laguageWorkerChannel = ChannelFactory(runtime, _workerState.Functions, 0);
-            _workerState.Channel = laguageWorkerChannel;
-            _workerState.AddChannel(laguageWorkerChannel);
-            return _workerState;
+            var languageWorkerChannel = ChannelFactory(runtime, _workerState.Functions, 0);
+            _workerState.Channel = languageWorkerChannel;
         }
 
         public void Register(FunctionMetadata context)
@@ -135,9 +137,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void Invoke(ScriptInvocationContext invocationContext)
         {
-            // _workerState.Channel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
             var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(_workerState.GetChannels());
-            languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+            BufferBlock<ScriptInvocationContext> bufferBlock = null;
+            if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out bufferBlock))
+            {
+                languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+            }
+            else
+            {
+                throw new Exception("Function not loaded");
+            }
         }
 
         public void WorkerError(WorkerErrorEvent workerError)
@@ -188,6 +197,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var newWorkerChannel = ChannelFactory(language, _workerState.Functions, _workerState.Errors.Count);
             newWorkerChannel.RegisterFunctions(_workerState.Functions);
             return newWorkerChannel;
+        }
+
+        private void AddOrUpdateWorkerChannels(RpcJobHostChannelReadyEvent rpcChannelReadyEvent)
+        {
+            _logger.LogInformation("Adding language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
+            _workerState.AddChannel(rpcChannelReadyEvent.LanguageWorkerChannel);
+            rpcChannelReadyEvent.LanguageWorkerChannel.RegisterFunctions(_workerState.Functions);
         }
 
         protected virtual void Dispose(bool disposing)

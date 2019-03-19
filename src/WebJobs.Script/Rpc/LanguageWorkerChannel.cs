@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool _isWebHostChannel;
         private IObservable<FunctionMetadata> _functionRegistrations;
         private WorkerInitResponse _initMessage;
+        private LanguageWorkerChannelState _state;
         private string _workerId;
         private Process _process;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
@@ -117,6 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal Process WorkerProcess => _process;
 
         public bool IsWebhostChannel => _isWebHostChannel;
+
+        public LanguageWorkerChannelState State => _state;
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
 
@@ -291,15 +294,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 HandleWorkerError(exc);
                 return;
             }
-            if (_functionRegistrations == null)
+            RpcChannelEvent readyEvent;
+            if (_isWebHostChannel)
             {
-                RpcWebHostChannelReadyEvent readyEvent = new RpcWebHostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
-                _eventManager.Publish(readyEvent);
+                readyEvent = new RpcWebHostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
             }
             else
             {
-                RegisterFunctions(_functionRegistrations);
+                readyEvent = new RpcJobHostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
             }
+            _eventManager.Publish(readyEvent);
+            _state = LanguageWorkerChannelState.Initialized;
         }
 
         public void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations)
@@ -329,9 +334,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
         {
-            // associate the invocation input buffer with the function
-            _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
-
             // send a load request for the registered function
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
@@ -360,6 +362,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
+            // associate the invocation input buffer with the function
+            _functionInputBuffers[loadResponse.FunctionId] = new BufferBlock<ScriptInvocationContext>();
             lock (_functionLoadResponseLock)
             {
                 if (loadResponse.Result.IsFailure(out Exception ex))

@@ -20,11 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IScriptEventManager _eventManager;
         private readonly ILogger _logger;
+        private readonly EventLoopScheduler _eventLoopScheduler;
 
         public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
             _eventManager = eventManager;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionRpcService);
+            _eventLoopScheduler = new EventLoopScheduler();
         }
 
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
@@ -47,9 +49,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (await messageAvailable())
                 {
                     string workerId = requestStream.Current.StartStream.WorkerId;
+                    EventLoopScheduler eventLoopScheduler = new EventLoopScheduler();
                     outboundEventSubscription = _eventManager.OfType<OutboundEvent>()
                         .Where(evt => evt.WorkerId == workerId)
-                        .ObserveOn(NewThreadScheduler.Default)
+                        .ObserveOn(eventLoopScheduler)
                         .Subscribe(async evt =>
                         {
                             try
@@ -64,12 +67,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             }
                             catch (Exception subscribeEventEx)
                             {
-                                _logger.LogError(subscribeEventEx, "Error writing message from Rpc channel");
+                                _logger.LogInformation($"ServerCallContext inside catch context.status: {context.Status} context.Peer: {context.Peer}");
+                                _logger.LogInformation($"WriteAsync inside catch ThreadID: {Thread.CurrentThread.ManagedThreadId}");
+                                _logger.LogInformation($"WriteAsync inside catch WorkerID: {workerId}");
+                                _logger.LogError(subscribeEventEx, "Error writing message to Rpc channel");
                             }
                         });
 
                     do
                     {
+                        _logger.LogInformation($"Reading ThreadID: {Thread.CurrentThread.ManagedThreadId}");
                         _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
                     }
                     while (await messageAvailable());
