@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly BindingMetadata _trigger;
+        private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionDispatcher _fuctionDispatcher;
 
@@ -33,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _fuctionDispatcher = fuctionDispatcher;
+            _logger = loggerFactory.CreateLogger("WorkerLanguageInvoker");
 
             InitializeFileWatcherIfEnabled();
 
@@ -70,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             ScriptInvocationResult result;
-
+            _logger.LogInformation($"Sending invocation id:{invocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
             _fuctionDispatcher.Invoke(invocationContext);
             result = await invocationContext.ResultSource.Task;
 

@@ -12,6 +12,8 @@ using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 
+using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
+
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     // Implementation for the grpc service
@@ -57,20 +59,25 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         {
                             try
                             {
-                                _logger.LogInformation($"ServerCallContext inside onnext context.status: {context.Status} context.Peer: {context.Peer}");
-                                _logger.LogInformation($"WriteAsync ThreadID: {Thread.CurrentThread.ManagedThreadId}");
-                                _logger.LogInformation($"WriteAsync WorkerID: {workerId}");
+                                _logger.LogInformation($"ServerCallContext inside context.status: {context.Status} context.Peer: {context.Peer} ThreadID: {Thread.CurrentThread.ManagedThreadId} WorkerID: {workerId}");
                                 // WriteAsync only allows one pending write at a time
                                 // For each responseStream subscription, observe as a blocking write, in series, on a new thread
                                 // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
+                                if (evt.MessageType == MsgType.InvocationRequest)
+                                {
+                                    InvocationRequest invocationRequest = evt.Message.InvocationRequest;
+                                    _logger.LogInformation($"WriteAsync invocationId: {invocationRequest.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+                                }
                                 await responseStream.WriteAsync(evt.Message);
+                                if (evt.MessageType == MsgType.InvocationRequest)
+                                {
+                                    InvocationRequest invocationRequest = evt.Message.InvocationRequest;
+                                    _logger.LogInformation($"done WriteAsync invocationId: {invocationRequest.InvocationId}");
+                                }
                             }
                             catch (Exception subscribeEventEx)
                             {
-                                _logger.LogInformation($"ServerCallContext inside catch context.status: {context.Status} context.Peer: {context.Peer}");
-                                _logger.LogInformation($"WriteAsync inside catch ThreadID: {Thread.CurrentThread.ManagedThreadId}");
-                                _logger.LogInformation($"WriteAsync inside catch WorkerID: {workerId}");
-                                _logger.LogError(subscribeEventEx, "Error writing message to Rpc channel");
+                                _logger.LogError(subscribeEventEx, $"Error writing message to Rpc channel worker id: {workerId}");
                             }
                         });
 

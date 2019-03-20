@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -50,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionDispatcher);
             var processCount = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName);
-            _maxProcessCount = (processCount != null && int.Parse(processCount) > 1) ? int.Parse(processCount) : 3;
+            _maxProcessCount = (processCount != null && int.Parse(processCount) > 1) ? int.Parse(processCount) : 1;
             _maxProcessCount = _maxProcessCount <= 0 ? 1 : _maxProcessCount;
             _functionDispatcherLoadBalancer = new FunctionDispatcherLoadBalancer(_maxProcessCount);
 
@@ -141,6 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             BufferBlock<ScriptInvocationContext> bufferBlock = null;
             if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out bufferBlock))
             {
+                _logger.LogInformation($"posting invocation id:{invocationContext.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
                 languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
             }
             else
@@ -201,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private void AddOrUpdateWorkerChannels(RpcJobHostChannelReadyEvent rpcChannelReadyEvent)
         {
-            _logger.LogInformation("Adding language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
+            _logger.LogInformation("Adding jobhost language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
             _workerState.AddChannel(rpcChannelReadyEvent.LanguageWorkerChannel);
             rpcChannelReadyEvent.LanguageWorkerChannel.RegisterFunctions(_workerState.Functions);
         }

@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -364,24 +365,23 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             // associate the invocation input buffer with the function
             _functionInputBuffers[loadResponse.FunctionId] = new BufferBlock<ScriptInvocationContext>();
-            lock (_functionLoadResponseLock)
+
+            if (loadResponse.Result.IsFailure(out Exception ex))
             {
-                if (loadResponse.Result.IsFailure(out Exception ex))
-                {
-                    //Cache function load errors to replay error messages on invoking failed functions
-                    _functionLoadErrors[loadResponse.FunctionId] = ex;
-                }
-                // link the invocation inputs to the invoke call
-                var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
-                var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
-                _inputLinks.Add(disposableLink);
+                //Cache function load errors to replay error messages on invoking failed functions
+                _functionLoadErrors[loadResponse.FunctionId] = ex;
             }
+            // link the invocation inputs to the invoke call
+            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
+            var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
+            _inputLinks.Add(disposableLink);
         }
 
         internal void SendInvocationRequest(ScriptInvocationContext context)
         {
             try
             {
+                _workerChannelLogger.LogInformation($"building invocation request:{context.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
                 {
                     _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
@@ -420,6 +420,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
 
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
+                    _workerChannelLogger.LogInformation($"sending invocation request:{context.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
 
                     SendStreamingMessage(new StreamingMessage
                     {
@@ -435,7 +436,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void InvokeResponse(InvocationResponse invokeResponse)
         {
-            _workerChannelLogger.LogDebug($"Invoking on worker id: {Id}");
+            _workerChannelLogger.LogDebug($"InvocationResponse received on worker id: {Id}");
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsSuccess(context.ResultSource))
             {
