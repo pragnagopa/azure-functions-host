@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks.Dataflow;
@@ -90,10 +91,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _consoleLogSource = consoleLogSource;
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
+                .ObserveOn(new NewThreadScheduler())
                 .Where(msg => msg.WorkerId == _workerId);
 
             _eventSubscriptions.Add(_inboundWorkerEvents
                 .Where(msg => msg.MessageType == MsgType.RpcLog)
+                .ObserveOn(new NewThreadScheduler())
                 .Subscribe(Log));
 
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
@@ -102,9 +105,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                .ObserveOn(new NewThreadScheduler())
                 .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
+                .ObserveOn(new NewThreadScheduler())
                 .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
@@ -244,6 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(processStartTimeout)
                 .Take(1)
+                .ObserveOn(new NewThreadScheduler())
                 .Subscribe(SendWorkerInitRequest, HandleWorkerError);
 
             var workerContext = new WorkerContext()
@@ -267,6 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
+                .ObserveOn(new NewThreadScheduler())
                 .Subscribe(PublishWebhostRpcChannelReadyEvent, HandleWorkerError);
 
             SendStreamingMessage(new StreamingMessage
@@ -311,7 +318,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations)
         {
             _functionRegistrations = functionRegistrations ?? throw new ArgumentNullException(nameof(functionRegistrations));
-            _eventSubscriptions.Add(_functionRegistrations.Subscribe(SendFunctionLoadRequest));
+            _eventSubscriptions.Add(_functionRegistrations
+                .ObserveOn(new NewThreadScheduler())
+                .Subscribe(SendFunctionLoadRequest));
         }
 
         public void SendFunctionEnvironmentReloadRequest()

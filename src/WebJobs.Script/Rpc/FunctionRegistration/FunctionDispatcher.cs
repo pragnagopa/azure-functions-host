@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private ScriptJobHostOptions _scriptOptions;
+        private IObservable<RpcJobHostChannelReadyEvent> _rpcChannelReadyEvents;
         private int _maxProcessCount;
         private IFunctionDispatcherLoadBalancer _functionDispatcherLoadBalancer;
         private bool disposedValue = false;
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionDispatcher);
             var processCount = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName);
-            _maxProcessCount = (processCount != null && int.Parse(processCount) > 1) ? int.Parse(processCount) : 1;
+            _maxProcessCount = (processCount != null && int.Parse(processCount) > 1) ? int.Parse(processCount) : 3;
             _maxProcessCount = _maxProcessCount <= 0 ? 1 : _maxProcessCount;
             _functionDispatcherLoadBalancer = new FunctionDispatcherLoadBalancer(_maxProcessCount);
 
@@ -75,6 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     _channelFactory = (language, registrations, attemptCount) =>
                     {
                         var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, language, registrations, _metricsLogger, attemptCount, false);
+                        _rpcChannelReadyEvents = _eventManager.OfType<RpcJobHostChannelReadyEvent>()
+                       .Where(evt => evt.WorkerId == languageWorkerChannel.Id);
                         languageWorkerChannel.StartWorkerProcess();
                         return languageWorkerChannel;
                     };
@@ -138,6 +141,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void Invoke(ScriptInvocationContext invocationContext)
         {
+            while (_workerState.GetChannels().Count() <= 0)
+            {
+                // Wait for response from language worker process
+                // await _rpcChannelReadyEvents.FirstAsync();
+            }
+
             var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(_workerState.GetChannels());
             BufferBlock<ScriptInvocationContext> bufferBlock = null;
             if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out bufferBlock))
