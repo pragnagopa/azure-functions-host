@@ -381,9 +381,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _functionLoadErrors[loadResponse.FunctionId] = ex;
             }
             // link the invocation inputs to the invoke call
-            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
+            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequestOnNewThread(ctx));
             var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
+        }
+
+        internal void SendInvocationRequestOnNewThread(ScriptInvocationContext context)
+        {
+            Thread thread = new Thread(() => SendInvocationRequest(context));
+            thread.Start();
         }
 
         internal void SendInvocationRequest(ScriptInvocationContext context)

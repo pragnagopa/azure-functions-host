@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading;
@@ -34,11 +35,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
             var cancelSource = new TaskCompletionSource<bool>();
-            _logger.LogInformation($"ServerCallContext context.status: {context.Status} context.Peer: {context.Peer}");
-            IDisposable outboundEventSubscription = null;
+            _logger.LogInformation($"ServerCallContext context.status: {context.Status} context.Peer: {context.Peer} ThreadID: {Thread.CurrentThread.ManagedThreadId}");
+            IDictionary<string, IDisposable> outboundEventSubscriptions = new Dictionary<string, IDisposable>();
             try
             {
                 context.CancellationToken.Register(() => cancelSource.TrySetResult(false));
+                IDisposable outboundEventSubscription = null;
 
                 Func<Task<bool>> messageAvailable = async () =>
                 {
@@ -52,50 +54,79 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     string workerId = requestStream.Current.StartStream.WorkerId;
                     EventLoopScheduler eventLoopScheduler = new EventLoopScheduler();
-                    outboundEventSubscription = _eventManager.OfType<OutboundEvent>()
-                        .Where(evt => evt.WorkerId == workerId)
-                        .ObserveOn(eventLoopScheduler)
-                        .Subscribe(async evt =>
-                        {
-                            try
+                    if (outboundEventSubscriptions.TryGetValue(workerId, out outboundEventSubscription))
+                    {
+                        // no-op
+                    }
+                    else
+                    {
+                        outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundEvent>()
+                            .Where(evt => evt.WorkerId == workerId)
+                            .ObserveOn(eventLoopScheduler)
+                            .Subscribe(async evt =>
                             {
-                                _logger.LogInformation($"ServerCallContext inside context.status: {context.Status} context.Peer: {context.Peer} ThreadID: {Thread.CurrentThread.ManagedThreadId} WorkerID: {workerId}");
-                                // WriteAsync only allows one pending write at a time
-                                // For each responseStream subscription, observe as a blocking write, in series, on a new thread
-                                // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
-                                if (evt.MessageType == MsgType.InvocationRequest)
+                                try
                                 {
-                                    InvocationRequest invocationRequest = evt.Message.InvocationRequest;
-                                    _logger.LogInformation($"WriteAsync invocationId: {invocationRequest.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+                                    _logger.LogInformation($"ServerCallContext inside context.status: {context.Status} context.Peer: {context.Peer} ThreadID: {Thread.CurrentThread.ManagedThreadId} WorkerID: {workerId}");
+                                    // WriteAsync only allows one pending write at a time
+                                    // For each responseStream subscription, observe as a blocking write, in series, on a new thread
+                                    // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
+                                    if (evt.MessageType == MsgType.InvocationRequest)
+                                    {
+                                        InvocationRequest invocationRequest = evt.Message.InvocationRequest;
+                                        _logger.LogInformation($"WriteAsync invocationId: {invocationRequest.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+                                    }
+                                    await responseStream.WriteAsync(evt.Message);
+                                    if (evt.MessageType == MsgType.InvocationRequest)
+                                    {
+                                        InvocationRequest invocationRequest = evt.Message.InvocationRequest;
+                                        _logger.LogInformation($"done WriteAsync invocationId: {invocationRequest.InvocationId}");
+                                    }
                                 }
-                                await responseStream.WriteAsync(evt.Message);
-                                if (evt.MessageType == MsgType.InvocationRequest)
+                                catch (Exception subscribeEventEx)
                                 {
-                                    InvocationRequest invocationRequest = evt.Message.InvocationRequest;
-                                    _logger.LogInformation($"done WriteAsync invocationId: {invocationRequest.InvocationId}");
+                                    _logger.LogError(subscribeEventEx, $"Error writing message to Rpc channel worker id: {workerId}");
                                 }
-                            }
-                            catch (Exception subscribeEventEx)
-                            {
-                                _logger.LogError(subscribeEventEx, $"Error writing message to Rpc channel worker id: {workerId}");
-                            }
-                        });
-
+                            }));
+                    }
                     do
                     {
-                        _logger.LogInformation($"Reading ThreadID: {Thread.CurrentThread.ManagedThreadId}");
-                        _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
+                        Thread thread = new Thread(() => PublishInbountEvent(workerId, requestStream.Current));
+                        thread.Start();
                     }
                     while (await messageAvailable());
                 }
             }
             finally
             {
-                outboundEventSubscription?.Dispose();
+                foreach (var sub in outboundEventSubscriptions)
+                {
+                    sub.Value?.Dispose();
+                }
 
                 // ensure cancellationSource task completes
                 cancelSource.TrySetResult(false);
             }
+        }
+
+        internal void PublishInbountEvent(string workerId, StreamingMessage currentMessage)
+        {
+            if (currentMessage.InvocationResponse != null && !string.IsNullOrEmpty(currentMessage.InvocationResponse.InvocationId))
+            {
+                _logger.LogInformation($"received invocation response invocationId: {currentMessage.InvocationResponse.InvocationId} on threadid {Thread.CurrentThread.ManagedThreadId}");
+            }
+            _logger.LogInformation($"publishing inbundevent on ThreadID: {Thread.CurrentThread.ManagedThreadId}");
+            _eventManager.Publish(new InboundEvent(workerId, currentMessage));
+        }
+
+        internal void CheckForInboundMessage(string workerId, StreamingMessage currentMessage)
+        {
+            if (currentMessage.InvocationResponse != null && !string.IsNullOrEmpty(currentMessage.InvocationResponse.InvocationId))
+            {
+                _logger.LogInformation($"received invocation response invocationId: {currentMessage.InvocationResponse.InvocationId} on threadid {Thread.CurrentThread.ManagedThreadId}");
+            }
+            _logger.LogInformation($"publishing inbundevent on ThreadID: {Thread.CurrentThread.ManagedThreadId}");
+            _eventManager.Publish(new InboundEvent(workerId, currentMessage));
         }
     }
 }
