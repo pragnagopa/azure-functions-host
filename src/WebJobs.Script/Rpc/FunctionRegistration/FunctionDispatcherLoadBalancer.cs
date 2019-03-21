@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     internal class FunctionDispatcherLoadBalancer : IFunctionDispatcherLoadBalancer
     {
         private int _maxProcessCount = 1;
-        private static int _counter = 0;
+        private static int _counter = 1;
         private static object _functionLoadResponseLock = new object();
 
         internal FunctionDispatcherLoadBalancer(int maxProcessCount)
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
-                    _counter = 0;
+                    _counter = 1;
                 }
             }
             return lw;

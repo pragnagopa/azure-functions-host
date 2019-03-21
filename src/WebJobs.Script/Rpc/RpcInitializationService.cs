@@ -21,10 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
 
-        private List<string> _languages = new List<string>()
-        {
-            LanguageWorkerConstants.JavaLanguageWorkerName
-        };
+        private List<string> _languages = new List<string>();
 
         public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, ILanguageWorkerChannelManager languageWorkerChannelManager, ILoggerFactory loggerFactory)
         {
