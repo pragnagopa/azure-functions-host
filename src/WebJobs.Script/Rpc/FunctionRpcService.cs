@@ -8,6 +8,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -22,12 +23,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     internal class FunctionRpcService : FunctionRpc.FunctionRpcBase
     {
         private readonly IScriptEventManager _eventManager;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
         private readonly EventLoopScheduler _eventLoopScheduler;
 
-        public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
+        public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
         {
             _eventManager = eventManager;
+            _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionRpcService);
             _eventLoopScheduler = new EventLoopScheduler();
         }
@@ -91,6 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     do
                     {
+                        _logger.LogInformation($"messageAvailable on ThreadID: {Thread.CurrentThread.ManagedThreadId}");
                         Thread thread = new Thread(() => PublishInbountEvent(workerId, requestStream.Current));
                         thread.Start();
                     }
@@ -110,16 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         }
 
         internal void PublishInbountEvent(string workerId, StreamingMessage currentMessage)
-        {
-            if (currentMessage.InvocationResponse != null && !string.IsNullOrEmpty(currentMessage.InvocationResponse.InvocationId))
-            {
-                _logger.LogInformation($"received invocation response invocationId: {currentMessage.InvocationResponse.InvocationId} on threadid {Thread.CurrentThread.ManagedThreadId}");
-            }
-            _logger.LogInformation($"publishing inbundevent on ThreadID: {Thread.CurrentThread.ManagedThreadId}");
-            _eventManager.Publish(new InboundEvent(workerId, currentMessage));
-        }
-
-        internal void CheckForInboundMessage(string workerId, StreamingMessage currentMessage)
         {
             if (currentMessage.InvocationResponse != null && !string.IsNullOrEmpty(currentMessage.InvocationResponse.InvocationId))
             {

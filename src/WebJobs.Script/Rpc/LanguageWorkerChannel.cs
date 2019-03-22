@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IProcessRegistry _processRegistry;
         private readonly WorkerConfig _workerConfig;
         private readonly ILogger _workerChannelLogger;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
 
         private bool _disposed;
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _isWebHostChannel = isWebHostChannel;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
             _consoleLogSource = consoleLogSource;
-
+            _metricsLogger = metricsLogger;
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .ObserveOn(new NewThreadScheduler())
                 .Where(msg => msg.WorkerId == _workerId);
@@ -396,51 +397,54 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             try
             {
-                _workerChannelLogger.LogInformation($"building invocation request:{context.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
-                if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
+                using (_metricsLogger.LatencyEvent("LW-SendInvocationRequest", context.FunctionMetadata.Name))
                 {
-                    _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
-                    context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.FunctionId]);
-                    _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
-                }
-                else
-                {
-                    if (context.CancellationToken.IsCancellationRequested)
+                    _workerChannelLogger.LogInformation($"building invocation request:{context.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+                    if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
                     {
-                        context.ResultSource.SetCanceled();
-                        return;
+                        _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
+                        context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.FunctionId]);
+                        _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
                     }
-
-                    var functionMetadata = context.FunctionMetadata;
-
-                    InvocationRequest invocationRequest = new InvocationRequest()
+                    else
                     {
-                        FunctionId = functionMetadata.FunctionId,
-                        InvocationId = context.ExecutionContext.InvocationId.ToString(),
-                    };
-                    foreach (var pair in context.BindingData)
-                    {
-                        if (pair.Value != null)
+                        if (context.CancellationToken.IsCancellationRequested)
                         {
-                            invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc(_workerChannelLogger));
+                            context.ResultSource.SetCanceled();
+                            return;
                         }
-                    }
-                    foreach (var input in context.Inputs)
-                    {
-                        invocationRequest.InputData.Add(new ParameterBinding()
+
+                        var functionMetadata = context.FunctionMetadata;
+
+                        InvocationRequest invocationRequest = new InvocationRequest()
                         {
-                            Name = input.name,
-                            Data = input.val.ToRpc(_workerChannelLogger)
+                            FunctionId = functionMetadata.FunctionId,
+                            InvocationId = context.ExecutionContext.InvocationId.ToString(),
+                        };
+                        foreach (var pair in context.BindingData)
+                        {
+                            if (pair.Value != null)
+                            {
+                                invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc(_workerChannelLogger));
+                            }
+                        }
+                        foreach (var input in context.Inputs)
+                        {
+                            invocationRequest.InputData.Add(new ParameterBinding()
+                            {
+                                Name = input.name,
+                                Data = input.val.ToRpc(_workerChannelLogger)
+                            });
+                        }
+
+                        _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
+                        _workerChannelLogger.LogInformation($"sending invocation request:{context.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+
+                        SendStreamingMessage(new StreamingMessage
+                        {
+                            InvocationRequest = invocationRequest
                         });
                     }
-
-                    _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
-                    _workerChannelLogger.LogInformation($"sending invocation request:{context.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
-
-                    SendStreamingMessage(new StreamingMessage
-                    {
-                        InvocationRequest = invocationRequest
-                    });
                 }
             }
             catch (Exception invokeEx)

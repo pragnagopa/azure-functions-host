@@ -10,6 +10,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
@@ -23,15 +24,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly BindingMetadata _trigger;
         private readonly ILogger _logger;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionDispatcher _fuctionDispatcher;
 
-        internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
+        internal WorkerLanguageInvoker(ScriptHost host, IMetricsLogger metricsLogger, BindingMetadata trigger, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionDispatcher fuctionDispatcher)
             : base(host, functionMetadata, loggerFactory)
         {
             _trigger = trigger;
             _inputBindings = inputBindings;
+            _metricsLogger = metricsLogger;
             _outputBindings = outputBindings;
             _fuctionDispatcher = fuctionDispatcher;
             _logger = loggerFactory.CreateLogger("WorkerLanguageInvoker");
@@ -56,7 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             object triggerValue = TransformInput(parameters[0], context.Binder.BindingData);
             var triggerInput = (_trigger.Name, _trigger.DataType ?? DataType.String, triggerValue);
             var inputs = new[] { triggerInput }.Concat(await BindInputsAsync(context.Binder));
-
             ScriptInvocationContext invocationContext = new ScriptInvocationContext()
             {
                 FunctionMetadata = Metadata,
@@ -70,13 +72,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 CancellationToken = CancellationToken.None,
                 Logger = context.Logger
             };
-
+            using (_metricsLogger.LatencyEvent("InvokeCore-FunctionDispatcherInvoke", Metadata.Name))
+            {
+                _logger.LogInformation($"Sending invocation id:{invocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+                _fuctionDispatcher.Invoke(invocationContext);
+            }
             ScriptInvocationResult result;
-            _logger.LogInformation($"Sending invocation id:{invocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
-            _fuctionDispatcher.Invoke(invocationContext);
             result = await invocationContext.ResultSource.Task;
-
-            await BindOutputsAsync(triggerValue, context.Binder, result);
+            using (_metricsLogger.LatencyEvent("InvokeCore-BindOutputsAsync", Metadata.Name))
+            {
+                await BindOutputsAsync(triggerValue, context.Binder, result);
+            }
             return result.Return;
         }
 

@@ -479,7 +479,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.LogDebug("Adding Function descriptor providers for all languages.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _metricsLogger, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
             else
             {
@@ -490,7 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
-                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _metricsLogger, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
                 }
             }
 

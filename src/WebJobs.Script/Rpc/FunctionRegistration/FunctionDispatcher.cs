@@ -146,17 +146,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // Wait for response from language worker process
                 // await _rpcChannelReadyEvents.FirstAsync();
             }
-
-            var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(_workerState.GetChannels());
-            BufferBlock<ScriptInvocationContext> bufferBlock = null;
-            if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out bufferBlock))
+            using (_metricsLogger.LatencyEvent("FunctionDispatcher-Post", invocationContext.FunctionMetadata.Name))
             {
-                _logger.LogInformation($"posting invocation id:{invocationContext.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
-                languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
-            }
-            else
-            {
-                throw new Exception("Function not loaded");
+                var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(_workerState.GetChannels());
+                BufferBlock<ScriptInvocationContext> bufferBlock = null;
+                if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out bufferBlock))
+                {
+                    _logger.LogInformation($"posting invocation id:{invocationContext.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+                    languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+                }
+                else
+                {
+                    throw new Exception("Function not loaded");
+                }
             }
         }
 
