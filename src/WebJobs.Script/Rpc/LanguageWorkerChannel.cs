@@ -460,7 +460,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void InvokeResponse(InvocationResponse invokeResponse)
         {
-            _workerChannelLogger.LogDebug($"InvocationResponse received on worker id: {Id}");
+            _workerChannelLogger.LogInformation($"InvocationResponse received on worker id: {Id}");
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsSuccess(context.ResultSource))
             {

@@ -45,10 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 return GetChannelForFunctionId(functionId, poolId);
             }
             // TOO improve
-            if (_workerChannelPools == null)
-            {
-                PopulateWorkerPools(languageWorkers);
-            }
+            PopulateWorkerPools(languageWorkers);
 
             // Pick a pool with least number of functions
             var orderedPools = _functionPools.OrderBy(fp => fp.Value.Count());
