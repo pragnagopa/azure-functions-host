@@ -363,7 +363,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             if (_managedDependencyOptions?.Value != null)
             {
-                _workerChannelLogger?.LogInformation($"Adding dependency download request to {_workerConfig.Language} language worker");
+                _workerChannelLogger?.LogDebug($"Adding dependency download request to {_workerConfig.Language} language worker");
                 request.ManagedDependencyEnabled = _managedDependencyOptions.Value.Enabled;
             }
 

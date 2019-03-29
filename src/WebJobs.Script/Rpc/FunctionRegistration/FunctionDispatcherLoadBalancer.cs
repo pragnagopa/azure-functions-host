@@ -34,5 +34,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             return lw;
         }
+
+        public ILanguageWorkerChannel GetLanguageWorkerChannel(IEnumerable<ILanguageWorkerChannel> languageWorkers, string functionId)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

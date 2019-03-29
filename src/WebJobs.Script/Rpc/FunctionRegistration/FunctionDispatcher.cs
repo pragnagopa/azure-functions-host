@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ScriptJobHostOptions _scriptOptions;
         private IObservable<RpcFunctionLoadedEvent> _rpcChannelFunctionLoadedEvents;
         private int _maxProcessCount;
+        private int _maxProcessPoolCount;
         private IFunctionDispatcherLoadBalancer _functionDispatcherLoadBalancer;
         private bool disposedValue = false;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
@@ -59,8 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             var processCount = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName);
             _maxProcessCount = (processCount != null && int.Parse(processCount) > 1) ? int.Parse(processCount) : 1;
-            _functionDispatcherLoadBalancer = new FunctionDispatcherLoadBalancer(_maxProcessCount);
 
+            var processPoolCount = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessPoolCountSettingName);
+            _maxProcessPoolCount = (processPoolCount != null && int.Parse(processPoolCount) > 1) ? int.Parse(processPoolCount) : 1;
+
+            // _functionDispatcherLoadBalancer = new FunctionDispatcherLoadBalancer(_maxProcessCount);
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
 
@@ -112,6 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _workerRuntime = workerRuntime;
             _languageWorkerChannelManager.ShutdownStandbyChannels(functions);
+            _functionDispatcherLoadBalancer = new ProcessPoolLoadBalancer(_maxProcessCount, _maxProcessPoolCount, functions.Count());
 
             if (Utility.IsSupportedRuntime(workerRuntime, _workerConfigs))
             {
@@ -167,7 +172,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 //Wait for response from atleast one language worker process
                 await _rpcChannelFunctionLoadedEvents.FirstAsync();
             }
-            var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
+            // var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
+            var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, invocationContext.FunctionMetadata.FunctionId);
             BufferBlock<ScriptInvocationContext> bufferBlock = null;
             if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out bufferBlock))
             {

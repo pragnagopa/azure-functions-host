@@ -8,5 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     internal interface IFunctionDispatcherLoadBalancer
     {
         ILanguageWorkerChannel GetLanguageWorkerChannel(IEnumerable<ILanguageWorkerChannel> languageWorkers);
+
+        ILanguageWorkerChannel GetLanguageWorkerChannel(IEnumerable<ILanguageWorkerChannel> languageWorkers, string functionId);
     }
 }
