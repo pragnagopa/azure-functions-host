@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, ILanguageWorkerChannelManager languageWorkerChannelManager, ILoggerFactory loggerFactory)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryRpcInitializationService);
+            _logger = loggerFactory.CreateLogger<RpcInitializationService>();
             _rpcServer = rpcServer;
             _environment = environment;
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));

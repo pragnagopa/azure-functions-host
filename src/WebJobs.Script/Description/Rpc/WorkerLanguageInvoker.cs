@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _fuctionDispatcher = fuctionDispatcher;
-            _logger = loggerFactory.CreateLogger("WorkerLanguageInvoker");
+            _logger = loggerFactory.CreateLogger<WorkerLanguageInvoker>();
 
             InitializeFileWatcherIfEnabled();
 

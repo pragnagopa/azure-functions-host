@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryLanguageWorkerChannelManager);
+            _logger = loggerFactory.CreateLogger<LanguageWorkerChannelManager>();
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _applicationHostOptions = applicationHostOptions;
             _consoleLogSource = consoleLogSource;

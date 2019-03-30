@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
             _eventManager = eventManager;
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionRpcService);
+            _logger = loggerFactory.CreateLogger<FunctionRpcService>();
         }
 
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
