@@ -10,6 +10,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
@@ -25,8 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionDispatcher _fuctionDispatcher;
+        private IObservable<RpcFunctionLoadedEvent> _rpcChannelFunctionLoadedEvents;
+        private bool _functionsLoaded;
 
-        internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
+        internal WorkerLanguageInvoker(ScriptHost host, IScriptEventManager eventManager, BindingMetadata trigger, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionDispatcher fuctionDispatcher)
             : base(host, functionMetadata, loggerFactory)
         {
@@ -35,7 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
             _fuctionDispatcher = fuctionDispatcher;
             _logger = loggerFactory.CreateLogger<WorkerLanguageInvoker>();
-
+            _rpcChannelFunctionLoadedEvents = eventManager.OfType<RpcFunctionLoadedEvent>();
+            _rpcChannelFunctionLoadedEvents.Subscribe(LoadedEventRaised);
             InitializeFileWatcherIfEnabled();
 
             if (_outputBindings.Any(p => p.Metadata.IsReturn))
@@ -46,6 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 _handleScriptReturnValue = HandleOutputDictionary;
             }
+        }
+
+        private void LoadedEventRaised(RpcFunctionLoadedEvent le)
+        {
+            _functionsLoaded = true;
         }
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
@@ -72,6 +81,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             ScriptInvocationResult result;
+            if (!_functionsLoaded)
+            {
+                await _rpcChannelFunctionLoadedEvents.FirstAsync();
+            }
             _logger.LogInformation($"Sending invocation id:{invocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
             _fuctionDispatcher.Invoke(invocationContext);
             result = await invocationContext.ResultSource.Task;

@@ -156,7 +156,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 invocationContext.ResultSource.TrySetException(_workerState.ProcessRestartCountExceedException);
                 return;
             }
-
             var webhostChannels = _languageWorkerChannelManager.GetChannels(_workerRuntime);
             var workerChannels = webhostChannels == null ? _workerState.GetChannels() : webhostChannels.Union(_workerState.GetChannels());
             var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);

@@ -8,9 +8,9 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
@@ -21,15 +21,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionDispatcher _dispatcher;
+        private IScriptEventManager _eventManager;
         private string _workerRuntime;
 
         public WorkerFunctionDescriptorProvider(ScriptHost host, string workerRuntime, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            IFunctionDispatcher dispatcher, ILoggerFactory loggerFactory)
+            IFunctionDispatcher dispatcher, ILoggerFactory loggerFactory, IScriptEventManager eventManager)
             : base(host, config, bindingProviders)
         {
             _dispatcher = dispatcher;
             _loggerFactory = loggerFactory;
             _workerRuntime = workerRuntime;
+            _eventManager = eventManager;
         }
 
         public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
@@ -50,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
             _dispatcher.Register(functionMetadata);
-            return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher);
+            return new WorkerLanguageInvoker(Host, _eventManager, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher);
         }
 
         protected override async Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,

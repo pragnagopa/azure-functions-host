@@ -10,6 +10,8 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -19,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -44,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private string _workerId;
         private Process _process;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
+        private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IObservable<InboundEvent> _inboundWorkerEvents;
@@ -285,6 +289,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager.Publish(wpEvent);
         }
 
+        internal void PublishFunctionLoadedReadyEvent()
+        {
+            RpcFunctionLoadedEvent loadedEvent = new RpcFunctionLoadedEvent(_workerId);
+            _eventManager.Publish(loadedEvent);
+        }
+
         internal void PublishWebhostRpcChannelReadyEvent(RpcEvent initEvent)
         {
             _startLatencyMetric?.Dispose();
@@ -370,6 +380,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
+            // associate the invocation input buffer with the function
+            _functionInputBuffers[loadResponse.FunctionId] = new BufferBlock<ScriptInvocationContext>();
+
             if (loadResponse.Result.IsFailure(out Exception ex))
             {
                 //Cache function load errors to replay error messages on invoking failed functions
@@ -380,6 +393,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 _workerChannelLogger?.LogInformation($"Managed dependency successfully downloaded by the {_workerConfig.Language} language worker");
             }
+
+            // link the invocation inputs to the invoke call
+            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
+            var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
+            _inputLinks.Add(disposableLink);
+            PublishFunctionLoadedReadyEvent();
         }
 
         public void SendInvocationRequest(ScriptInvocationContext context)

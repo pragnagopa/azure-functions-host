@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         void SendFunctionEnvironmentReloadRequest();
 
-        void SendInvocationRequest(ScriptInvocationContext context);
+        void SendInvocationRequest(ScriptInvocationContext invocationContext);
 
         void StartWorkerProcess();
     }
