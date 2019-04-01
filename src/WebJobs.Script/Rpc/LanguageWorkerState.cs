@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Exception ProcessRestartCountExceedException { get; set; }
 
-        internal IDictionary<string, List<Exception>> Errors { get; set; } = new Dictionary<string, List<Exception>>();
+        internal List<Exception> Errors { get; set; } = new List<Exception>();
 
         // Registered list of functions which can be replayed if the worker fails to start / errors
         internal ReplaySubject<FunctionMetadata> Functions { get; set; } = new ReplaySubject<FunctionMetadata>();

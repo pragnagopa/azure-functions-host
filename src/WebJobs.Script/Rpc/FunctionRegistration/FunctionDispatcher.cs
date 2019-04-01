@@ -143,6 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             var languageWorkerChannel = ChannelFactory(runtime, _workerState.Functions, 0);
+            _workerState.AddChannel(languageWorkerChannel);
         }
 
         public void Register(FunctionMetadata context)
@@ -172,17 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void WorkerError(WorkerErrorEvent workerError)
         {
             _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}", workerError.Language);
-            if (_workerState.Errors.TryGetValue(workerError.WorkerId, out List<Exception> errorsList))
-            {
-                errorsList.Add(workerError.Exception);
-            }
-            else
-            {
-                _workerState.Errors.Add(workerError.WorkerId, new List<Exception>()
-                {
-                    workerError.Exception
-                });
-            }
+            _workerState.Errors.Add(workerError.Exception);
             bool isPreInitializedChannel = _languageWorkerChannelManager.ShutdownChannelsIfExist(workerError.Language);
             if (!isPreInitializedChannel)
             {
@@ -196,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private void RestartWorkerChannel(string runtime, string workerId)
         {
-            if (_workerState.Errors[workerId].Count < 3)
+            if (_workerState.Errors.Count < 3)
             {
                 _workerState.AddChannel(CreateNewChannelWithExistingWorkerState(runtime));
             }
@@ -209,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private void PublishWorkerProcessErrorEvent(string runtime)
         {
-            var exMessage = $"Failed to start language worker for: {runtime}";
+            var exMessage = $"Failed to start language worker process for: {runtime}";
             _workerState.ProcessRestartCountExceedException = new LanguageWorkerChannelException(exMessage);
             _eventManager.Publish(new WorkerProcessErrorEvent(runtime, _workerState.ProcessRestartCountExceedException));
         }
@@ -224,8 +215,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private void AddOrUpdateWorkerChannels(RpcJobHostChannelReadyEvent rpcChannelReadyEvent)
         {
+            // TODO: pgopa figure out if state is needed
             _logger.LogInformation("Adding jobhost language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
-            _workerState.AddChannel(rpcChannelReadyEvent.LanguageWorkerChannel);
             rpcChannelReadyEvent.LanguageWorkerChannel.RegisterFunctions(_workerState.Functions);
         }
 
