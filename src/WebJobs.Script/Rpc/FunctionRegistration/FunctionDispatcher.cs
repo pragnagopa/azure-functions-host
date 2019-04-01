@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -158,6 +159,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             var webhostChannels = _languageWorkerChannelManager.GetChannels(_workerRuntime);
             var workerChannels = webhostChannels == null ? _workerState.GetChannels() : webhostChannels.Union(_workerState.GetChannels());
+            while (workerChannels.Count() == 0)
+            {
+                // TODO:pgopa improve
+                Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
             var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
             _logger.LogDebug($"Sending invocation id:{invocationContext.ExecutionContext.InvocationId}");
             languageWorkerChannel.SendInvocationRequest(invocationContext);
