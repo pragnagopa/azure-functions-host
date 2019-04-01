@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -11,33 +12,39 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private int _maxProcessCount = 1;
         private static int _counter = 1;
-        private static object _functionLoadResponseLock = new object();
 
         internal FunctionDispatcherLoadBalancer(int maxProcessCount)
         {
             _maxProcessCount = maxProcessCount > _maxProcessCount ? maxProcessCount : _maxProcessCount;
         }
 
-        public ILanguageWorkerChannel GetLanguageWorkerChannel(IEnumerable<ILanguageWorkerChannel> languageWorkers)
+        public ILanguageWorkerChannel GetLanguageWorkerChannel(IEnumerable<ILanguageWorkerChannel> languageWorkerChannels)
         {
-            var currentNumberOfWorkers = languageWorkers.Count();
+            if (languageWorkerChannels == null)
+            {
+                throw new ArgumentNullException(nameof(languageWorkerChannels));
+            }
+
+            var currentNumberOfWorkers = languageWorkerChannels.Count();
+
             if (currentNumberOfWorkers == 0)
             {
-                throw new ArgumentOutOfRangeException($"Number of language workers:{currentNumberOfWorkers}");
+                throw new InvalidOperationException($"Number of language workers:{currentNumberOfWorkers}");
             }
-            ILanguageWorkerChannel lw = languageWorkers.ElementAt(_counter % currentNumberOfWorkers);
-            lock (_functionLoadResponseLock)
+            if (currentNumberOfWorkers > _maxProcessCount)
             {
-                if (_counter < _maxProcessCount)
-                {
-                    _counter++;
-                }
-                else
-                {
-                    _counter = 1;
-                }
+                throw new InvalidOperationException($"Number of language workers exceeded:{currentNumberOfWorkers} exceeded maxProcessCount: {_maxProcessCount}");
             }
-            return lw;
+            ILanguageWorkerChannel workerChannel = languageWorkerChannels.ElementAt(_counter % currentNumberOfWorkers);
+            if (_counter < currentNumberOfWorkers)
+            {
+                Interlocked.Increment(ref _counter);
+            }
+            else
+            {
+                _counter = 1;
+            }
+            return workerChannel;
         }
     }
 }

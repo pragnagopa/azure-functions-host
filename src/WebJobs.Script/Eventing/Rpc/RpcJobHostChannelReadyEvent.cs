@@ -6,24 +6,12 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
-    internal class RpcJobHostChannelReadyEvent : RpcChannelEvent
+    internal class RpcJobHostChannelReadyEvent : RpcChannelReadyEvent
     {
         internal RpcJobHostChannelReadyEvent(string id, string language, ILanguageWorkerChannel languageWorkerChannel,
             string version, IDictionary<string, string> capabilities)
-            : base(id)
+            : base(id, language, languageWorkerChannel, version, capabilities)
         {
-            Language = language;
-            LanguageWorkerChannel = languageWorkerChannel;
-            Version = version;
-            Capabilities = capabilities;
         }
-
-        public string Language { get; }
-
-        public ILanguageWorkerChannel LanguageWorkerChannel { get; }
-
-        public string Version { get; }
-
-        public IDictionary<string, string> Capabilities { get; }
     }
 }
