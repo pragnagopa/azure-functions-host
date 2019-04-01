@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -30,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private ScriptJobHostOptions _scriptOptions;
+        private IObservable<RpcFunctionLoadedEvent> _rpcChannelFunctionLoadedEvents;
         private int _maxProcessCount;
         private IFunctionDispatcherLoadBalancer _functionDispatcherLoadBalancer;
         private bool disposedValue = false;
@@ -61,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
 
+            _rpcChannelFunctionLoadedEvents = _eventManager.OfType<RpcFunctionLoadedEvent>();
             _rpcChannelReadySubscriptions = _eventManager.OfType<RpcJobHostChannelReadyEvent>().Subscribe(AddOrUpdateWorkerChannels);
         }
 
@@ -149,18 +153,31 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerState.Functions.OnNext(context);
         }
 
-        public void Invoke(ScriptInvocationContext invocationContext)
+        public async void Invoke(ScriptInvocationContext invocationContext)
         {
             if (_workerState.ProcessRestartCountExceedException != null)
             {
                 invocationContext.ResultSource.TrySetException(_workerState.ProcessRestartCountExceedException);
                 return;
             }
-
             var webhostChannels = _languageWorkerChannelManager.GetChannels(_workerRuntime);
             var workerChannels = webhostChannels == null ? _workerState.GetChannels() : webhostChannels.Union(_workerState.GetChannels());
+            if (workerChannels.Count() == 0)
+            {
+                //Wait for response from atleast one language worker process
+                await _rpcChannelFunctionLoadedEvents.FirstAsync();
+            }
             var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
-            languageWorkerChannel.SendInvocationRequest(invocationContext);
+            BufferBlock<ScriptInvocationContext> bufferBlock = null;
+            if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out bufferBlock))
+            {
+                _logger.LogInformation($"posting invocation id:{invocationContext.ExecutionContext.InvocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+                languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+            }
+            else
+            {
+                throw new Exception("Function not loaded");
+            }
         }
 
         public void WorkerError(WorkerErrorEvent workerError)

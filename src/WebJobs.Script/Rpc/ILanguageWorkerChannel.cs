@@ -14,13 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         string Id { get; }
 
+        IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
+
         WorkerConfig Config { get; }
 
         void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations);
 
         void SendFunctionEnvironmentReloadRequest();
-
-        void SendInvocationRequest(ScriptInvocationContext context);
 
         void StartWorkerProcess();
     }
