@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -14,13 +12,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         string Id { get; }
 
-        IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
-
         WorkerConfig Config { get; }
 
         void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations);
 
         void SendFunctionEnvironmentReloadRequest();
+
+        void SendInvocationRequest(ScriptInvocationContext context);
 
         void StartWorkerProcess();
     }

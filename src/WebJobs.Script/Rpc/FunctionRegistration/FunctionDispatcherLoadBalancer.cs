@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -20,6 +21,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public ILanguageWorkerChannel GetLanguageWorkerChannel(IEnumerable<ILanguageWorkerChannel> languageWorkers)
         {
             var currentNumberOfWorkers = languageWorkers.Count();
+            if (currentNumberOfWorkers == 0)
+            {
+                throw new ArgumentOutOfRangeException($"Number of language workers:{currentNumberOfWorkers}");
+            }
             ILanguageWorkerChannel lw = languageWorkers.ElementAt(_counter % currentNumberOfWorkers);
             lock (_functionLoadResponseLock)
             {
