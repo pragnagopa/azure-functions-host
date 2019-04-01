@@ -143,7 +143,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             var languageWorkerChannel = ChannelFactory(runtime, _workerState.Functions, 0);
-            _workerState.AddChannel(languageWorkerChannel);
         }
 
         public void Register(FunctionMetadata context)
@@ -151,23 +150,31 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerState.Functions.OnNext(context);
         }
 
-        public void Invoke(ScriptInvocationContext invocationContext)
+        public async void Invoke(ScriptInvocationContext invocationContext)
         {
             if (_workerState.ProcessRestartCountExceedException != null)
             {
                 invocationContext.ResultSource.TrySetException(_workerState.ProcessRestartCountExceedException);
                 return;
             }
-            var webhostChannels = _languageWorkerChannelManager.GetChannels(_workerRuntime);
-            var workerChannels = webhostChannels == null ? _workerState.GetChannels() : webhostChannels.Union(_workerState.GetChannels());
-            while (workerChannels.Count() == 0)
+            IEnumerable<ILanguageWorkerChannel> workerChannels = GetWorkerChannels();
+            if (workerChannels.Count() == 0)
             {
-                // TODO:pgopa improve
-                Task.Delay(TimeSpan.FromMilliseconds(10));
+                await Utility.InvokeWithRetriesAsync(() =>
+                {
+                    workerChannels = GetWorkerChannels();
+                }, maxRetries: 2, retryInterval: TimeSpan.FromMilliseconds(15));
             }
             var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
             _logger.LogDebug($"Sending invocation id:{invocationContext.ExecutionContext.InvocationId}");
             languageWorkerChannel.SendInvocationRequest(invocationContext);
+        }
+
+        private IEnumerable<ILanguageWorkerChannel> GetWorkerChannels()
+        {
+            var webhostChannels = _languageWorkerChannelManager.GetChannels(_workerRuntime);
+            var workerChannels = webhostChannels == null ? _workerState.GetChannels() : webhostChannels.Union(_workerState.GetChannels());
+            return workerChannels;
         }
 
         public void WorkerError(WorkerErrorEvent workerError)
@@ -189,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (_workerState.Errors.Count < 3)
             {
-                _workerState.AddChannel(CreateNewChannelWithExistingWorkerState(runtime));
+                CreateNewChannelWithExistingWorkerState(runtime);
             }
             else if (_workerState.GetChannels().Count() == 0)
             {
@@ -218,6 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             // TODO: pgopa figure out if state is needed
             _logger.LogInformation("Adding jobhost language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
             rpcChannelReadyEvent.LanguageWorkerChannel.RegisterFunctions(_workerState.Functions);
+            _workerState.AddChannel(rpcChannelReadyEvent.LanguageWorkerChannel);
         }
 
         protected virtual void Dispose(bool disposing)

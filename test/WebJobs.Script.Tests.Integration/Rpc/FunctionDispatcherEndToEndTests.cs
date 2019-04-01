@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Fixture = fixture;
             _channelState = Fixture.JobHost.FunctionDispatcher.LanguageWorkerChannelState;
-            _nodeWorkerChannel = GetCurrentWorkerChannel();
         }
 
         public TestFixture Fixture { get; set; }
@@ -28,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task InitializeWorkers_Fails_AddsFunctionErrors()
         {
-
+            await WaitForJobHostChannelReady();
             for (int i = 0; i < 3; i++)
             {
                 KillProcess(_nodeWorkerChannel.WorkerProcess.Id);
@@ -47,6 +46,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var currentChannel = GetCurrentWorkerChannel();
                 return currentChannel != null && currentChannel.Id != _nodeWorkerChannel.Id
                        || FunctionErrorsAdded();
+            }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
+            _nodeWorkerChannel = GetCurrentWorkerChannel();
+        }
+
+        private async Task WaitForJobHostChannelReady()
+        {
+            await TestHelpers.Await(() =>
+            {
+                var currentChannel = GetCurrentWorkerChannel();
+                return currentChannel != null;
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
             _nodeWorkerChannel = GetCurrentWorkerChannel();
         }
