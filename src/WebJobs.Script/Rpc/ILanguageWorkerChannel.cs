@@ -6,8 +6,6 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public delegate ILanguageWorkerChannel CreateChannel(string language, IObservable<FunctionMetadata> registrations, int attemptCount);
-
     public interface ILanguageWorkerChannel : IDisposable
     {
         string Id { get; }

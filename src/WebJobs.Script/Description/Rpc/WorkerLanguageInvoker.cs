@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             ScriptInvocationResult result;
-            _logger.LogInformation($"Sending invocation id:{invocationId} on threadid: {Thread.CurrentThread.ManagedThreadId}");
+            _logger.LogDebug($"Sending invocation id:{invocationId}");
             _fuctionDispatcher.Invoke(invocationContext);
             result = await invocationContext.ResultSource.Task;
 
