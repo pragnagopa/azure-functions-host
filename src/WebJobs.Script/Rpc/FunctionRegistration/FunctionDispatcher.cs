@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IDisposable _rpcChannelReadySubscriptions;
+        private readonly int _debounceMilliseconds = 5000;
         private IScriptEventManager _eventManager;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private ILanguageWorkerChannelManager _languageWorkerChannelManager;
@@ -71,9 +72,26 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             languageWorkerChannel.StartWorkerProcess();
         }
 
-        internal void InitializeJobHostLanguageWorkerChannel()
+        internal void InitializeJobhostLanguageWorkerChannel()
         {
             InitializeJobHostLanguageWorkerChannel(0);
+        }
+
+        internal async void InitializeWebhostLanguageWorkerChannel()
+        {
+            _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
+            ILanguageWorkerChannel workerChannel = await _languageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+            workerChannel.RegisterFunctions(_workerState.Functions);
+        }
+
+        private void DebouceStartWorkerProcesses(int startIndex, Action targetAction)
+        {
+            for (var count = startIndex; count < _maxProcessCount; count++)
+            {
+                Action startWorkerChannelAction = targetAction;
+                startWorkerChannelAction = startWorkerChannelAction.Debounce(count * _debounceMilliseconds);
+                startWorkerChannelAction();
+            }
         }
 
         public bool IsSupported(FunctionMetadata functionMetadata, string workerRuntime)
@@ -89,12 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
         }
 
-        public void RegisterFunctionsWithExistingChannel(ILanguageWorkerChannel languageWorkerChannel)
-        {
-            languageWorkerChannel.RegisterFunctions(_workerState.Functions);
-        }
-
-        public async void Initialize(string workerRuntime, IEnumerable<FunctionMetadata> functions)
+        public void Initialize(string workerRuntime, IEnumerable<FunctionMetadata> functions)
         {
             _workerRuntime = workerRuntime;
             _languageWorkerChannelManager.ShutdownStandbyChannels(functions);
@@ -107,27 +120,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     foreach (var initializedChannel in initializedChannels)
                     {
                         _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", workerRuntime, initializedChannel.Id);
-                        RegisterFunctionsWithExistingChannel(initializedChannel);
+                        initializedChannel.RegisterFunctions(_workerState.Functions);
                     }
-
-                    for (var count = initializedChannels.Count(); count < _maxProcessCount; count++)
-                    {
-                        _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}. Count: {count}", workerRuntime, count);
-                        ILanguageWorkerChannel workerChannel = await _languageWorkerChannelManager.InitializeChannelAsync(workerRuntime);
-                        RegisterFunctionsWithExistingChannel(workerChannel);
-                    }
+                    DebouceStartWorkerProcesses(initializedChannels.Count(), InitializeWebhostLanguageWorkerChannel);
                 }
                 else
                 {
-                    InitializeJobHostLanguageWorkerChannel();
-                    int debounceMilliseconds = 10000;
-                    for (var count = 1; count < _maxProcessCount; count++)
-                    {
-                        _logger.LogDebug("Creating new Jobhost language worker channel for runtime:{workerRuntime}. Count: {count}", workerRuntime, count);
-                        Action startWorkerChannelAction = InitializeJobHostLanguageWorkerChannel;
-                        startWorkerChannelAction = startWorkerChannelAction.Debounce(count * debounceMilliseconds);
-                        startWorkerChannelAction();
-                    }
+                    InitializeJobhostLanguageWorkerChannel();
+                    DebouceStartWorkerProcesses(1, InitializeJobhostLanguageWorkerChannel);
                 }
             }
         }
