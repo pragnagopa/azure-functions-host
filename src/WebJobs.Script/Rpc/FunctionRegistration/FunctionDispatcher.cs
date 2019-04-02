@@ -71,6 +71,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             languageWorkerChannel.StartWorkerProcess();
         }
 
+        internal void InitializeJobHostLanguageWorkerChannel()
+        {
+            InitializeJobHostLanguageWorkerChannel(0);
+        }
+
         public bool IsSupported(FunctionMetadata functionMetadata, string workerRuntime)
         {
             if (string.IsNullOrEmpty(functionMetadata.Language))
@@ -114,10 +119,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
-                    for (var count = 0; count < _maxProcessCount; count++)
+                    InitializeJobHostLanguageWorkerChannel();
+                    int debounceMilliseconds = 10000;
+                    for (var count = 1; count < _maxProcessCount; count++)
                     {
                         _logger.LogDebug("Creating new Jobhost language worker channel for runtime:{workerRuntime}. Count: {count}", workerRuntime, count);
-                        InitializeJobHostLanguageWorkerChannel(0);
+                        Action startWorkerChannelAction = InitializeJobHostLanguageWorkerChannel;
+                        startWorkerChannelAction = startWorkerChannelAction.Debounce(count * debounceMilliseconds);
+                        startWorkerChannelAction();
                     }
                 }
             }
