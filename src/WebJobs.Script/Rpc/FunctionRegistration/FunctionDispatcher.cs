@@ -66,6 +66,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public LanguageWorkerState LanguageWorkerChannelState => _workerState;
 
+        internal int MaxProcessCount => _maxProcessCount;
+
+        internal ILanguageWorkerChannelManager ChannelManager => _languageWorkerChannelManager;
+
         internal void InitializeJobHostLanguageWorkerChannel(int attemptCount)
         {
             var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, false, _managedDependencyOptions);
