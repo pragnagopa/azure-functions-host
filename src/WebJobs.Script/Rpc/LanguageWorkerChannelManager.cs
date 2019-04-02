@@ -92,12 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)
         {
             _logger?.LogDebug("Initializing language worker channel for runtime:{runtime}", runtime);
-            LanguageWorkerState workerState = null;
-            if (!_workerStates.TryGetValue(runtime, out workerState))
-            {
-                workerState = new LanguageWorkerState();
-                _workerStates.Add(runtime, workerState);
-            }
             return InitializeLanguageWorkerChannel(runtime, _applicationHostOptions.CurrentValue.ScriptPath);
         }
 
@@ -230,10 +224,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private void AddOrUpdateWorkerChannels(RpcWebHostChannelReadyEvent rpcChannelReadyEvent)
         {
             _logger.LogInformation("Adding language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
-
-            if (_workerStates.TryGetValue(rpcChannelReadyEvent.Language, out LanguageWorkerState languageWorkerState))
+            LanguageWorkerState languageWorkerState = null;
+            if (_workerStates.TryGetValue(rpcChannelReadyEvent.Language, out languageWorkerState))
             {
-                rpcChannelReadyEvent.LanguageWorkerChannel.RegisterFunctions(languageWorkerState.Functions);
+                languageWorkerState.AddChannel(rpcChannelReadyEvent.LanguageWorkerChannel);
+            }
+            else
+            {
+                languageWorkerState = new LanguageWorkerState();
+                _workerStates.Add(rpcChannelReadyEvent.Language, languageWorkerState);
                 languageWorkerState.AddChannel(rpcChannelReadyEvent.LanguageWorkerChannel);
             }
         }

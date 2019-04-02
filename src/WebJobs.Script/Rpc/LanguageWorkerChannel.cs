@@ -262,8 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .ObserveOn(new NewThreadScheduler())
-                .Subscribe(PublishWebhostRpcChannelReadyEvent, HandleWorkerError);
+                .Subscribe(PublishRpcChannelReadyEvent, HandleWorkerError);
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -280,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager.Publish(wpEvent);
         }
 
-        internal void PublishWebhostRpcChannelReadyEvent(RpcEvent initEvent)
+        internal void PublishRpcChannelReadyEvent(RpcEvent initEvent)
         {
             _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;
