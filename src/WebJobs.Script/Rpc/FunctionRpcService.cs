@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -20,11 +22,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IScriptEventManager _eventManager;
         private readonly ILogger _logger;
+        private ConcurrentBag<StreamingMessage> _outputMessageBag = new ConcurrentBag<StreamingMessage>();
 
         public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
             _eventManager = eventManager;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionRpcService);
+        }
+
+        public void BufferInvoctionRequest(StreamingMessage message)
+        {
+            _outputMessageBag.Add(message);
         }
 
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
@@ -47,28 +55,32 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     string workerId = requestStream.Current.StartStream.WorkerId;
                     outboundEventSubscription = _eventManager.OfType<OutboundEvent>()
-                        .Where(evt => evt.WorkerId == workerId)
-                        .ObserveOn(NewThreadScheduler.Default)
-                        .Subscribe(evt =>
-                        {
-                            try
-                            {
-                                // WriteAsync only allows one pending write at a time
-                                // For each responseStream subscription, observe as a blocking write, in series, on a new thread
-                                // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
-                                responseStream.WriteAsync(evt.Message).GetAwaiter().GetResult();
-                            }
-                            catch (Exception subscribeEventEx)
-                            {
-                                _logger.LogError(subscribeEventEx, "Error reading message from Rpc channel");
-                            }
-                        });
+                       .Where(evt => evt.WorkerId == workerId)
+                       .ObserveOn(NewThreadScheduler.Default)
+                       .Subscribe(evt =>
+                       {
+                           try
+                           {
+                               _outputMessageBag.Add(evt.Message);
+                           }
+                           catch (Exception subscribeEventEx)
+                           {
+                               _logger.LogError(subscribeEventEx, "Error reading message from Rpc channel");
+                           }
+                       });
 
+                    _logger.LogInformation($"Received start stream..workerId: {workerId}");
+                    InboundEvent startStreamEvent = new InboundEvent(workerId, requestStream.Current);
+                    startStreamEvent.RpcRequestStream = requestStream;
+                    _eventManager.Publish(startStreamEvent);
                     do
                     {
-                        _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
+                        if (_outputMessageBag.TryTake(out StreamingMessage writeMessage))
+                        {
+                            await responseStream.WriteAsync(writeMessage);
+                        }
                     }
-                    while (await messageAvailable());
+                    while (true);
                 }
             }
             finally

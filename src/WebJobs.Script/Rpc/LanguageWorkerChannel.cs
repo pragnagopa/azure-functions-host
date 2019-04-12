@@ -8,8 +8,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -261,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
-        internal void SendWorkerInitRequest(RpcEvent startEvent)
+        internal async void SendWorkerInitRequest(InboundEvent startEvent)
         {
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
@@ -275,6 +278,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     HostVersion = ScriptHost.Version
                 }
             });
+
+            var cancelSource = new TaskCompletionSource<bool>();
+            Func<Task<bool>> messageAvailable = async () =>
+            {
+                // GRPC does not accept cancellation tokens for individual reads, hence wrapper
+                var requestTask = startEvent.RpcRequestStream.MoveNext(CancellationToken.None);
+                var completed = await Task.WhenAny(cancelSource.Task, requestTask);
+                return completed.Result;
+            };
+            while (await messageAvailable())
+            {
+                _eventManager.Publish(new InboundEvent(Id, startEvent.RpcRequestStream.Current));
+            }
         }
 
         internal void PublishWorkerProcessReadyEvent(FunctionEnvironmentReloadResponse res)
@@ -283,11 +299,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager.Publish(wpEvent);
         }
 
-        internal void PublishWebhostRpcChannelReadyEvent(RpcEvent initEvent)
+        internal void PublishWebhostRpcChannelReadyEvent(InboundEvent initEvent)
         {
             _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;
-
             _initMessage = initEvent.Message.WorkerInitResponse;
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
