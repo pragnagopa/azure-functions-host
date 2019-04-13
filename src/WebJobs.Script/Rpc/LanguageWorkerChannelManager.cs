@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
@@ -36,9 +37,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
         private IDictionary<string, ILanguageWorkerChannel> _workerChannels = new Dictionary<string, ILanguageWorkerChannel>();
+        private FunctionRpcService _fucntionRpcService;
 
         public LanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerConsoleLogSource consoleLogSource)
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerConsoleLogSource consoleLogSource, FunctionRpc.FunctionRpcBase functionRpcBase)
         {
             _rpcServer = rpcServer;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -48,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _applicationHostOptions = applicationHostOptions;
             _consoleLogSource = consoleLogSource;
+            _fucntionRpcService = functionRpcBase as FunctionRpcService;
 
             _processFactory = new DefaultWorkerProcessFactory();
             try
@@ -86,7 +89,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                          attemptCount,
                          _consoleLogSource,
                          isWebhostChannel,
-                         managedDependencyOptions);
+                         managedDependencyOptions,
+                         _fucntionRpcService);
         }
 
         public async Task InitializeChannelAsync(string runtime)

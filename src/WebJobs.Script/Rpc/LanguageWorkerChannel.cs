@@ -60,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _startLatencyMetric;
         private Uri _serverUri;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
+        private FunctionRpcService _functionRpcService;
 
         internal LanguageWorkerChannel()
         {
@@ -80,7 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            int attemptCount,
            ILanguageWorkerConsoleLogSource consoleLogSource,
            bool isWebHostChannel = false,
-           IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+           IOptions<ManagedDependencyOptions> managedDependencyOptions = null,
+           FunctionRpcService functionRpcService = null)
         {
             _workerId = workerId;
             _functionRegistrations = functionRegistrations;
@@ -93,6 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _isWebHostChannel = isWebHostChannel;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
             _consoleLogSource = consoleLogSource;
+            _functionRpcService = functionRpcService;
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -515,7 +518,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private void SendStreamingMessage(StreamingMessage msg)
         {
-            _eventManager.Publish(new OutboundEvent(_workerId, msg));
+            // _eventManager.Publish(new OutboundEvent(_workerId, msg));
+            _functionRpcService.BufferInvoctionRequest(msg);
         }
 
         protected virtual void Dispose(bool disposing)
