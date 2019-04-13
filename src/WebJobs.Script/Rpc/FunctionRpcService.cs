@@ -38,55 +38,29 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
             var cancelSource = new TaskCompletionSource<bool>();
-            IDisposable outboundEventSubscription = null;
             try
             {
                 context.CancellationToken.Register(() => cancelSource.TrySetResult(false));
 
-                Func<Task<bool>> messageAvailable = async () =>
-                {
-                    // GRPC does not accept cancellation tokens for individual reads, hence wrapper
-                    var requestTask = requestStream.MoveNext(CancellationToken.None);
-                    var completed = await Task.WhenAny(cancelSource.Task, requestTask);
-                    return completed.Result;
-                };
+                await requestStream.MoveNext(CancellationToken.None);
 
-                if (await messageAvailable())
-                {
-                    string workerId = requestStream.Current.StartStream.WorkerId;
-                    outboundEventSubscription = _eventManager.OfType<OutboundEvent>()
-                       .Where(evt => evt.WorkerId == workerId)
-                       .ObserveOn(NewThreadScheduler.Default)
-                       .Subscribe(evt =>
-                       {
-                           try
-                           {
-                               _outputMessageBag.Add(evt.Message);
-                           }
-                           catch (Exception subscribeEventEx)
-                           {
-                               _logger.LogError(subscribeEventEx, "Error reading message from Rpc channel");
-                           }
-                       });
+                string workerId = requestStream.Current.StartStream.WorkerId;
 
-                    _logger.LogInformation($"Received start stream..workerId: {workerId}");
-                    InboundEvent startStreamEvent = new InboundEvent(workerId, requestStream.Current);
-                    startStreamEvent.RpcRequestStream = requestStream;
-                    _eventManager.Publish(startStreamEvent);
-                    do
+                _logger.LogInformation($"Received start stream..workerId: {workerId}");
+                InboundEvent startStreamEvent = new InboundEvent(workerId, requestStream.Current);
+                startStreamEvent.RpcRequestStream = requestStream;
+                _eventManager.Publish(startStreamEvent);
+                do
+                {
+                    if (_outputMessageBag.TryTake(out StreamingMessage writeMessage))
                     {
-                        if (_outputMessageBag.TryTake(out StreamingMessage writeMessage))
-                        {
-                            await responseStream.WriteAsync(writeMessage);
-                        }
+                        await responseStream.WriteAsync(writeMessage);
                     }
-                    while (true);
                 }
+                while (true);
             }
             finally
             {
-                outboundEventSubscription?.Dispose();
-
                 // ensure cancellationSource task completes
                 cancelSource.TrySetResult(false);
             }
