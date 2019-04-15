@@ -4,6 +4,7 @@
   "bindings" : [ {
     "type" : "httpTrigger",
     "direction" : "in",
+	"authLevel":"anonymous",
     "methods" : [ "GET", "POST" ],
     "name" : "req"
   }, {
