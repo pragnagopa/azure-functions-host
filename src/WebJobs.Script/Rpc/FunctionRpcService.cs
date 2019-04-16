@@ -24,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILogger _logger;
         private ConcurrentBag<StreamingMessage> _outputMessageBag = new ConcurrentBag<StreamingMessage>();
         private BlockingCollection<StreamingMessage> _blockingCollectionQueue = new BlockingCollection<StreamingMessage>();
-        private IServerStreamWriter<StreamingMessage> _rpcResponseStream = null;
 
         public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
@@ -54,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 InboundEvent startStreamEvent = new InboundEvent(workerId, requestStream.Current);
                 startStreamEvent.RpcRequestStream = requestStream;
                 _eventManager.Publish(startStreamEvent);
-                _rpcResponseStream = responseStream;
                 var consumer = Task.Run(async () =>
                 {
                     foreach (var rpcWriteMsg in _blockingCollectionQueue.GetConsumingEnumerable())
