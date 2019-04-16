@@ -23,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptEventManager _eventManager;
         private readonly ILogger _logger;
         private ConcurrentBag<StreamingMessage> _outputMessageBag = new ConcurrentBag<StreamingMessage>();
+        private BlockingCollection<StreamingMessage> _blockingCollectionQueue = new BlockingCollection<StreamingMessage>();
+        private IServerStreamWriter<StreamingMessage> _rpcResponseStream = null;
 
         public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
@@ -32,7 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void BufferInvoctionRequest(StreamingMessage message)
         {
-            _outputMessageBag.Add(message);
+            // _outputMessageBag.Add(message);
+            // Task writeTask = _rpcResponseStream.WriteAsync(message);
+            _blockingCollectionQueue.Add(message);
         }
 
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
@@ -50,14 +54,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 InboundEvent startStreamEvent = new InboundEvent(workerId, requestStream.Current);
                 startStreamEvent.RpcRequestStream = requestStream;
                 _eventManager.Publish(startStreamEvent);
-                do
+                _rpcResponseStream = responseStream;
+                var consumer = Task.Run(async () =>
                 {
-                    if (_outputMessageBag.TryTake(out StreamingMessage writeMessage))
+                    foreach (var rpcWriteMsg in _blockingCollectionQueue.GetConsumingEnumerable())
                     {
-                        await responseStream.WriteAsync(writeMessage);
-                    }
-                }
-                while (true);
+                        await responseStream.WriteAsync(rpcWriteMsg); // Run the task
+                    }// Exits when the BlockingCollection is marked for no more actions
+                });
+                await consumer;
             }
             finally
             {
