@@ -32,8 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class LanguageWorkerChannel : ILanguageWorkerChannel
     {
-        private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
-        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
+        private readonly TimeSpan processStartTimeout = TimeSpan.FromMinutes(40);
+        private readonly TimeSpan workerInitTimeout = TimeSpan.FromMinutes(30);
         private readonly string _rootScriptPath;
         private readonly IScriptEventManager _eventManager;
         private readonly IWorkerProcessFactory _processFactory;
@@ -262,8 +262,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             };
 
             _process = _processFactory.CreateWorkerProcess(workerContext);
-            StartProcess();
-            _processRegistry?.Register(_process);
+            // StartProcess();
+            // _processRegistry?.Register(_process);
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
