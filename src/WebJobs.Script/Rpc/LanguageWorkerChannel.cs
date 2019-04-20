@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _startLatencyMetric;
         private Uri _serverUri;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
+        private FunctionRpcService _functionRpcService;
 
         internal LanguageWorkerChannel()
         {
@@ -77,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            int attemptCount,
            ILanguageWorkerConsoleLogSource consoleLogSource,
            bool isWebHostChannel = false,
+           FunctionRpc.FunctionRpcBase functionRpcBase = null,
            IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             _workerId = workerId;
@@ -90,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _isWebHostChannel = isWebHostChannel;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
             _consoleLogSource = consoleLogSource;
+            _functionRpcService = functionRpcBase as FunctionRpcService;
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -261,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
-        internal void SendWorkerInitRequest(RpcEvent startEvent)
+        internal async void SendWorkerInitRequest(RpcEvent startEvent)
         {
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
@@ -275,6 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     HostVersion = ScriptHost.Version
                 }
             });
+            await _functionRpcService.StartPolling();
         }
 
         internal void PublishWorkerProcessReadyEvent(FunctionEnvironmentReloadResponse res)
@@ -500,7 +504,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private void SendStreamingMessage(StreamingMessage msg)
         {
-            _eventManager.Publish(new OutboundEvent(_workerId, msg));
+            _functionRpcService.AddWrite(msg);
+            //_eventManager.Publish(new OutboundEvent(_workerId, msg));
         }
 
         protected virtual void Dispose(bool disposing)

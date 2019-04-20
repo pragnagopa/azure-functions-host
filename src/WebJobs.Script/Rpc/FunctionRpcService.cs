@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading;
@@ -20,11 +21,23 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IScriptEventManager _eventManager;
         private readonly ILogger _logger;
+        private BlockingCollection<StreamingMessage> _blockingCollectionQueue = new BlockingCollection<StreamingMessage>();
+        private Task _readerTask;
 
         public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
             _eventManager = eventManager;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionRpcService);
+        }
+
+        public void AddWrite(StreamingMessage streamingMessage)
+        {
+            _blockingCollectionQueue.Add(streamingMessage);
+        }
+
+        public Task StartPolling()
+        {
+            return _readerTask;
         }
 
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
@@ -46,29 +59,25 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (await messageAvailable())
                 {
                     string workerId = requestStream.Current.StartStream.WorkerId;
-                    outboundEventSubscription = _eventManager.OfType<OutboundEvent>()
-                        .Where(evt => evt.WorkerId == workerId)
-                        .ObserveOn(NewThreadScheduler.Default)
-                        .Subscribe(evt =>
-                        {
-                            try
-                            {
-                                // WriteAsync only allows one pending write at a time
-                                // For each responseStream subscription, observe as a blocking write, in series, on a new thread
-                                // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
-                                responseStream.WriteAsync(evt.Message).GetAwaiter().GetResult();
-                            }
-                            catch (Exception subscribeEventEx)
-                            {
-                                _logger.LogError(subscribeEventEx, "Error reading message from Rpc channel");
-                            }
-                        });
 
-                    do
+                    var responseReaderTask = Task.Run(async () =>
                     {
-                        _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
-                    }
-                    while (await messageAvailable());
+                        while (await messageAvailable())
+                        {
+                            _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
+                        }
+                    });
+
+                    _readerTask = Task.Factory.StartNew(async () => await messageAvailable());
+                    _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
+                    var consumer = Task.Run(async () =>
+                    {
+                        foreach (var rpcWriteMsg in _blockingCollectionQueue.GetConsumingEnumerable())
+                        {
+                            await responseStream.WriteAsync(rpcWriteMsg);
+                        }
+                    });
+                    await consumer;
                 }
             }
             finally
