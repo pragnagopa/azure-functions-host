@@ -21,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IScriptEventManager _eventManager;
         private readonly ILogger _logger;
+        private IServerStreamWriter<StreamingMessage> _responseStream;
+
         private BlockingCollection<StreamingMessage> _blockingCollectionQueue = new BlockingCollection<StreamingMessage>();
 
         public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
@@ -28,6 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager = eventManager;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionRpcService);
         }
+
+        public BlockingCollection<StreamingMessage> BlockingCollectionQueue => _blockingCollectionQueue;
+
+        public IServerStreamWriter<StreamingMessage> ResponseStream => _responseStream;
 
         public void AddWrite(StreamingMessage streamingMessage)
         {
@@ -61,19 +67,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
                         }
                     });
-
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                    Task.Factory.StartNew(async () => await responseReaderTask);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                    _responseStream = responseStream;
                     _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
-                    var consumer = Task.Run(async () =>
-                    {
-                        foreach (var rpcWriteMsg in _blockingCollectionQueue.GetConsumingEnumerable())
-                        {
-                            await responseStream.WriteAsync(rpcWriteMsg);
-                        }
-                    });
-                    await consumer;
+                    await responseReaderTask;
                 }
             }
             finally
