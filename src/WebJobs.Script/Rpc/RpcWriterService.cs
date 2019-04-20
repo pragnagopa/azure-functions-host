@@ -43,13 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             stoppingToken.Register(() => _logger.LogDebug("Demo Service is stopping."));
 
             _logger.LogInformation("Starting Rpc Initialization Service.");
-            while (!stoppingToken.IsCancellationRequested)
+            var consumer = Task.Run(async () =>
             {
                 foreach (var rpcWriteMsg in _functionRpcService.BlockingCollectionQueue.GetConsumingEnumerable())
                 {
                     await _functionRpcService.ResponseStream.WriteAsync(rpcWriteMsg);
                 }
-            }
+            });
+            await consumer;
         }
     }
 }
