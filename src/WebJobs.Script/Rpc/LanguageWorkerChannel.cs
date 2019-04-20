@@ -264,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
-        internal async void SendWorkerInitRequest(RpcEvent startEvent)
+        internal void SendWorkerInitRequest(RpcEvent startEvent)
         {
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
@@ -278,7 +278,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     HostVersion = ScriptHost.Version
                 }
             });
-            await _functionRpcService.StartPolling();
         }
 
         internal void PublishWorkerProcessReadyEvent(FunctionEnvironmentReloadResponse res)
