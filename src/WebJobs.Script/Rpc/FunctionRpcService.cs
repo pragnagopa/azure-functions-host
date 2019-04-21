@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IScriptEventManager _eventManager;
         private readonly ILogger _logger;
-        private IServerStreamWriter<StreamingMessage> _responseStream;
+        private IServerStreamWriter<StreamingMessage> _responseStream = null;
 
         private BlockingCollection<StreamingMessage> _blockingCollectionQueue = new BlockingCollection<StreamingMessage>();
 
@@ -67,9 +67,21 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
                         }
                     });
-                    _responseStream = responseStream;
+
                     _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
-                    await responseReaderTask;
+
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                    Task.Run(async () => await responseReaderTask);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+                    var consumer = Task.Run(async () =>
+                    {
+                        foreach (var rpcWriteMsg in _blockingCollectionQueue.GetConsumingEnumerable())
+                        {
+                            await responseStream.WriteAsync(rpcWriteMsg);
+                        }
+                    });
+                    await consumer;
                 }
             }
             finally
