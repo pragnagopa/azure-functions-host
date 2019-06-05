@@ -11,13 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface ILanguageWorkerChannel : IDisposable
     {
-        string Id { get; }
+        string WorkerId { get; }
 
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
         LanguageWorkerChannelState State { get; }
-
-        WorkerConfig Config { get; }
 
         void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
 

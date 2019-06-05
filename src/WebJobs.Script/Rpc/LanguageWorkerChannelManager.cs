@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             if (_workerChannels.TryGetValue(language, out List<ILanguageWorkerChannel> languageWorkerChannels))
             {
-                var channel = languageWorkerChannels.FirstOrDefault(ch => ch.Id == workerId);
+                var channel = languageWorkerChannels.FirstOrDefault(ch => ch.WorkerId == workerId);
                 if (channel != null)
                 {
                     channel.Dispose();

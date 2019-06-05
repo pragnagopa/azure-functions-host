@@ -22,12 +22,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void AddChannel(ILanguageWorkerChannel channel)
         {
-            _channels.TryAdd(channel.Id, channel);
+            _channels.TryAdd(channel.WorkerId, channel);
         }
 
         internal void DisposeAndRemoveChannel(ILanguageWorkerChannel channel)
         {
-            if (_channels.TryRemove(channel.Id, out ILanguageWorkerChannel removedChannel))
+            if (_channels.TryRemove(channel.WorkerId, out ILanguageWorkerChannel removedChannel))
             {
                 removedChannel?.Dispose();
             }

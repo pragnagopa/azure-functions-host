@@ -28,10 +28,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task InitializeWorkers_Retries_Succeed()
         {
             await WaitForJobHostChannelReady();
-            KillProcess(_nodeWorkerChannel.WorkerProcess.Id);
+            KillProcess(_nodeWorkerChannel.WorkerProcess.ProcessId);
             await WaitForWorkerProcessRestart(0);
 
-            KillProcess(_nodeWorkerChannel.WorkerProcess.Id);
+            KillProcess(_nodeWorkerChannel.WorkerProcess.ProcessId);
             await WaitForWorkerProcessRestart(1);
         }
 
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() =>
             {
                 var currentChannel = GetCurrentWorkerChannel();
-                return currentChannel != null && currentChannel.Id != _nodeWorkerChannel.Id;
+                return currentChannel != null && currentChannel.WorkerId != _nodeWorkerChannel.WorkerId;
 
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
             _nodeWorkerChannel = GetCurrentWorkerChannel();
