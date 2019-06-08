@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _process = _processFactory.CreateWorkerProcess(workerContext);
         }
 
-        public int ProcessId => _process.Id;
+        public int Id => _process.Id;
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 

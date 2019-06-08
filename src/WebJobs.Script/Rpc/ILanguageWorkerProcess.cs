@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface ILanguageWorkerProcess : IDisposable
     {
-        int ProcessId { get; }
+        int Id { get; }
 
         Process StartProcess();
     }

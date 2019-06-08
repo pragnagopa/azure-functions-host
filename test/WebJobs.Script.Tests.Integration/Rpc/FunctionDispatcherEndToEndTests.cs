@@ -28,10 +28,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task InitializeWorkers_Retries_Succeed()
         {
             await WaitForJobHostChannelReady();
-            KillProcess(_nodeWorkerChannel.WorkerProcess.ProcessId);
+            KillProcess(_nodeWorkerChannel.WorkerProcess.Id);
             await WaitForWorkerProcessRestart(0);
 
-            KillProcess(_nodeWorkerChannel.WorkerProcess.ProcessId);
+            KillProcess(_nodeWorkerChannel.WorkerProcess.Id);
             await WaitForWorkerProcessRestart(1);
         }
 
