@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _state = LanguageWorkerChannelState.Default;
         }
 
-        public string WorkerId => _workerId;
+        public string Id => _workerId;
 
         public ILanguageWorkerProcess WorkerProcess => _languageWorkerProcess;
 
@@ -436,7 +436,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return;
             }
-            _eventManager.Publish(new WorkerErrorEvent(_runtime, WorkerId, exc));
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
         }
 
         private void SendStreamingMessage(StreamingMessage msg)

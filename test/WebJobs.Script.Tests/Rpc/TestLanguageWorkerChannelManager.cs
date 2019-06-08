@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             if (_workerChannels.TryGetValue(language, out List<ILanguageWorkerChannel> workerChannels))
             {
-                var channels = workerChannels.Where(ch => ch.WorkerId == workerId);
+                var channels = workerChannels.Where(ch => ch.Id == workerId);
                 foreach (var channel in channels.ToList())
                 {
                     workerChannels.Remove(channel);

@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface ILanguageWorkerChannel : IDisposable
     {
-        string WorkerId { get; }
+        string Id { get; }
 
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 

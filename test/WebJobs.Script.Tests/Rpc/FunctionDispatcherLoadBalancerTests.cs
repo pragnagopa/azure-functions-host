@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 results.Add(loadBalancer.GetLanguageWorkerChannel(workerChannels, workerChannels.Count()));
             }
-            var channelGroupsQuery = results.GroupBy(r => r.WorkerId)
+            var channelGroupsQuery = results.GroupBy(r => r.Id)
             .Select(g => new { Value = g.Key, Count = g.Count() });
 
             foreach (var channelGroup in channelGroupsQuery)
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 results.Add(loadBalancer.GetLanguageWorkerChannel(workerChannels, workerChannels.Count()));
             }
-            var channelGroupsQuery = results.GroupBy(r => r.WorkerId)
+            var channelGroupsQuery = results.GroupBy(r => r.Id)
             .Select(g => new { Value = g.Key, Count = g.Count() });
 
             foreach (var channelGroup in channelGroupsQuery)

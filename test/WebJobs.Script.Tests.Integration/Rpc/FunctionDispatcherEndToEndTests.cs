@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() =>
             {
                 var currentChannel = GetCurrentWorkerChannel();
-                return currentChannel != null && currentChannel.WorkerId != _nodeWorkerChannel.WorkerId;
+                return currentChannel != null && currentChannel.Id != _nodeWorkerChannel.Id;
 
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
             _nodeWorkerChannel = GetCurrentWorkerChannel();

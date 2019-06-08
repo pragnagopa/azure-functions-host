@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     foreach (var initializedChannel in initializedChannels)
                     {
-                        _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, initializedChannel.WorkerId);
+                        _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, initializedChannel.Id);
                         initializedChannel.SetupFunctionInvocationBuffers(_functions);
                         initializedChannel.SendFunctionLoadRequests();
                     }
@@ -199,12 +199,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, _maxProcessCount);
                 if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
                 {
-                    _logger.LogDebug("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, languageWorkerChannel.WorkerId);
+                    _logger.LogDebug("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, languageWorkerChannel.Id);
                     languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Function:{invocationContext.FunctionMetadata.Name} is not loaded by the language worker: {languageWorkerChannel.WorkerId}");
+                    throw new InvalidOperationException($"Function:{invocationContext.FunctionMetadata.Name} is not loaded by the language worker: {languageWorkerChannel.Id}");
                 }
             }
             catch (Exception invokeEx)
@@ -235,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (!isPreInitializedChannel)
                 {
                     _logger.LogDebug("Disposing errored channel for workerId: {channelId}, for runtime:{language}", workerError.WorkerId, workerError.Language);
-                    var erroredChannel = _workerState.GetChannels().Where(ch => ch.WorkerId == workerError.WorkerId).FirstOrDefault();
+                    var erroredChannel = _workerState.GetChannels().Where(ch => ch.Id == workerError.WorkerId).FirstOrDefault();
                     if (erroredChannel != null)
                     {
                         _workerState.DisposeAndRemoveChannel(erroredChannel);

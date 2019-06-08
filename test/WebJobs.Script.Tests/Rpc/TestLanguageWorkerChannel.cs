@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testLogger = testLogger;
         }
 
-        public string WorkerId => _workerId;
+        public string Id => _workerId;
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
 
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void RaiseWorkerError()
         {
             Exception testEx = new Exception("Test Worker Error");
-            _eventManager.Publish(new WorkerErrorEvent(_runtime, WorkerId, testEx));
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, testEx));
         }
     }
 }
