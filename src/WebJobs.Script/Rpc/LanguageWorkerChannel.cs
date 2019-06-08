@@ -85,13 +85,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerConfig = workerConfig;
             _serverUri = serverUri;
             _runtime = workerConfig.Language;
-            _workerCapabilities = new Capabilities(_workerChannelLogger);
             _isWebHostChannel = isWebHostChannel;
             _loggerFactory = loggerFactory;
             _consoleLogSource = consoleLogSource;
             _processFactory = processFactory;
             _processRegistry = processRegistry;
             _workerChannelLogger = loggerFactory.CreateLogger($"LanguageWorkerChannel.{_runtime}.{_workerId}");
+
+            _workerCapabilities = new Capabilities(_workerChannelLogger);
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
