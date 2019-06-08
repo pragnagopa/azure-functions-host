@@ -143,16 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (languageWorkerProcess == null)
             {
-                var workerContext = new WorkerContext()
-                {
-                    RequestId = Guid.NewGuid().ToString(),
-                    MaxMessageLength = LanguageWorkerConstants.DefaultMaxMessageLengthBytes,
-                    WorkerId = _workerId,
-                    Arguments = _workerConfig.Arguments,
-                    WorkingDirectory = _rootScriptPath,
-                    ServerUri = _serverUri,
-                };
-                languageWorkerProcess = new LanguageWorkerProcess(_runtime, _workerId, workerContext, _eventManager, _processFactory, _processRegistry, _loggerFactory, _consoleLogSource);
+                languageWorkerProcess = new LanguageWorkerProcess(_runtime, _workerId, _rootScriptPath, _serverUri, _workerConfig.Arguments, _eventManager, _processFactory, _processRegistry, _loggerFactory, _consoleLogSource);
             }
 
             _languageWorkerProcess = languageWorkerProcess;

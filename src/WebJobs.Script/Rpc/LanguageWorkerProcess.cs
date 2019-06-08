@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 
@@ -32,7 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal LanguageWorkerProcess(string runtime,
                                        string workerId,
-                                       WorkerContext workerContext,
+                                       string rootScriptPath,
+                                       Uri serverUri,
+                                       WorkerProcessArguments workerProcessArguments,
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
@@ -46,6 +49,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerProcessLogger = loggerFactory.CreateLogger($"LanguageWorkerProcess.{runtime}.{workerId}");
             _consoleLogSource = consoleLogSource;
             _eventManager = eventManager;
+
+            var workerContext = new WorkerContext()
+            {
+                RequestId = Guid.NewGuid().ToString(),
+                MaxMessageLength = LanguageWorkerConstants.DefaultMaxMessageLengthBytes,
+                WorkerId = _workerId,
+                Arguments = workerProcessArguments,
+                WorkingDirectory = rootScriptPath,
+                ServerUri = serverUri,
+            };
             _process = _processFactory.CreateWorkerProcess(workerContext);
         }
 
