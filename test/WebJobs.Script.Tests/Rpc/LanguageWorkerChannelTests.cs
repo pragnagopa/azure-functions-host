@@ -63,8 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             var mockLanguageWorkerProcess = new Mock<ILanguageWorkerProcess>();
             mockLanguageWorkerProcess.Setup(m => m.StartProcess());
-            _workerChannel.LanguageWorkerProcess = mockLanguageWorkerProcess.Object;
-            await _workerChannel.StartWorkerProcessAsync();
+            await _workerChannel.StartWorkerProcessAsync(mockLanguageWorkerProcess.Object);
             mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
         }
 

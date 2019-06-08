@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
+    public class TestFunctionRpcService
     {
         private IScriptEventManager _eventManager;
         private ILogger _logger;

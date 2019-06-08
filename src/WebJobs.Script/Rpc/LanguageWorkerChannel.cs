@@ -32,6 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptEventManager _eventManager;
         private readonly WorkerConfig _workerConfig;
         private readonly string _runtime;
+        private readonly IWorkerProcessFactory _processFactory;
+        private readonly IProcessRegistry _processRegistry;
+        private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
+        private readonly ILoggerFactory _loggerFactory;
 
         private bool _disposed;
         private bool _disposing;
@@ -52,8 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
         private IEnumerable<FunctionMetadata> _functions;
         private Capabilities _workerCapabilities;
-        private ILanguageWorkerProcess _languageWorkerProcess;
         private ILogger _workerChannelLogger;
+        private ILanguageWorkerProcess _languageWorkerProcess;
 
         internal LanguageWorkerChannel()
         {
@@ -83,6 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _runtime = workerConfig.Language;
             _workerCapabilities = new Capabilities(_workerChannelLogger);
             _isWebHostChannel = isWebHostChannel;
+            _loggerFactory = loggerFactory;
+            _consoleLogSource = consoleLogSource;
+            _processFactory = processFactory;
+            _processRegistry = processRegistry;
             _workerChannelLogger = loggerFactory.CreateLogger($"LanguageWorkerChannel.{_runtime}.{_workerId}");
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
@@ -106,41 +114,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
             _managedDependencyOptions = managedDependencyOptions;
 
-            var workerContext = new WorkerContext()
-            {
-                RequestId = Guid.NewGuid().ToString(),
-                MaxMessageLength = LanguageWorkerConstants.DefaultMaxMessageLengthBytes,
-                WorkerId = _workerId,
-                Arguments = _workerConfig.Arguments,
-                WorkingDirectory = _rootScriptPath,
-                ServerUri = _serverUri,
-            };
-            _languageWorkerProcess = new LanguageWorkerProcess(_runtime, _workerId, workerContext, _eventManager, processFactory, processRegistry, loggerFactory, consoleLogSource);
-
             _state = LanguageWorkerChannelState.Default;
         }
 
         public string Id => _workerId;
 
-        public ILanguageWorkerProcess WorkerProcess => _languageWorkerProcess;
-
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
 
         public LanguageWorkerChannelState State => _state;
 
-        internal ILanguageWorkerProcess LanguageWorkerProcess
-        {
-            get
-            {
-                return _languageWorkerProcess;
-            }
-
-            set
-            {
-                // used for unit tests to incject mock languageWorkerProcess
-                _languageWorkerProcess = value;
-            }
-        }
+        internal ILanguageWorkerProcess WorkerProcess => _languageWorkerProcess;
 
         internal ILogger WorkerChannelLogger
         {
@@ -156,14 +139,29 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public Task StartWorkerProcessAsync()
+        public Task StartWorkerProcessAsync(ILanguageWorkerProcess languageWorkerProcess = null)
         {
+            if (languageWorkerProcess == null)
+            {
+                var workerContext = new WorkerContext()
+                {
+                    RequestId = Guid.NewGuid().ToString(),
+                    MaxMessageLength = LanguageWorkerConstants.DefaultMaxMessageLengthBytes,
+                    WorkerId = _workerId,
+                    Arguments = _workerConfig.Arguments,
+                    WorkingDirectory = _rootScriptPath,
+                    ServerUri = _serverUri,
+                };
+                languageWorkerProcess = new LanguageWorkerProcess(_runtime, _workerId, workerContext, _eventManager, _processFactory, _processRegistry, _loggerFactory, _consoleLogSource);
+            }
+
+            _languageWorkerProcess = languageWorkerProcess;
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(TimeSpan.FromSeconds(LanguageWorkerConstants.ProcessStartTimeoutSeconds))
                 .Take(1)
                 .Subscribe(SendWorkerInitRequest, HandleWorkerChannelError);
 
-            _languageWorkerProcess.StartProcess();
+            languageWorkerProcess.StartProcess();
 
             _state = LanguageWorkerChannelState.Initializing;
 
