@@ -449,7 +449,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         link.Dispose();
                     }
 
-                    _languageWorkerProcess.Dispose();
+                    _languageWorkerProcess?.Dispose();
 
                     foreach (var sub in _eventSubscriptions)
                     {
