@@ -50,7 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _logger.LogInformation("Shuttingdown Rpc Channels Manager");
             _languageWorkerChannelManager.ShutdownChannels();
-            _languageWorkerChannelManager.ShutdownProcessRegistry();
             await _rpcServer.KillAsync();
         }
 

@@ -25,8 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private string _workerId = "testWorkerId";
         private string _scriptRootPath = "c:\testdir";
         private IScriptEventManager _eventManager = new ScriptEventManager();
-        private Mock<IProcessRegistry> _mockProcessRegistry = new Mock<IProcessRegistry>();
-        private Mock<IWorkerProcessFactory> _mockProcessFactory = new Mock<IWorkerProcessFactory>();
         private Mock<IMetricsLogger> _mockMetricsLogger = new Mock<IMetricsLogger>();
         private Mock<ILanguageWorkerConsoleLogSource> _mockConsoleLogger = new Mock<ILanguageWorkerConsoleLogSource>();
         private Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
@@ -41,30 +39,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             _logger = new TestLogger("FunctionDispatcherTests");
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
-
             var testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
+            _mockLanguageWorkerProcess.Setup(m => m.StartProcess());
+
             _workerChannel = new LanguageWorkerChannel(
                _workerId,
                _scriptRootPath,
                _eventManager,
-               _mockProcessFactory.Object,
-               _mockProcessRegistry.Object,
                testWorkerConfig,
-               _testRpcServer.Uri,
+               _mockLanguageWorkerProcess.Object,
                _loggerFactory,
                _mockMetricsLogger.Object,
-               0,
-               _mockConsoleLogger.Object);
+               0);
             _workerChannel.WorkerChannelLogger = _logger;
         }
 
         [Fact]
         public async Task StartWorkerProcessAsync_Invoked()
         {
-            var mockLanguageWorkerProcess = new Mock<ILanguageWorkerProcess>();
-            mockLanguageWorkerProcess.Setup(m => m.StartProcess());
-            await _workerChannel.StartWorkerProcessAsync(mockLanguageWorkerProcess.Object);
-            mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
+            await _workerChannel.StartWorkerProcessAsync();
+            _mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
         }
 
         [Fact]

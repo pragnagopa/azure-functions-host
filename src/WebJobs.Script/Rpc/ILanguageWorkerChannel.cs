@@ -23,6 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         void SendFunctionEnvironmentReloadRequest();
 
-        Task StartWorkerProcessAsync(ILanguageWorkerProcess languageWorkerProcess = null);
+        Task StartWorkerProcessAsync();
     }
 }

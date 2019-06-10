@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testLogger.LogInformation("SendInvocationRequest called");
         }
 
-        public Task StartWorkerProcessAsync(ILanguageWorkerProcess languageWorkerProcess)
+        public Task StartWorkerProcessAsync()
         {
             // To verify FunctionDispatcher transistions
             Task.Delay(TimeSpan.FromMilliseconds(100));

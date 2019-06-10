@@ -32,9 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptEventManager _eventManager;
         private readonly WorkerConfig _workerConfig;
         private readonly string _runtime;
-        private readonly IWorkerProcessFactory _processFactory;
-        private readonly IProcessRegistry _processRegistry;
-        private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
         private readonly ILoggerFactory _loggerFactory;
 
         private bool _disposed;
@@ -52,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
-        private Uri _serverUri;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
         private IEnumerable<FunctionMetadata> _functions;
         private Capabilities _workerCapabilities;
@@ -68,14 +64,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            string workerId,
            string rootScriptPath,
            IScriptEventManager eventManager,
-           IWorkerProcessFactory processFactory,
-           IProcessRegistry processRegistry,
            WorkerConfig workerConfig,
-           Uri serverUri,
+           ILanguageWorkerProcess languageWorkerProcess,
            ILoggerFactory loggerFactory,
            IMetricsLogger metricsLogger,
            int attemptCount,
-           ILanguageWorkerConsoleLogSource consoleLogSource,
            bool isWebHostChannel = false,
            IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
@@ -83,13 +76,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
             _workerConfig = workerConfig;
-            _serverUri = serverUri;
             _runtime = workerConfig.Language;
             _isWebHostChannel = isWebHostChannel;
             _loggerFactory = loggerFactory;
-            _consoleLogSource = consoleLogSource;
-            _processFactory = processFactory;
-            _processRegistry = processRegistry;
+            _languageWorkerProcess = languageWorkerProcess;
+
             _workerChannelLogger = loggerFactory.CreateLogger($"LanguageWorkerChannel.{_runtime}.{_workerId}");
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
@@ -140,20 +131,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public Task StartWorkerProcessAsync(ILanguageWorkerProcess languageWorkerProcess = null)
+        public Task StartWorkerProcessAsync()
         {
-            if (languageWorkerProcess == null)
-            {
-                languageWorkerProcess = new LanguageWorkerProcess(_runtime, _workerId, _rootScriptPath, _serverUri, _workerConfig.Arguments, _eventManager, _processFactory, _processRegistry, _loggerFactory, _consoleLogSource);
-            }
-
-            _languageWorkerProcess = languageWorkerProcess;
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(TimeSpan.FromSeconds(LanguageWorkerConstants.ProcessStartTimeoutSeconds))
                 .Take(1)
                 .Subscribe(SendWorkerInitRequest, HandleWorkerChannelError);
 
-            languageWorkerProcess.StartProcess();
+            _languageWorkerProcess.StartProcess();
 
             _state = LanguageWorkerChannelState.Initializing;
 
