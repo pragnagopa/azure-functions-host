@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;
-        private readonly ILanguageWorkerChannelManager _languageWorkerChannelManager;
+        private readonly IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
 
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             LanguageWorkerConstants.JavaLanguageWorkerName
         };
 
-        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, ILanguageWorkerChannelManager languageWorkerChannelManager, ILogger<RpcInitializationService> logger)
+        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, ILogger<RpcInitializationService> logger)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _logger = logger;
