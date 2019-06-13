@@ -8,40 +8,37 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class LanguageWorkerChannelManager : ILanguageWorkerChannelManager
+    public class WebHostLanguageWorkerChannelManager : IWebHostLanguageWorkerChannelManager
     {
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
         private readonly ILogger _logger = null;
-        private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcServer _rpcServer = null;
-        private readonly ILanguageWorkerProcessManager _languageWorkerProcessManager;
+        private readonly ILanguageWorkerProcessFactory _languageWorkerProcessManager;
         private readonly IDisposable _rpcChannelReadySubscriptions;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
 
         private ConcurrentDictionary<string, List<ILanguageWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<ILanguageWorkerChannel>>();
 
-        public LanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerProcessManager languageWorkerProcessManager)
+        public WebHostLanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerProcessFactory languageWorkerProcessManager)
         {
             _rpcServer = rpcServer;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
-            _logger = loggerFactory.CreateLogger<LanguageWorkerChannelManager>();
+            _logger = loggerFactory.CreateLogger<WebHostLanguageWorkerChannelManager>();
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _applicationHostOptions = applicationHostOptions;
             _languageWorkerProcessManager = languageWorkerProcessManager;
@@ -50,27 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
             _rpcChannelReadySubscriptions = _eventManager.OfType<RpcWebHostChannelReadyEvent>()
                .Subscribe(AddOrUpdateWorkerChannels);
-        }
-
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
-        {
-            var languageWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            if (languageWorkerConfig == null)
-            {
-                throw new InvalidOperationException($"WorkerCofig for runtime: {language} not found");
-            }
-            ILanguageWorkerProcess languageWorkerProcess = _languageWorkerProcessManager.CreateLanguageWorkerProcess(workerId, language, scriptRootPath);
-            return new LanguageWorkerChannel(
-                         workerId,
-                         scriptRootPath,
-                         _eventManager,
-                         languageWorkerConfig,
-                         languageWorkerProcess,
-                         _loggerFactory,
-                         metricsLogger,
-                         attemptCount,
-                         isWebhostChannel,
-                         managedDependencyOptions);
         }
 
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)

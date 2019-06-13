@@ -5,7 +5,7 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public interface ILanguageWorkerProcessManager : IDisposable
+    public interface ILanguageWorkerProcessFactory : IDisposable
     {
         ILanguageWorkerProcess CreateLanguageWorkerProcess(string workerId, string runtime, string scriptRootPath);
     }

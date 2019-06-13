@@ -122,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
+                services.AddSingleton<IJobHostLanguageWorkerChannelManager, JobHostLanguageWorkerChannelManager>();
                 services.AddSingleton<IFunctionDispatcher, FunctionDispatcher>();
                 services.AddSingleton<IFunctionDispatcherLoadBalancer, FunctionDispatcherLoadBalancer>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
@@ -188,8 +189,9 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
             services.AddSingleton<IRpcServer, GrpcServer>();
             services.TryAddSingleton<ILanguageWorkerConsoleLogSource, LanguageWorkerConsoleLogSource>();
-            services.AddSingleton<ILanguageWorkerProcessManager, LanguageWorkerProcessManager>();
-            services.TryAddSingleton<ILanguageWorkerChannelManager, LanguageWorkerChannelManager>();
+            services.AddSingleton<ILanguageWorkerProcessFactory, LanguageWorkerProcessFactory>();
+            services.AddSingleton<ILanguageWorkerChannelFactory, LanguageWorkerChannelFactory>();
+            services.TryAddSingleton<IWebHostLanguageWorkerChannelManager, WebHostLanguageWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);

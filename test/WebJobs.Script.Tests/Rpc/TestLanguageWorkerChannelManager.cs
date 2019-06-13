@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class TestLanguageWorkerChannelManager : ILanguageWorkerChannelManager
+    public class TestLanguageWorkerChannelManager : IWebHostLanguageWorkerChannelManager
     {
         private IScriptEventManager _eventManager;
         private ILogger _testLogger;
