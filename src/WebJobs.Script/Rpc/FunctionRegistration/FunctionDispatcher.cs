@@ -98,6 +98,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal IWebHostLanguageWorkerChannelManager WebHostLanguageWorkerChannelManager => _webHostLanguageWorkerChannelManager;
 
+        internal ConcurrentBag<Exception> LanguageWorkerErrors => _languageWorkerErrors;
+
         internal async void InitializeJobhostLanguageWorkerChannelAsync()
         {
             await InitializeJobhostLanguageWorkerChannelAsync(0);
@@ -219,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal IEnumerable<ILanguageWorkerChannel> GetInitializedWorkerChannels()
         {
             IEnumerable<ILanguageWorkerChannel> webhostChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
-            IEnumerable<ILanguageWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_workerState.GetChannels());
+            IEnumerable<ILanguageWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
             IEnumerable<ILanguageWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == LanguageWorkerChannelState.Initialized);
             if (initializedWorkers.Count() > _maxProcessCount)
             {

@@ -17,25 +17,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
         private readonly ILogger _logger = null;
-        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
         private readonly IScriptEventManager _eventManager = null;
-        private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcServer _rpcServer = null;
         private readonly ILanguageWorkerProcessFactory _languageWorkerProcessFactory;
-        private readonly IDisposable _rpcChannelReadySubscriptions;
 
-        public LanguageWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerProcessFactory languageWorkerProcessFactory)
+        public LanguageWorkerChannelFactory(IScriptEventManager eventManager, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
+             ILanguageWorkerProcessFactory languageWorkerProcessFactory)
         {
             _rpcServer = rpcServer;
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<WebHostLanguageWorkerChannelManager>();
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-            _applicationHostOptions = applicationHostOptions;
             _languageWorkerProcessFactory = languageWorkerProcessFactory;
         }
 
