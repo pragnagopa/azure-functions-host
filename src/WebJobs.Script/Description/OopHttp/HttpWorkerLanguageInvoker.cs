@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
             _functionDispatcher = fuctionDispatcher;
             _logger = loggerFactory.CreateLogger<HttpWorkerLanguageInvoker>();
-            _languageWorkerUrl = "http://localhost:64195/";
+            _languageWorkerUrl = "http://localhost:5000/api/values";
             _httpClient = new HttpClient();
             _httpClient.BaseAddress = new Uri(_languageWorkerUrl);
             InitializeFileWatcherIfEnabled();
@@ -55,10 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            // Need to wait for atleast one language worker process to be initialized before accepting invocations
-            await DelayUntilFunctionDispatcherInitialized();
             string invocationId = context.ExecutionContext.InvocationId.ToString();
-
             // TODO: fix extensions and remove
             object triggerValue = TransformInput(parameters[0], context.Binder.BindingData);
             var triggerInput = (_bindingMetadata.Name, _bindingMetadata.DataType ?? DataType.String, triggerValue);
@@ -80,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             ScriptInvocationResult result = null;
             _logger.LogDebug($"Sending invocation id:{invocationId}");
-            HttpResponseMessage response = await _httpClient.GetAsync("todo");
+            HttpResponseMessage response = await _httpClient.GetAsync(_languageWorkerUrl);
             if (response.IsSuccessStatusCode)
             {
                 result = await response.Content.ReadAsAsync<ScriptInvocationResult>();

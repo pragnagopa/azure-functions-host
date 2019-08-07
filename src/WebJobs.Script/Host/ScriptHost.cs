@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // Initialize language worker function dispatcher
-                await _functionDispatcher.InitializeAsync(functions);
+                // await _functionDispatcher.InitializeAsync(functions);
 
                 var directTypes = GetDirectTypes(functions);
                 await InitializeFunctionDescriptorsAsync(functions);
@@ -466,17 +466,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (_environment.IsPlaceholderModeEnabled()
-                || string.Equals(_workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-            }
-            else
-            {
-                _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
-                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
-            }
+            _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
+            _descriptorProviders.Add(new HttpWorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
 
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
