@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionDispatcher _functionDispatcher;
+        private readonly string _languageWorkerUrl;
+        private HttpClient _httpClient;
 
         internal HttpWorkerLanguageInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionDispatcher fuctionDispatcher)
@@ -35,7 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
             _functionDispatcher = fuctionDispatcher;
             _logger = loggerFactory.CreateLogger<HttpWorkerLanguageInvoker>();
-
+            _languageWorkerUrl = "http://localhost:64195/";
+            _httpClient = new HttpClient();
+            _httpClient.BaseAddress = new Uri(_languageWorkerUrl);
             InitializeFileWatcherIfEnabled();
 
             if (_outputBindings.Any(p => p.Metadata.IsReturn))
@@ -73,11 +78,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Logger = context.Logger
             };
 
-            ScriptInvocationResult result;
+            ScriptInvocationResult result = null;
             _logger.LogDebug($"Sending invocation id:{invocationId}");
-            _functionDispatcher.Invoke(invocationContext);
-            result = await invocationContext.ResultSource.Task;
-
+            HttpResponseMessage response = await _httpClient.GetAsync("todo");
+            if (response.IsSuccessStatusCode)
+            {
+                result = await response.Content.ReadAsAsync<ScriptInvocationResult>();
+            }
             await BindOutputsAsync(triggerValue, context.Binder, result);
             return result.Return;
         }
