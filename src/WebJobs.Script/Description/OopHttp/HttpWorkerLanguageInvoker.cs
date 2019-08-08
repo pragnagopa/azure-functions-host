@@ -11,6 +11,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.OopHttp;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
@@ -75,15 +76,45 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Logger = context.Logger
             };
 
-            ScriptInvocationResult result = null;
             _logger.LogDebug($"Sending invocation id:{invocationId}");
+            var invocationRequest = GetInvocationRequest(invocationContext);
             HttpResponseMessage response = await _httpClient.GetAsync(_languageWorkerUrl);
-            if (response.IsSuccessStatusCode)
+            ScriptInvocationResult result = new ScriptInvocationResult()
             {
-                result = await response.Content.ReadAsAsync<ScriptInvocationResult>();
-            }
+                Outputs = new Dictionary<string, object>(),
+                Return = response.ToObject()
+            };
+            invocationContext.ResultSource.SetResult(result);
             await BindOutputsAsync(triggerValue, context.Binder, result);
             return result.Return;
+        }
+
+        internal IDictionary<string, object> GetInvocationRequest(ScriptInvocationContext context)
+        {
+            IDictionary<string, object> invocationRequest = new Dictionary<string, object>();
+            try
+            {
+                    var functionMetadata = context.FunctionMetadata;
+
+                    foreach (var pair in context.BindingData)
+                    {
+                        if (pair.Value != null)
+                        {
+                            // TODO send this in a separate
+                            _httpClient.DefaultRequestHeaders.Add(pair.Key, pair.Value.ToString());
+                        }
+                    }
+                    foreach (var input in context.Inputs)
+                    {
+                        _httpClient.DefaultRequestHeaders.Add(input.name, input.val.ToString());
+                    }
+                    return invocationRequest;
+            }
+            catch (Exception invokeEx)
+            {
+                context.ResultSource.TrySetException(invokeEx);
+                return null;
+            }
         }
 
         private async Task DelayUntilFunctionDispatcherInitialized()

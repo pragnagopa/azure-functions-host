@@ -26,36 +26,36 @@ namespace Microsoft.Azure.WebJobs.Script.OopHttp
             return Utilities.ConvertFromHttpMessageToExpando(responseMessage);
         }
 
-        public static TypedData ToHttpOppHeader(this object value, ILogger logger)
-        {
-            TypedData typedData = new TypedData();
-            if (value == null)
-            {
-                return typedData;
-            }
+        //public static TypedData ToHttpOppHeader(this object value, ILogger logger)
+        //{
+        //    TypedData typedData = new TypedData();
+        //    if (value == null)
+        //    {
+        //        return typedData;
+        //    }
 
-            if (value is byte[] arr)
-            {
-                typedData.Bytes = ByteString.CopyFrom(arr);
-            }
-            else if (value is JObject jobj)
-            {
-                typedData.Json = jobj.ToString();
-            }
-            else if (value is string str)
-            {
-                typedData.String = str;
-            }
-            else if (value is HttpRequest request)
-            {
-                typedData = request;
-            }
-            else
-            {
-                typedData = value.ToRpcDefault();
-            }
+        //    if (value is byte[] arr)
+        //    {
+        //        typedData.Bytes = ByteString.CopyFrom(arr);
+        //    }
+        //    else if (value is JObject jobj)
+        //    {
+        //        typedData.Json = jobj.ToString();
+        //    }
+        //    else if (value is string str)
+        //    {
+        //        typedData.String = str;
+        //    }
+        //    else if (value is HttpRequest request)
+        //    {
+        //        typedData = request;
+        //    }
+        //    else
+        //    {
+        //        typedData = value.ToRpcDefault();
+        //    }
 
-            return typedData;
-        }
+        //    return typedData;
+        //}
     }
 }
