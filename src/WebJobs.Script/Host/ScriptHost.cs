@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // Initialize language worker function dispatcher
-                // await _functionDispatcher.InitializeAsync(functions);
+                await _functionDispatcher.InitializeAsync(functions);
 
                 var directTypes = GetDirectTypes(functions);
                 await InitializeFunctionDescriptorsAsync(functions);
