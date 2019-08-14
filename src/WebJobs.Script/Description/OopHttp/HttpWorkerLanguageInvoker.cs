@@ -82,9 +82,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             ScriptInvocationResult result = new ScriptInvocationResult()
             {
                 Outputs = new Dictionary<string, object>(),
-                Return = response.ToObject()
+                Return = await response.ToObject()
             };
-            invocationContext.ResultSource.SetResult(result);
+
             await BindOutputsAsync(triggerValue, context.Binder, result);
             return result.Return;
         }

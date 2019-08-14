@@ -7,6 +7,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -21,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.OopHttp
     {
         private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
-        public static object ToObject(this HttpResponseMessage responseMessage)
+        public static Task<object> ToObject(this HttpResponseMessage responseMessage)
         {
             return Utilities.ConvertFromHttpMessageToExpando(responseMessage);
         }
