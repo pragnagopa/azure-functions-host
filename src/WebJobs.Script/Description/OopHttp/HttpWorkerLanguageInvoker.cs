@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
             _functionDispatcher = fuctionDispatcher;
             _logger = loggerFactory.CreateLogger<HttpWorkerLanguageInvoker>();
-            _languageWorkerUrl = "http://localhost:5000/api/values";
+            _languageWorkerUrl = "http://localhost:8000/invokeFunction";
             _httpClient = new HttpClient();
             _httpClient.BaseAddress = new Uri(_languageWorkerUrl);
             InitializeFileWatcherIfEnabled();

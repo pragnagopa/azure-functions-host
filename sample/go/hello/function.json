@@ -1,18 +1,20 @@
 {
-  "entryPoint": "Run",
   "scriptFile": "hello.go",
+  "entryPoint": "run",
   "bindings": [
     {
-      "name": "req",
-      "type": "httpTrigger",
+      "name": "myQueueItem",
+      "type": "queueTrigger",
       "direction": "in",
-      "authLevel": "anonymous"
+      "queueName": "test-input-node",
+      "connection": "AzureWebJobsStorage"
     },
     {
       "name": "$return",
-      "type": "http",
-      "direction": "out"
+      "type": "queue",
+      "direction": "out",
+      "queueName": "myqueue",
+      "connection": "AzureWebJobsStorage"
     }
-  ],
-  "disabled": false
+  ]
 }
