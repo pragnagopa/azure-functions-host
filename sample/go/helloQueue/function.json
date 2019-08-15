@@ -1,6 +1,5 @@
 {
-  "scriptFile": "hello.go",
-  "entryPoint": "run",
+  "entryPoint": "queueTriggerHandler",
   "bindings": [
     {
       "name": "myQueueItem",

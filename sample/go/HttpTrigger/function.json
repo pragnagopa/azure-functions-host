@@ -1,5 +1,5 @@
 {
-  "entryPoint": "runHttpFunc",
+  "entryPoint": "httpTriggerHandler",
   "bindings": [
     {
       "type": "httpTrigger",

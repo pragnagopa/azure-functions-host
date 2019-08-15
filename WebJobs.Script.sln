@@ -289,7 +289,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "helloQueue", "helloQueue", "{D80F2B38-BB3B-4B1D-8047-8329C1D19137}"
 	ProjectSection(SolutionItems) = preProject
 		sample\go\helloQueue\function.json = sample\go\helloQueue\function.json
-		sample\go\helloQueue\hello.go = sample\go\helloQueue\hello.go
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger", "HttpTrigger", "{2DA8EE30-012A-4666-AA2B-27E0DEFD17AA}"

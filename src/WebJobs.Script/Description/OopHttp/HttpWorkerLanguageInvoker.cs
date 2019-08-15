@@ -7,9 +7,11 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Formatting;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.OopHttp;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -39,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
             _functionDispatcher = fuctionDispatcher;
             _logger = loggerFactory.CreateLogger<HttpWorkerLanguageInvoker>();
-            _languageWorkerUrl = "http://localhost:8000/invokeFunction";
+            _languageWorkerUrl = "http://localhost:8000/invoke";
             InitializeFileWatcherIfEnabled();
 
             if (_outputBindings.Any(p => p.Metadata.IsReturn))
@@ -77,8 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             _logger.LogDebug($"Sending invocation id:{invocationId}");
-            var invocationRequest = GetInvocationRequest(invocationContext);
-            HttpResponseMessage response = await _httpClient.GetAsync(_languageWorkerUrl);
+            AddHttpHeaders(invocationContext);
+            string queryString = GetQueryStringParams(invocationContext.Inputs);
+
+            string functionInvokeUrl = _languageWorkerUrl + "/" + Metadata.EntryPoint;
+            HttpResponseMessage response = await _httpClient.GetAsync(functionInvokeUrl + queryString);
             ScriptInvocationResult result = new ScriptInvocationResult()
             {
                 Outputs = new Dictionary<string, object>(),
@@ -89,32 +94,47 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return result.Return;
         }
 
-        internal IDictionary<string, object> GetInvocationRequest(ScriptInvocationContext context)
+        internal string GetQueryStringParams(IEnumerable<(string name, DataType type, object val)> inputs)
         {
-            IDictionary<string, object> invocationRequest = new Dictionary<string, object>();
+            var parameters = new Dictionary<string, string>();
+            foreach (var input in inputs)
+            {
+                if (input.val is HttpRequest request)
+                {
+                    foreach (var q in request.Query)
+                    {
+                        parameters.Add(q.Key, q.Value);
+                    }
+                }
+            }
+            string queryString = new FormDataCollection(parameters).ReadAsNameValueCollection().ToString();
+            return "?" + queryString;
+        }
+
+        internal void AddHttpHeaders(ScriptInvocationContext context)
+        {
             try
             {
-                    var functionMetadata = context.FunctionMetadata;
+                var functionMetadata = context.FunctionMetadata;
+                _httpClient.DefaultRequestHeaders.Add("entryPoint", context.FunctionMetadata.EntryPoint);
 
-                    foreach (var pair in context.BindingData)
+                foreach (var pair in context.BindingData)
+                {
+                    if (pair.Value != null)
                     {
-                        if (pair.Value != null)
-                        {
                         // TODO send this in a separate
                         // _httpClient.DefaultRequestHeaders.Add(pair.Key, pair.Value.ToString());
                         _httpClient.DefaultRequestHeaders.Add(pair.Key, pair.Value.ToHttpOppHeader());
                     }
-                    }
-                    foreach (var input in context.Inputs)
-                    {
-                        _httpClient.DefaultRequestHeaders.Add(input.name, input.val.ToString());
-                    }
-                    return invocationRequest;
+                }
+                foreach (var input in context.Inputs)
+                {
+                    _httpClient.DefaultRequestHeaders.Add(input.name, input.val.ToHttpOppHeader());
+                }
             }
             catch (Exception invokeEx)
             {
                 context.ResultSource.TrySetException(invokeEx);
-                return null;
             }
         }
 

@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.OopHttp
             {
                 result = reader.ReadToEnd();
             }
-            request.Body.Position = 0;
+            // request.Body.Position = 0;
             return result;
         }
     }
