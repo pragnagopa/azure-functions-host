@@ -227,10 +227,10 @@ namespace Microsoft.Azure.WebJobs.Script
                     .Where(p => fileSystem.Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName)
                     .ToArray();
 
-                if (functionFiles.Length == 0)
-                {
-                    throw new FunctionConfigurationException("No function script files present.");
-                }
+                //if (functionFiles.Length == 0)
+                //{
+                //    throw new FunctionConfigurationException("No function script files present.");
+                //}
 
                 if (functionFiles.Length == 1)
                 {
@@ -249,8 +249,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (string.IsNullOrEmpty(functionPrimary))
             {
-                throw new FunctionConfigurationException("Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
-                    "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
+                //throw new FunctionConfigurationException("Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
+                //    "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
+                return scriptDirectory;
             }
 
             return Path.GetFullPath(functionPrimary);

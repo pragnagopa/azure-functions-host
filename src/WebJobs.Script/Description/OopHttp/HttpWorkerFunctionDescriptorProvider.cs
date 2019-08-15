@@ -38,10 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
 
-            if (!_dispatcher.IsSupported(functionMetadata, _workerRuntime))
-            {
-                return (false, null);
-            }
+            // Support any language
+            //if (!_dispatcher.IsSupported(functionMetadata, _workerRuntime))
+            //{
+            //    return (false, null);
+            //}
 
             return await base.TryCreate(functionMetadata);
         }

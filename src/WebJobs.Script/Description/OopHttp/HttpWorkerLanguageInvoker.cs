@@ -40,8 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _functionDispatcher = fuctionDispatcher;
             _logger = loggerFactory.CreateLogger<HttpWorkerLanguageInvoker>();
             _languageWorkerUrl = "http://localhost:8000/invokeFunction";
-            _httpClient = new HttpClient();
-            _httpClient.BaseAddress = new Uri(_languageWorkerUrl);
             InitializeFileWatcherIfEnabled();
 
             if (_outputBindings.Any(p => p.Metadata.IsReturn))
@@ -56,6 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
+            _httpClient = new HttpClient();
+            _httpClient.BaseAddress = new Uri(_languageWorkerUrl);
             string invocationId = context.ExecutionContext.InvocationId.ToString();
             // TODO: fix extensions and remove
             object triggerValue = TransformInput(parameters[0], context.Binder.BindingData);
@@ -100,9 +100,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         if (pair.Value != null)
                         {
-                            // TODO send this in a separate
-                            _httpClient.DefaultRequestHeaders.Add(pair.Key, pair.Value.ToString());
-                        }
+                        // TODO send this in a separate
+                        // _httpClient.DefaultRequestHeaders.Add(pair.Key, pair.Value.ToString());
+                        _httpClient.DefaultRequestHeaders.Add(pair.Key, pair.Value.ToHttpOppHeader());
+                    }
                     }
                     foreach (var input in context.Inputs)
                     {

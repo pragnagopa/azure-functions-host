@@ -27,36 +27,37 @@ namespace Microsoft.Azure.WebJobs.Script.OopHttp
             return Utilities.ConvertFromHttpMessageToExpando(responseMessage);
         }
 
-        //public static TypedData ToHttpOppHeader(this object value, ILogger logger)
-        //{
-        //    TypedData typedData = new TypedData();
-        //    if (value == null)
-        //    {
-        //        return typedData;
-        //    }
+        public static string ToHttpOppHeader(this object value)
+        {
+            if (value == null)
+            {
+                return string.Empty;
+            }
+            if (value is JObject jobj)
+            {
+               return jobj.ToString();
+            }
+            else if (value is string str)
+            {
+                return str;
+            }
+            else if (value is HttpRequest request)
+            {
+                return GetStringRepresentationOfBody(request);
+            }
 
-        //    if (value is byte[] arr)
-        //    {
-        //        typedData.Bytes = ByteString.CopyFrom(arr);
-        //    }
-        //    else if (value is JObject jobj)
-        //    {
-        //        typedData.Json = jobj.ToString();
-        //    }
-        //    else if (value is string str)
-        //    {
-        //        typedData.String = str;
-        //    }
-        //    else if (value is HttpRequest request)
-        //    {
-        //        typedData = request;
-        //    }
-        //    else
-        //    {
-        //        typedData = value.ToRpcDefault();
-        //    }
+            return value.ToString();
+        }
 
-        //    return typedData;
-        //}
+        private static string GetStringRepresentationOfBody(HttpRequest request)
+        {
+            string result;
+            using (StreamReader reader = new StreamReader(request.Body, encoding: Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true))
+            {
+                result = reader.ReadToEnd();
+            }
+            request.Body.Position = 0;
+            return result;
+        }
     }
 }

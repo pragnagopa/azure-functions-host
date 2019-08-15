@@ -286,10 +286,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "go", "go", "{BC3F90CD-42D3-
 		sample\go\host.json = sample\go\host.json
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "hello", "hello", "{AD4C9C15-58DD-41CB-8B0B-B4AD0F69DBED}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "helloQueue", "helloQueue", "{D80F2B38-BB3B-4B1D-8047-8329C1D19137}"
 	ProjectSection(SolutionItems) = preProject
-		sample\go\hello\function.json = sample\go\hello\function.json
-		sample\go\hello\hello.go = sample\go\hello\hello.go
+		sample\go\helloQueue\function.json = sample\go\helloQueue\function.json
+		sample\go\helloQueue\hello.go = sample\go\helloQueue\hello.go
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger", "HttpTrigger", "{2DA8EE30-012A-4666-AA2B-27E0DEFD17AA}"
+	ProjectSection(SolutionItems) = preProject
+		sample\go\HttpTrigger\function.json = sample\go\HttpTrigger\function.json
 	EndProjectSection
 EndProject
 Global
@@ -393,7 +398,8 @@ Global
 		{B773D1BC-495A-45CD-82CF-393A698FD958} = {9D87C796-7914-4A43-B843-579562393E10}
 		{DCBE49B4-CE2C-4D44-8DD9-2B771343E1C6} = {34506711-9D66-41EF-BBA1-9A9DC1140209}
 		{BC3F90CD-42D3-43C1-BC17-36FF0B4EC72E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{AD4C9C15-58DD-41CB-8B0B-B4AD0F69DBED} = {BC3F90CD-42D3-43C1-BC17-36FF0B4EC72E}
+		{D80F2B38-BB3B-4B1D-8047-8329C1D19137} = {BC3F90CD-42D3-43C1-BC17-36FF0B4EC72E}
+		{2DA8EE30-012A-4666-AA2B-27E0DEFD17AA} = {BC3F90CD-42D3-43C1-BC17-36FF0B4EC72E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
