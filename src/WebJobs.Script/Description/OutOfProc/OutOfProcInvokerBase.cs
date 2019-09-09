@@ -17,7 +17,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class WorkerLanguageInvoker : FunctionInvokerBase
+    internal class OutOfProcInvokerBase : FunctionInvokerBase
     {
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionDispatcher _functionDispatcher;
 
-        internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
+        internal OutOfProcInvokerBase(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionDispatcher fuctionDispatcher)
             : base(host, functionMetadata, loggerFactory)
         {
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _functionDispatcher = fuctionDispatcher;
-            _logger = loggerFactory.CreateLogger<WorkerLanguageInvoker>();
+            _logger = loggerFactory.CreateLogger<OutOfProcInvokerBase>();
 
             InitializeFileWatcherIfEnabled();
 
