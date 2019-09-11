@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                 var arguments = new WorkerProcessArguments()
                 {
-                    ExecutablePath = description.GetExecutablePath(),
+                    ExecutablePath = description.DefaultExecutablePath,
                     WorkerPath = description.GetWorkerPath()
                 };
 

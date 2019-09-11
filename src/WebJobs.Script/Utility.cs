@@ -479,8 +479,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
             }
-            //return ContainsFunctionWithWorkerRuntime(functionsListWithoutProxies, workerRuntime);
-            return true;
+            return ContainsFunctionWithWorkerRuntime(functionsListWithoutProxies, workerRuntime);
         }
 
         internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions)

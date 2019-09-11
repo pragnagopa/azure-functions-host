@@ -9,14 +9,14 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
     {
         public static void Validate(this WorkerDescription workerDescription)
         {
-            //if (string.IsNullOrEmpty(workerDescription.Language))
-            //{
-            //    throw new ValidationException($"WorkerDescription {nameof(workerDescription.Language)} cannot be empty");
-            //}
-            //if (workerDescription.Extensions == null)
-            //{
-            //    throw new ValidationException($"WorkerDescription {nameof(workerDescription.Extensions)} cannot be null");
-            //}
+            if (string.IsNullOrEmpty(workerDescription.Language))
+            {
+                throw new ValidationException($"WorkerDescription {nameof(workerDescription.Language)} cannot be empty");
+            }
+            if (workerDescription.Extensions == null)
+            {
+                throw new ValidationException($"WorkerDescription {nameof(workerDescription.Extensions)} cannot be null");
+            }
             if (string.IsNullOrEmpty(workerDescription.DefaultExecutablePath))
             {
                 throw new ValidationException($"WorkerDescription {nameof(workerDescription.DefaultExecutablePath)} cannot be empty");

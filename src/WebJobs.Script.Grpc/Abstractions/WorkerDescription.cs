@@ -56,15 +56,5 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
                 return Path.Combine(WorkerDirectory, DefaultWorkerPath);
             }
         }
-
-        public string GetExecutablePath()
-        {
-            string extension = Path.GetExtension(DefaultExecutablePath).ToLowerInvariant().TrimStart('.');
-            if (extension.Equals("exe"))
-            {
-                return Path.Combine(WorkerDirectory, DefaultExecutablePath);
-            }
-            return DefaultExecutablePath;
-        }
     }
 }

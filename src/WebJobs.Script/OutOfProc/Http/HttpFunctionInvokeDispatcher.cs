@@ -80,22 +80,24 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
-            var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount);
-            languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-            _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
-            languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
-                 {
-                     if (workerInitTask.IsCompleted)
-                     {
-                         _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
-                         languageWorkerChannel.SendFunctionLoadRequests();
-                         State = FunctionDispatcherState.Initialized;
-                     }
-                     else
-                     {
-                         _logger.LogWarning("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
-                     }
-                 });
+            // TODO: Add process managment for http invoker
+            // Define _jobHostLanguageWorkerChannelManager to for managing http invoker channels
+            //var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount);
+            //languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+            //_jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
+            //languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
+            //     {
+            //         if (workerInitTask.IsCompleted)
+            //         {
+            //             _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+            //             languageWorkerChannel.SendFunctionLoadRequests();
+            //             State = FunctionDispatcherState.Initialized;
+            //         }
+            //         else
+            //         {
+            //             _logger.LogWarning("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+            //         }
+            //     });
             return Task.CompletedTask;
         }
 
