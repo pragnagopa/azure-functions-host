@@ -7,15 +7,25 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
     public class HttpWorkerErrorEvent : ScriptEvent
     {
-        internal HttpWorkerErrorEvent(string workerId, Exception exception)
+        internal HttpWorkerErrorEvent(string workerId, Exception exception, DateTime createdAt = default)
             : base(nameof(HttpWorkerErrorEvent), EventSources.Rpc)
         {
             WorkerId = workerId;
             Exception = exception;
+            if (createdAt == default)
+            {
+                CreatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                CreatedAt = createdAt;
+            }
         }
 
         public string WorkerId { get; }
 
         public Exception Exception { get; private set; }
+
+        public DateTime CreatedAt { get; private set; }
     }
 }

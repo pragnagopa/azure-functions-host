@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -10,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class HttpWorkerProcess : WorkerProcessBase
+    internal class HttpInvokerProcess : WorkerProcessBase
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly ILogger _workerProcessLogger;
@@ -20,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private string _scriptRootPath;
         private WorkerProcessArguments _workerProcessArguments;
 
-        internal HttpWorkerProcess(string workerId,
+        internal HttpInvokerProcess(string workerId,
                                        string rootScriptPath,
                                        WorkerProcessArguments workerProcessArguments,
                                        IScriptEventManager eventManager,

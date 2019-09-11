@@ -10,33 +10,33 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
-namespace Microsoft.Azure.WebJobs.Script.Rpc
+namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     internal class HttpFunctionInvokeDispatcher : IFunctionDispatcher
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
-        private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
+        private readonly IHttpInvokerChannelFactory _httpInvokerChannelFactory;
         private readonly IEnvironment _environment;
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(LanguageWorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
         private IEnumerable<WorkerConfig> _workerConfigs;
-        private IJobHostLanguageWorkerChannelManager _jobHostLanguageWorkerChannelManager;
         private IDisposable _workerErrorSubscription;
         private IDisposable _workerRestartSubscription;
         private ScriptJobHostOptions _scriptOptions;
         private bool _disposed = false;
         private bool _disposing = false;
-        private string _workerRuntime;
         private IEnumerable<FunctionMetadata> _functions;
-        private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
+        private ConcurrentStack<HttpWorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<HttpWorkerErrorEvent>();
+        private IHttpInvokerChannel _httpInvokerChannel;
 
         public HttpFunctionInvokeDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             IScriptJobHostEnvironment scriptJobHostEnvironment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            ILanguageWorkerChannelFactory languageWorkerChannelFactory,
+            IHttpInvokerChannelFactory httpInvokerChannelFactory,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager)
         {
@@ -52,26 +52,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _scriptOptions = scriptHostOptions.Value;
             _environment = environment;
             _scriptJobHostEnvironment = scriptJobHostEnvironment;
-            _jobHostLanguageWorkerChannelManager = jobHostLanguageWorkerChannelManager;
             _eventManager = eventManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _logger = loggerFactory.CreateLogger<HttpFunctionInvokeDispatcher>();
-            _languageWorkerChannelFactory = languageWorkerChannelFactory;
-            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _httpInvokerChannelFactory = httpInvokerChannelFactory;
 
             State = FunctionDispatcherState.Default;
 
-            _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
+            _workerErrorSubscription = _eventManager.OfType<HttpWorkerErrorEvent>()
                .Subscribe(WorkerError);
-            _workerRestartSubscription = _eventManager.OfType<WorkerRestartEvent>()
+            _workerRestartSubscription = _eventManager.OfType<HttpWorkerRestartEvent>()
                .Subscribe(WorkerRestart);
         }
 
         public FunctionDispatcherState State { get; private set; }
 
-        public IJobHostLanguageWorkerChannelManager JobHostLanguageWorkerChannelManager => _jobHostLanguageWorkerChannelManager;
-
-        internal ConcurrentStack<WorkerErrorEvent> LanguageWorkerErrors => _languageWorkerErrors;
+        internal ConcurrentStack<HttpWorkerErrorEvent> LanguageWorkerErrors => _languageWorkerErrors;
 
         internal async void InitializeJobhostLanguageWorkerChannelAsync()
         {
@@ -81,23 +77,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
             // TODO: Add process managment for http invoker
-            // Define _jobHostLanguageWorkerChannelManager to for managing http invoker channels
-            //var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount);
-            //languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-            //_jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
-            //languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
-            //     {
-            //         if (workerInitTask.IsCompleted)
-            //         {
-            //             _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
-            //             languageWorkerChannel.SendFunctionLoadRequests();
-            //             State = FunctionDispatcherState.Initialized;
-            //         }
-            //         else
-            //         {
-            //             _logger.LogWarning("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
-            //         }
-            //     });
+            _httpInvokerChannel = _httpInvokerChannelFactory.CreateHttpInvokerChannel(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
+            _httpInvokerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
+                 {
+                     if (workerInitTask.IsCompleted)
+                     {
+                         _logger.LogDebug("Adding http invoker channel. workerId:{id}", _httpInvokerChannel.Id);
+                         // TODO: wait for status api ok
+                         State = FunctionDispatcherState.Initialized;
+                     }
+                     else
+                     {
+                         _logger.LogWarning("Failed to start http invoker process. workerId:{id}", _httpInvokerChannel.Id);
+                     }
+                 });
             return Task.CompletedTask;
         }
 
@@ -133,59 +126,58 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return Task.CompletedTask;
         }
 
-        public async void WorkerError(WorkerErrorEvent workerError)
+        public async void WorkerError(HttpWorkerErrorEvent workerError)
         {
             if (!_disposing)
             {
-                _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                _logger.LogDebug("Handling WorkerErrorEvent for workerId:{workerId}", workerError.WorkerId);
                 AddOrUpdateErrorBucket(workerError);
-                await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId);
+                await DisposeAndRestartWorkerChannel(workerError.WorkerId);
             }
         }
 
-        public async void WorkerRestart(WorkerRestartEvent workerRestart)
+        public async void WorkerRestart(HttpWorkerRestartEvent workerRestart)
         {
             if (!_disposing)
             {
-                _logger.LogDebug("Handling WorkerRestartEvent for runtime:{runtime}, workerId:{workerId}", workerRestart.Language, workerRestart.WorkerId);
-                await DisposeAndRestartWorkerChannel(workerRestart.Language, workerRestart.WorkerId);
+                _logger.LogDebug("Handling WorkerRestartEvent for workerId:{workerId}", workerRestart.WorkerId);
+                await DisposeAndRestartWorkerChannel(workerRestart.WorkerId);
             }
         }
 
-        private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId)
+        private async Task DisposeAndRestartWorkerChannel(string workerId)
         {
-                _logger.LogDebug("Disposing channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
-                var channel = _jobHostLanguageWorkerChannelManager.GetChannels().Where(ch => ch.Id == workerId).FirstOrDefault();
-                if (channel != null)
+                _logger.LogDebug("Disposing channel for workerId: {channelId}", workerId);
+                if (_httpInvokerChannel != null)
                 {
-                    _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel);
+                    (_httpInvokerChannel as IDisposable)?.Dispose();
                 }
-                _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
-                await RestartWorkerChannel(runtime, workerId);
+                _logger.LogDebug("Restarting http invoker channel");
+                await RestartWorkerChannel(workerId);
         }
 
-        private async Task RestartWorkerChannel(string runtime, string workerId)
+        private async Task RestartWorkerChannel(string workerId)
         {
             if (_languageWorkerErrors.Count < 3)
             {
                 await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
             }
-            else if (_jobHostLanguageWorkerChannelManager.GetChannels().Count() == 0)
+            else if (_httpInvokerChannel == null)
             {
-                _logger.LogError("Exceeded language worker restart retry count for runtime:{runtime}. Shutting down Functions Host", runtime);
+                _logger.LogError("Exceeded http invoker restart retry count. Shutting down Functions Host");
                 _scriptJobHostEnvironment.Shutdown();
             }
         }
 
-        private void AddOrUpdateErrorBucket(WorkerErrorEvent currentErrorEvent)
+        private void AddOrUpdateErrorBucket(HttpWorkerErrorEvent currentErrorEvent)
         {
-            if (_languageWorkerErrors.TryPeek(out WorkerErrorEvent top))
+            if (_languageWorkerErrors.TryPeek(out HttpWorkerErrorEvent top))
             {
                 if ((currentErrorEvent.CreatedAt - top.CreatedAt) > thresholdBetweenRestarts)
                 {
                     while (!_languageWorkerErrors.IsEmpty)
                     {
-                        _languageWorkerErrors.TryPop(out WorkerErrorEvent popped);
+                        _languageWorkerErrors.TryPop(out HttpWorkerErrorEvent popped);
                         _logger.LogDebug($"Popping out errorEvent createdAt:{popped.CreatedAt} workerId:{popped.WorkerId}");
                     }
                 }
@@ -197,10 +189,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (!_disposed && disposing)
             {
-                _logger.LogDebug("Disposing FunctionDispatcher");
+                _logger.LogDebug("Disposing HttpFunctionInvokeDispatcher");
                 _workerErrorSubscription.Dispose();
                 _workerRestartSubscription.Dispose();
-                _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();
                 _disposed = true;
             }
         }
