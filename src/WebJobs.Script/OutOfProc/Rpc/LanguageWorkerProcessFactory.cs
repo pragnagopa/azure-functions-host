@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             WorkerConfig workerConfig = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerProcess.{runtime}.{workerId}");
-            return new LanguageWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig.Arguments, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
+            return new RpcWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig.Arguments, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
         }
     }
 }

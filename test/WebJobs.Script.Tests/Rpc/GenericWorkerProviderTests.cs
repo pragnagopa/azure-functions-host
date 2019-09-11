@@ -229,14 +229,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [MemberData(nameof(InvalidWorkerDescriptions))]
         public void InvalidWorkerDescription_Throws(WorkerDescription workerDescription)
         {
-            Assert.Throws<ValidationException>(() => workerDescription.Validate());
+            Assert.Throws<ValidationException>(() => workerDescription.ValidateRpcWorkerDescription());
         }
 
         [Theory]
         [MemberData(nameof(ValidWorkerDescriptions))]
         public void ValidateWorkerDescription_Succeeds(WorkerDescription workerDescription)
         {
-            workerDescription.Validate();
+            workerDescription.ValidateRpcWorkerDescription();
         }
 
         private IEnumerable<IWorkerProvider> TestReadWorkerProviderFromConfig(IEnumerable<TestLanguageWorkerConfig> configs, ILogger testLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)

@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class LanguageWorkerProcess : ILanguageWorkerProcess, IDisposable
+    internal abstract class WorkerProcessBase : ILanguageWorkerProcess, IDisposable
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
@@ -22,15 +22,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptEventManager _eventManager;
 
         private Process _process;
-        private string _runtime;
         private string _workerId;
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal LanguageWorkerProcess(string runtime,
-                                       string workerId,
+        internal WorkerProcessBase(string workerId,
                                        string rootScriptPath,
-                                       Uri serverUri,
                                        WorkerProcessArguments workerProcessArguments,
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
@@ -38,32 +35,23 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                        ILogger workerProcessLogger,
                                        ILanguageWorkerConsoleLogSource consoleLogSource)
         {
-            _runtime = runtime;
             _workerId = workerId;
             _processFactory = processFactory;
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
             _consoleLogSource = consoleLogSource;
             _eventManager = eventManager;
-
-            var workerContext = new WorkerContext()
-            {
-                RequestId = Guid.NewGuid().ToString(),
-                MaxMessageLength = LanguageWorkerConstants.DefaultMaxMessageLengthBytes,
-                WorkerId = _workerId,
-                Arguments = workerProcessArguments,
-                WorkingDirectory = rootScriptPath,
-                ServerUri = serverUri,
-            };
-            _process = _processFactory.CreateWorkerProcess(workerContext);
         }
 
         public int Id => _process.Id;
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
+        internal abstract Process CreateWorkerProcess();
+
         public Task StartProcessAsync()
         {
+            _process = CreateWorkerProcess();
             try
             {
                 _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
@@ -84,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             catch (Exception ex)
             {
-                _workerProcessLogger.LogError(ex, "Failed to start Language Worker Channel for language :{_runtime}", _runtime);
+                _workerProcessLogger.LogError(ex, "Failed to start Language Worker Channel for language");
                 return Task.FromException(ex);
             }
         }
@@ -186,21 +174,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal void HandleWorkerProcessExitError(LanguageWorkerProcessExitException langExc)
-        {
-            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            if (langExc != null && langExc.ExitCode != -1)
-            {
-                _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited.", _process.StartInfo.FileName);
-                _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, langExc));
-            }
-        }
+        internal abstract void HandleWorkerProcessExitError(LanguageWorkerProcessExitException langExc);
 
-        internal void HandleWorkerProcessRestart()
-        {
-            _workerProcessLogger?.LogInformation("Language Worker Process exited and needs to be restarted.");
-            _eventManager.Publish(new WorkerRestartEvent(_runtime, _workerId));
-        }
+        internal abstract void HandleWorkerProcessRestart();
 
         public void Dispose()
         {

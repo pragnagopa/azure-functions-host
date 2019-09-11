@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
 {
     public static class WorkerDescriptionExtensions
     {
-        public static void Validate(this WorkerDescription workerDescription)
+        public static void ValidateRpcWorkerDescription(this WorkerDescription workerDescription)
         {
             if (string.IsNullOrEmpty(workerDescription.Language))
             {
@@ -17,6 +17,14 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
             {
                 throw new ValidationException($"WorkerDescription {nameof(workerDescription.Extensions)} cannot be null");
             }
+            if (string.IsNullOrEmpty(workerDescription.DefaultExecutablePath))
+            {
+                throw new ValidationException($"WorkerDescription {nameof(workerDescription.DefaultExecutablePath)} cannot be empty");
+            }
+        }
+
+        public static void ValidateHttpWorkerDescription(this WorkerDescription workerDescription)
+        {
             if (string.IsNullOrEmpty(workerDescription.DefaultExecutablePath))
             {
                 throw new ValidationException($"WorkerDescription {nameof(workerDescription.DefaultExecutablePath)} cannot be empty");

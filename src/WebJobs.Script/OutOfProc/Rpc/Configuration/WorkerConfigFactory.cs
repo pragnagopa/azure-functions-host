@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
                 {
                     _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
-                    workerDescription.Validate();
+                    workerDescription.ValidateRpcWorkerDescription();
                     _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
                 }
                 else
