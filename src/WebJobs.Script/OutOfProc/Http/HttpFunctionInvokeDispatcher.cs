@@ -24,8 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
         private readonly IEnvironment _environment;
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
-        private readonly int _debounceSeconds = 10;
-        private readonly int _maxAllowedProcessCount = 10;
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(LanguageWorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
@@ -37,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool _disposed = false;
         private bool _disposing = false;
         private string _workerRuntime;
-        private Action _shutdownStandbyWorkerChannels;
         private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
 
@@ -83,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
-            var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _managedDependencyOptions);
+            var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount);
             languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
             languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>

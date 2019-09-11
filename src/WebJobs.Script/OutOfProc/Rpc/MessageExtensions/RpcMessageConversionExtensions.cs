@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 case RpcDataType.Json:
                     return JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings);
                 case RpcDataType.Http:
-                    return Utilities.ConvertFromHttpMessageToExpando(typedData.Http);
+                    return RpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http);
                 case RpcDataType.Int:
                     return typedData.Int;
                 case RpcDataType.Double:
