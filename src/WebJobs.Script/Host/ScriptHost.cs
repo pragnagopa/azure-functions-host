@@ -467,7 +467,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
             _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
-            _descriptorProviders.Add(new HttpWorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+            _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
 
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))

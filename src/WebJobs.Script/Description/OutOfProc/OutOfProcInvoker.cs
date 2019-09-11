@@ -17,7 +17,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class OutOfProcInvokerBase : FunctionInvokerBase
+    internal class OutOfProcInvoker : FunctionInvokerBase
     {
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
@@ -26,15 +26,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionDispatcher _functionDispatcher;
 
-        internal OutOfProcInvokerBase(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionDispatcher fuctionDispatcher)
+        internal OutOfProcInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionDispatcher functionDispatcher)
             : base(host, functionMetadata, loggerFactory)
         {
             _bindingMetadata = bindingMetadata;
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _functionDispatcher = fuctionDispatcher;
-            _logger = loggerFactory.CreateLogger<OutOfProcInvokerBase>();
+            _functionDispatcher = functionDispatcher;
+            _logger = loggerFactory.CreateLogger<OutOfProcInvoker>();
 
             InitializeFileWatcherIfEnabled();
 
@@ -73,10 +73,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Logger = context.Logger
             };
 
-            ScriptInvocationResult result;
             _logger.LogDebug($"Sending invocation id:{invocationId}");
             await _functionDispatcher.InvokeAsync(invocationContext);
-            result = await invocationContext.ResultSource.Task;
+            ScriptInvocationResult result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);
             return result.Return;

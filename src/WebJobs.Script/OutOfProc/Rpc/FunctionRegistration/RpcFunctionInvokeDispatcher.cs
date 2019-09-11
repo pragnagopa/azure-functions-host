@@ -20,7 +20,7 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class FunctionDispatcher : IFunctionDispatcher
+    internal class RpcFunctionInvokeDispatcher : IFunctionDispatcher
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
 
-        public FunctionDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
+        public RpcFunctionInvokeDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
             IEnvironment environment,
             IScriptJobHostEnvironment scriptJobHostEnvironment,
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager = eventManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _managedDependencyOptions = managedDependencyOptions;
-            _logger = loggerFactory.CreateLogger<FunctionDispatcher>();
+            _logger = loggerFactory.CreateLogger<RpcFunctionInvokeDispatcher>();
             _languageWorkerChannelFactory = languageWorkerChannelFactory;
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
 

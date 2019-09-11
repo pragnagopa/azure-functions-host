@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal abstract class OutOfProcDescriptorProviderBase : FunctionDescriptorProvider
+    internal class OutOfProcDescriptorProviderBase : FunctionDescriptorProvider
     {
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionDispatcher _dispatcher;
@@ -35,13 +35,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
-
-            if (!_dispatcher.IsSupported(functionMetadata, _workerRuntime))
-            {
-                return (false, null);
-            }
-
             return await base.TryCreate(functionMetadata);
+        }
+
+        protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+        {
+            return new OutOfProcInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher);
         }
 
         protected override async Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
