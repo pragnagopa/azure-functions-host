@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             try
             {
-                // TODO: send http request
+                // TODO: convert send ScriptInvocationContext to http request
             }
             catch (Exception invokeEx)
             {
