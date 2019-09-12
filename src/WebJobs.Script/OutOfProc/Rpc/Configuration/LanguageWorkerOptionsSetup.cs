@@ -12,16 +12,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private IConfiguration _configuration;
         private ILogger _logger;
+        private IEnvironment _environment;
 
-        public LanguageWorkerOptionsSetup(IConfiguration configuration, ILoggerFactory loggerFactory)
+        public LanguageWorkerOptionsSetup(IConfiguration configuration, ILoggerFactory loggerFactory, IEnvironment environment)
         {
             _configuration = configuration;
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
+            _environment = environment;
         }
 
         public void Configure(LanguageWorkerOptions options)
         {
-            var configFactory = new WorkerConfigFactory(_configuration, _logger);
+            var configFactory = new WorkerConfigFactory(_configuration, _logger, _environment);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

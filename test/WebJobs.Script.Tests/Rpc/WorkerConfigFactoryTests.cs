@@ -8,19 +8,23 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
+using Moq;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class WorkerConfigFactoryTests
     {
+        private Mock<IEnvironment> _mockEnvironment = new Mock<IEnvironment>();
+
         [Fact]
         public void DefaultLanguageWorkersDir()
         {
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -35,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                    })
                    .Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -51,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -66,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
@@ -90,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
@@ -114,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
@@ -137,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
@@ -160,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", string.Empty }
@@ -194,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
             var languageSection = config.GetSection("languageWorkers:java");
             var testEnvVariables = new Dictionary<string, string>
             {
@@ -206,6 +210,82 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Assert.Equal(2, workerDescription.Arguments.Count);
                 Assert.Equal(expectedArgument, workerDescription.Arguments[1]);
             }
+        }
+
+        [Fact]
+        public void HttpInvokerConfig_Validation_Succeeds()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
+            string expectedWorkersDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var config = new ConfigurationBuilder()
+                   .AddInMemoryCollection(new Dictionary<string, string>
+                   {
+                       [$"{LanguageWorkerConstants.HttpInvokerSectionName}:{LanguageWorkerConstants.WorkerDirectorySectionName}"] = expectedWorkersDir,
+                   })
+                   .Build();
+
+            JObject testHttpInvokerConfig = WorkerConfigTestUtilities.GetTestHttpInvokerConfig(null);
+            TestLanguageWorkerConfig testLanguageWorkerConfig = new TestLanguageWorkerConfig()
+            {
+                Json = testHttpInvokerConfig.ToString()
+            };
+            WorkerConfigTestUtilities.CreateWorkerFolder(expectedWorkersDir, testLanguageWorkerConfig, false);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
+            IList<WorkerConfig> workerConfigs = configFactory.GetConfigs();
+            Assert.Equal(workerConfigs.Count, 1);
+            Assert.Equal(workerConfigs[0].Description.DefaultExecutablePath, WorkerConfigTestUtilities.HttpInvokerExe);
+        }
+
+        [Fact]
+        public void HttpInvokerConfig_With_Args()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
+            string expectedWorkersDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var config = new ConfigurationBuilder()
+                   .AddInMemoryCollection(new Dictionary<string, string>
+                   {
+                       [$"{LanguageWorkerConstants.HttpInvokerSectionName}:{LanguageWorkerConstants.WorkerDirectorySectionName}"] = expectedWorkersDir,
+                   })
+                   .Build();
+            string[] invokerArgs = new string[] { "debugport:10001" };
+            JObject testHttpInvokerConfig = WorkerConfigTestUtilities.GetTestHttpInvokerConfig(invokerArgs);
+            TestLanguageWorkerConfig testLanguageWorkerConfig = new TestLanguageWorkerConfig()
+            {
+                Json = testHttpInvokerConfig.ToString()
+            };
+            WorkerConfigTestUtilities.CreateWorkerFolder(expectedWorkersDir, testLanguageWorkerConfig, false);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
+            IList<WorkerConfig> workerConfigs = configFactory.GetConfigs();
+            Assert.Equal(workerConfigs.Count, 1);
+            Assert.Equal(workerConfigs[0].Description.DefaultExecutablePath, WorkerConfigTestUtilities.HttpInvokerExe);
+            Assert.Equal(workerConfigs[0].Description.Arguments.Count, 1);
+            Assert.Equal(workerConfigs[0].Description.Arguments[0], "debugport:10001");
+        }
+
+        [Fact]
+        public void HttpInvokerConfig_Validation_Fails()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
+            string expectedWorkersDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var config = new ConfigurationBuilder()
+                   .AddInMemoryCollection(new Dictionary<string, string>
+                   {
+                       [$"{LanguageWorkerConstants.HttpInvokerSectionName}:{LanguageWorkerConstants.WorkerDirectorySectionName}"] = expectedWorkersDir,
+                   })
+                   .Build();
+
+            JObject testHttpInvokerConfig = WorkerConfigTestUtilities.GetTestHttpInvokerConfig(null, true);
+            TestLanguageWorkerConfig testLanguageWorkerConfig = new TestLanguageWorkerConfig()
+            {
+                Json = testHttpInvokerConfig.ToString()
+            };
+            WorkerConfigTestUtilities.CreateWorkerFolder(expectedWorkersDir, testLanguageWorkerConfig, false);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
+            IList<WorkerConfig> workerConfigs = configFactory.GetConfigs();
+            Assert.Equal(workerConfigs.Count, 0);
         }
     }
 }

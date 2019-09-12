@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
             }
         }
 
-        public static void ValidateHttpWorkerDescription(this WorkerDescription workerDescription)
+        public static void ValidateHttpInvokerDescription(this WorkerDescription workerDescription)
         {
             if (string.IsNullOrEmpty(workerDescription.DefaultExecutablePath))
             {

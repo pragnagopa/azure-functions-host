@@ -18,10 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 
-        // Section names in host.json
+        // Section names in host.json or AppSettings
         public const string LanguageWorkersSectionName = "languageWorkers";
         public const string WorkersDirectorySectionName = "workersDirectory";
         public const string WorkerDirectorySectionName = "workerDirectory";
+        public const string HttpInvokerSectionName = "httpInvoker";
 
         // Worker description constants
         public const string WorkerDescriptionLanguage = "language";
@@ -29,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
         public const string WorkerDescription = "description";
         public const string WorkerDescriptionArguments = "arguments";
+        public const string WorkerDescriptionHttpInvokerConfigKey = "httpInvoker";
 
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";
