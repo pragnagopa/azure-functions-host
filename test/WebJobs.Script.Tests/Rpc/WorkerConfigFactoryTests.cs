@@ -215,7 +215,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void HttpInvokerConfig_Validation_Succeeds()
         {
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
+            Mock<IEnvironment> mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
             string expectedWorkersDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             var config = new ConfigurationBuilder()
                    .AddInMemoryCollection(new Dictionary<string, string>
@@ -231,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             WorkerConfigTestUtilities.CreateWorkerFolder(expectedWorkersDir, testLanguageWorkerConfig, false);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
+            var configFactory = new WorkerConfigFactory(config, testLogger, mockEnvironment.Object);
             IList<WorkerConfig> workerConfigs = configFactory.GetConfigs();
             Assert.Equal(workerConfigs.Count, 1);
             Assert.Equal(workerConfigs[0].Description.DefaultExecutablePath, WorkerConfigTestUtilities.HttpInvokerExe);
@@ -240,7 +241,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void HttpInvokerConfig_With_Args()
         {
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
+            Mock<IEnvironment> mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
             string expectedWorkersDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             var config = new ConfigurationBuilder()
                    .AddInMemoryCollection(new Dictionary<string, string>
@@ -256,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             WorkerConfigTestUtilities.CreateWorkerFolder(expectedWorkersDir, testLanguageWorkerConfig, false);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
+            var configFactory = new WorkerConfigFactory(config, testLogger, mockEnvironment.Object);
             IList<WorkerConfig> workerConfigs = configFactory.GetConfigs();
             Assert.Equal(workerConfigs.Count, 1);
             Assert.Equal(workerConfigs[0].Description.DefaultExecutablePath, WorkerConfigTestUtilities.HttpInvokerExe);
@@ -267,7 +269,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void HttpInvokerConfig_Validation_Fails()
         {
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
+            Mock<IEnvironment> mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
             string expectedWorkersDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             var config = new ConfigurationBuilder()
                    .AddInMemoryCollection(new Dictionary<string, string>
@@ -283,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             WorkerConfigTestUtilities.CreateWorkerFolder(expectedWorkersDir, testLanguageWorkerConfig, false);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _mockEnvironment.Object);
+            var configFactory = new WorkerConfigFactory(config, testLogger, mockEnvironment.Object);
             IList<WorkerConfig> workerConfigs = configFactory.GetConfigs();
             Assert.Equal(workerConfigs.Count, 0);
         }
