@@ -31,8 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public IHttpInvokerChannel CreateHttpInvokerChannel(string scriptRootPath, IMetricsLogger metricsLogger, int attemptCount)
         {
-            // TODO: figure out how to detect http invoker worker config
-            WorkerConfig languageWorkerConfig = null;
+            if (_workerConfigs == null)
+            {
+                throw new InvalidOperationException($"Did not find worker config for HttpInvoker");
+            }
+            if (_workerConfigs.Count() > 1)
+            {
+                throw new InvalidOperationException($"Found more than one HttpInvoker config");
+            }
             string workerId = Guid.NewGuid().ToString();
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerChannel.{workerId}");
             ILanguageWorkerProcess languageWorkerProcess = _httpInvokerProcessFactory.CreateLanguageWorkerProcess(workerId, scriptRootPath);
@@ -40,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
                          workerId,
                          scriptRootPath,
                          _eventManager,
-                         languageWorkerConfig,
+                         _workerConfigs.ElementAt(0),
                          languageWorkerProcess,
                          workerLogger,
                          metricsLogger,
