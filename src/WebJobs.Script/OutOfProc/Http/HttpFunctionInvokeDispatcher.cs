@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentStack<HttpWorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<HttpWorkerErrorEvent>();
         private IHttpInvokerChannel _httpInvokerChannel;
+        private IHttpInvokerService _httpInvokerService;
 
         public HttpFunctionInvokeDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -45,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IHttpInvokerChannelFactory httpInvokerChannelFactory,
+            IHttpInvokerService httpInvokerService,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager)
         {
@@ -56,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _logger = loggerFactory.CreateLogger<HttpFunctionInvokeDispatcher>();
             _httpInvokerChannelFactory = httpInvokerChannelFactory;
+            _httpInvokerService = httpInvokerService;
 
             State = FunctionDispatcherState.Default;
 
@@ -115,15 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
-            try
-            {
-                // TODO: convert send ScriptInvocationContext to http request
-            }
-            catch (Exception invokeEx)
-            {
-                invocationContext.ResultSource.TrySetException(invokeEx);
-            }
-            return Task.CompletedTask;
+            return _httpInvokerService.GetInvocationResponse(invocationContext);
         }
 
         public async void WorkerError(HttpWorkerErrorEvent workerError)
