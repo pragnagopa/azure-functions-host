@@ -6,7 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Script.OopHttp
+namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     internal static class HttpMessageExtensionUtilities
     {

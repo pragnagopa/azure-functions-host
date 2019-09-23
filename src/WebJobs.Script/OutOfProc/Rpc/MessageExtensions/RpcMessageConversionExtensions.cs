@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -199,39 +200,28 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private static void PopulateBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
         {
             object body = null;
-            if ((MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType) && IsMediaTypeOctetOrMultipart(mediaType)) || IsRawBodyBytesRequested(capabilities))
+            if ((MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType) && MessageConversionUtilities.IsMediaTypeOctetOrMultipart(mediaType)) || IsRawBodyBytesRequested(capabilities))
             {
-                body = RequestBodyToBytes(request);
+                body = MessageConversionUtilities.RequestBodyToBytes(request);
             }
             else
             {
-                body = GetStringRepresentationOfBody(request);
+                body = MessageConversionUtilities.GetStringRepresentationOfBody(request);
             }
             http.Body = body.ToRpc(logger, capabilities);
-        }
-
-        private static string GetStringRepresentationOfBody(HttpRequest request)
-        {
-            string result;
-            using (StreamReader reader = new StreamReader(request.Body, encoding: Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true))
-            {
-                result = reader.ReadToEnd();
-            }
-            request.Body.Position = 0;
-            return result;
         }
 
         private static void PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
         {
             object body = null;
             string rawBodyString = null;
-            byte[] bytes = RequestBodyToBytes(request);
+            byte[] bytes = MessageConversionUtilities.RequestBodyToBytes(request);
 
             if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType))
             {
                 if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
                 {
-                    rawBodyString = GetStringRepresentationOfBody(request);
+                    rawBodyString = MessageConversionUtilities.GetStringRepresentationOfBody(request);
                     try
                     {
                         body = JsonConvert.DeserializeObject(rawBodyString);
@@ -241,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         body = rawBodyString;
                     }
                 }
-                else if (IsMediaTypeOctetOrMultipart(mediaType))
+                else if (MessageConversionUtilities.IsMediaTypeOctetOrMultipart(mediaType))
                 {
                     body = bytes;
                     if (!IsRawBodyBytesRequested(capabilities))
@@ -253,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             // default if content-tye not found or recognized
             if (body == null && rawBodyString == null)
             {
-                body = rawBodyString = GetStringRepresentationOfBody(request);
+                body = rawBodyString = MessageConversionUtilities.GetStringRepresentationOfBody(request);
             }
 
             http.Body = body.ToRpc(logger, capabilities);
@@ -265,12 +255,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 http.RawBody = rawBodyString.ToRpc(logger, capabilities);
             }
-        }
-
-        private static bool IsMediaTypeOctetOrMultipart(MediaTypeHeaderValue mediaType)
-        {
-            return mediaType != null && (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
-                            mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         internal static TypedData ToRpcDefault(this object value)
@@ -360,15 +344,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private static bool IsTypedDataCollectionSupported(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(LanguageWorkerConstants.TypedDataCollection));
-        }
-
-        internal static byte[] RequestBodyToBytes(HttpRequest request)
-        {
-            var length = Convert.ToInt32(request.ContentLength);
-            var bytes = new byte[length];
-            request.Body.Read(bytes, 0, length);
-            request.Body.Position = 0;
-            return bytes;
         }
 
         public static BindingInfo ToBindingInfo(this BindingMetadata bindingMetadata)
