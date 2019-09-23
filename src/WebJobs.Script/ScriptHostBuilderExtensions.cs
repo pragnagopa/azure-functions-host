@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Configuration;
@@ -123,7 +124,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
-                services.AddSingleton<IFunctionDispatcher, RpcFunctionInvokeDispatcher>();
+                services.AddSingleton<IFunctionDispatcher, HttpFunctionInvokeDispatcher>();
+                services.AddSingleton<IHttpInvokerService, DefaultHttpInvokerService>();
                 services.AddSingleton<IJobHostLanguageWorkerChannelManager, JobHostLanguageWorkerChannelManager>();
                 services.AddSingleton<IFunctionDispatcherLoadBalancer, FunctionDispatcherLoadBalancer>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());

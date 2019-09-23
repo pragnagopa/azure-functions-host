@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             return HttpMessageExtensionUtilities.ConvertFromHttpMessageToExpando(responseMessage);
         }
 
-        public static JToken ToJObject(this object value)
+        public static JToken ToJToken(this object value)
         {
             if (value == null)
             {
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
             if (value is byte[] arr)
             {
-                return value.ToJObject();
+                return value.ToJToken();
             }
             else if (value is JObject jobj)
             {
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         internal static JObject ToJObjectHttp(this HttpRequest request)
         {
             var jObjectHttp = new JObject();
-            jObjectHttp["Url"] = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}", // [http|https]://{url}{path}{query}
+            jObjectHttp["Url"] = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}"; // [http|https]://{url}{path}{query}
             jObjectHttp["Method"] = request.Method.ToString();
             if (request.Query != null)
             {

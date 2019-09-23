@@ -2,16 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Formatting;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
@@ -47,14 +42,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
                     {
                         continue;
                     }
-                    httpScriptInvocationContext.Metadata[bindingDataPair.Key] = MessageConversionUtilities.ToJsonString(bindingDataPair.Value);
+                    httpScriptInvocationContext.Metadata[bindingDataPair.Key] = bindingDataPair.Value.ToJToken();
                 }
             }
 
             // populate input bindings
             foreach (var input in scriptInvocationContext.Inputs)
             {
-                httpScriptInvocationContext.Data[input.name] = input.val.ToJObject();
+                httpScriptInvocationContext.Data[input.name] = input.val.ToJToken();
             }
             await _httpClient.PostAsync(requestUri, content);
         }

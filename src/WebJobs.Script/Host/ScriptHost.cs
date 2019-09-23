@@ -472,6 +472,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
+            else if (_environment.IsHttpInvokerEnabled())
+            {
+                _logger.AddingDescriptorProviderForLanguage("HttpInvoker");
+                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+            }
             else
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);

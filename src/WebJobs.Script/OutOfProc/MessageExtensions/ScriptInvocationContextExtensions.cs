@@ -45,38 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return invocationRequest;
         }
 
-        public static HttpScriptInvocationContext ToHttpInvocationRequest(this ScriptInvocationContext context)
-        {
-            InvocationRequest invocationRequest = new InvocationRequest()
-            {
-                FunctionId = context.FunctionMetadata.FunctionId,
-                InvocationId = context.ExecutionContext.InvocationId.ToString(),
-                TraceContext = GetRpcTraceContext(context.Traceparent, context.Tracestate, context.Attributes, logger),
-            };
-
-            foreach (var pair in context.BindingData)
-            {
-                if (pair.Value != null)
-                {
-                    if ((pair.Value is HttpRequest))
-                    {
-                        continue;
-                    }
-                    invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc(logger, capabilities));
-                }
-            }
-            foreach (var input in context.Inputs)
-            {
-                invocationRequest.InputData.Add(new ParameterBinding()
-                {
-                    Name = input.name,
-                    Data = input.val.ToRpc(logger, capabilities)
-                });
-            }
-
-            return invocationRequest;
-        }
-
         internal static RpcTraceContext GetRpcTraceContext(string activityId, string traceStateString, IEnumerable<KeyValuePair<string, string>> tags, ILogger logger)
         {
             RpcTraceContext traceContext = new RpcTraceContext
