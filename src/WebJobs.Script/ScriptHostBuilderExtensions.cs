@@ -125,6 +125,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
                 services.AddSingleton<IFunctionDispatcher, HttpFunctionInvokeDispatcher>();
+                services.AddSingleton<IHttpInvokerProcessFactory, HttpInvokerProcessFactory>();
+                services.AddSingleton<IHttpInvokerChannelFactory, HttpInvokerChannelFactory>();
                 services.AddSingleton<IHttpInvokerService, DefaultHttpInvokerService>();
                 services.AddSingleton<IJobHostLanguageWorkerChannelManager, JobHostLanguageWorkerChannelManager>();
                 services.AddSingleton<IFunctionDispatcherLoadBalancer, FunctionDispatcherLoadBalancer>();

@@ -81,11 +81,11 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
                 }
             }
 
-            // parse ClaimsPrincipal if exists
-            if (request.HttpContext?.User?.Identities != null)
-            {
-                jObjectHttp["Identities"] = JObject.FromObject(request.HttpContext.User.Identities);
-            }
+            // TODO: parse ClaimsPrincipal if exists
+            //if (request.HttpContext?.User?.Identities != null)
+            //{
+            //    jObjectHttp["Identities"] = JObject.FromObject(request.HttpContext.User.Identities);
+            //}
 
             // parse request body as content-type
             if (request.Body != null && request.ContentLength > 0)

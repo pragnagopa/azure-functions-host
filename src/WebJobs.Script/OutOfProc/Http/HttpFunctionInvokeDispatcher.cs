@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(LanguageWorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
-        private IEnumerable<WorkerConfig> _workerConfigs;
         private IDisposable _workerErrorSubscription;
         private IDisposable _workerRestartSubscription;
         private ScriptJobHostOptions _scriptOptions;
@@ -37,7 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentStack<HttpWorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<HttpWorkerErrorEvent>();
         private IHttpInvokerChannel _httpInvokerChannel;
-        private IHttpInvokerService _httpInvokerService;
 
         public HttpFunctionInvokeDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -46,7 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IHttpInvokerChannelFactory httpInvokerChannelFactory,
-            IHttpInvokerService httpInvokerService,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager)
         {
@@ -55,10 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             _environment = environment;
             _scriptJobHostEnvironment = scriptJobHostEnvironment;
             _eventManager = eventManager;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _logger = loggerFactory.CreateLogger<HttpFunctionInvokeDispatcher>();
-            _httpInvokerChannelFactory = httpInvokerChannelFactory;
-            _httpInvokerService = httpInvokerService;
+            _httpInvokerChannelFactory = httpInvokerChannelFactory ?? throw new ArgumentNullException(nameof(httpInvokerChannelFactory));
 
             State = FunctionDispatcherState.Default;
 
@@ -118,7 +113,8 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
-            return _httpInvokerService.GetInvocationResponse(invocationContext);
+            // TODO
+            return _httpInvokerChannel.InvokeFunction(invocationContext);
         }
 
         public async void WorkerError(HttpWorkerErrorEvent workerError)

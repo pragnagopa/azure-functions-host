@@ -19,14 +19,16 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private readonly IHttpInvokerProcessFactory _httpInvokerProcessFactory = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
+        private IHttpInvokerService _httpInvokerService;
 
         public HttpInvokerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IHttpInvokerProcessFactory httpInvokerProcessFactory)
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IHttpInvokerProcessFactory httpInvokerProcessFactory, IHttpInvokerService httpInvokerService)
         {
-            _eventManager = eventManager;
-            _loggerFactory = loggerFactory;
+            _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
+            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-            _httpInvokerProcessFactory = httpInvokerProcessFactory;
+            _httpInvokerProcessFactory = httpInvokerProcessFactory ?? throw new ArgumentNullException(nameof(httpInvokerProcessFactory));
+            _httpInvokerService = httpInvokerService ?? throw new ArgumentNullException(nameof(httpInvokerService));
         }
 
         public IHttpInvokerChannel CreateHttpInvokerChannel(string scriptRootPath, IMetricsLogger metricsLogger, int attemptCount)
@@ -41,13 +43,13 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             }
             string workerId = Guid.NewGuid().ToString();
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerChannel.{workerId}");
-            ILanguageWorkerProcess languageWorkerProcess = _httpInvokerProcessFactory.CreateLanguageWorkerProcess(workerId, scriptRootPath);
+            ILanguageWorkerProcess httpInokerProcess = _httpInvokerProcessFactory.CreateHttpInvokerProcess(workerId, scriptRootPath, _workerConfigs.ElementAt(0));
             return new HttpInvokerChannel(
                          workerId,
                          scriptRootPath,
                          _eventManager,
-                         _workerConfigs.ElementAt(0),
-                         languageWorkerProcess,
+                         httpInokerProcess,
+                         _httpInvokerService,
                          workerLogger,
                          metricsLogger,
                          attemptCount);

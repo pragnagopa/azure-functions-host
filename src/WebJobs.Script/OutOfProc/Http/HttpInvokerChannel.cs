@@ -15,19 +15,19 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
     {
         private readonly string _rootScriptPath;
         private readonly IScriptEventManager _eventManager;
-        private readonly WorkerConfig _workerConfig;
         private bool _disposed;
         private string _workerId;
         private IDisposable _startLatencyMetric;
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
+        private IHttpInvokerService _httpInvokerService;
 
         internal HttpInvokerChannel(
            string workerId,
            string rootScriptPath,
            IScriptEventManager eventManager,
-           WorkerConfig workerConfig,
            ILanguageWorkerProcess languageWorkerProcess,
+           IHttpInvokerService httpInvokerService,
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount)
@@ -35,18 +35,18 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             _workerId = workerId;
             _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
-            _workerConfig = workerConfig;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
-            _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
+            _httpInvokerService = httpInvokerService;
+            _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpInvoker", attemptCount));
         }
 
-        public string Id => throw new System.NotImplementedException();
+        public string Id => _workerId;
 
         public Task InvokeFunction(ScriptInvocationContext context)
         {
             // TODO: convert to Http request
-            throw new System.NotImplementedException();
+            return _httpInvokerService.GetInvocationResponse(context);
         }
 
         public async Task StartWorkerProcessAsync()

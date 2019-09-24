@@ -7,6 +7,7 @@ using System.Net.Http.Formatting;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
@@ -18,21 +19,16 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         public DefaultHttpInvokerService(HttpClient httpClient)
         {
             _httpClient = httpClient;
-            _httpInvokerBaseUrl = "http://localhost:8090";
+            _httpInvokerBaseUrl = "http://localhost:8090/";
         }
 
         public async Task GetInvocationResponse(ScriptInvocationContext scriptInvocationContext)
         {
             var requestUri = _httpInvokerBaseUrl + scriptInvocationContext.FunctionMetadata.Name;
-            UriBuilder baseUri = new UriBuilder(requestUri);
             // TODO: convert send ScriptInvocationContext to http request and send to http invoker
             HttpScriptInvocationContext httpScriptInvocationContext = new HttpScriptInvocationContext();
-            HttpContent content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
-
-            // Add standard headers
-            content.Headers.Add(HttpInvokerConstants.InvocatoinIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
-            content.Headers.Add(HttpInvokerConstants.HostVersionHeader, ScriptHost.Version);
-
+            httpScriptInvocationContext.Metadata = new JObject();
+            httpScriptInvocationContext.Data = new JObject();
             // populate metadata
             foreach (var bindingDataPair in scriptInvocationContext.BindingData)
             {
@@ -51,7 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             {
                 httpScriptInvocationContext.Data[input.name] = input.val.ToJToken();
             }
-            await _httpClient.PostAsync(requestUri, content);
+            HttpContent content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
+            // Add standard headers
+            content.Headers.Add(HttpInvokerConstants.InvocatoinIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+            content.Headers.Add(HttpInvokerConstants.HostVersionHeader, ScriptHost.Version);
+
+            var response = await _httpClient.PostAsync(requestUri, content);
         }
     }
 }
