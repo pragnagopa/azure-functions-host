@@ -32,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             {
                 throw new ArgumentNullException(nameof(value));
             }
-
             if (value is byte[] arr)
             {
                 return value.ToJToken();
@@ -41,9 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             {
                 return jobj;
             }
-            else if (value is string str)
+            else if (value is string || value is int || value is float || value is double)
             {
-                return str;
+                return value.ToString();
             }
             else if (value is HttpRequest request)
             {
@@ -55,7 +54,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             }
             else
             {
-                return JObject.FromObject(value);
+                try
+                {
+                    return JsonConvert.SerializeObject(value);
+                }
+                catch
+                {
+                    return value.ToString();
+                }
             }
         }
 

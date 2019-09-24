@@ -2,11 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc
@@ -49,10 +52,37 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             }
             HttpContent content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
             // Add standard headers
-            content.Headers.Add(HttpInvokerConstants.InvocatoinIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
-            content.Headers.Add(HttpInvokerConstants.HostVersionHeader, ScriptHost.Version);
+            // content.Headers.Add(HttpInvokerConstants.InvocatoinIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+            //content.Headers.Add(HttpInvokerConstants.HostVersionHeader, ScriptHost.Version);
+            try
+            {
+                HttpResponseMessage response = await _httpClient.PostAsync(requestUri, content);
+                //string invocationResultString = await response.Content.ReadAsStringAsync();
+                HttpScriptInvocationResult invocationResult = await response.Content.ReadAsAsync<HttpScriptInvocationResult>();
+                ProcessLogsFromHttpResponse(scriptInvocationContext, invocationResult);
+                var result = new ScriptInvocationResult()
+                {
+                    Outputs = invocationResult.Outputs,
+                    Return = invocationResult?.ReturnValue
+                };
+                scriptInvocationContext.ResultSource.SetResult(result);
+            }
+            catch (Exception responseEx)
+            {
+                scriptInvocationContext.ResultSource.TrySetException(responseEx);
+            }
+        }
 
-            var response = await _httpClient.PostAsync(requestUri, content);
+        internal void ProcessLogsFromHttpResponse(ScriptInvocationContext scriptInvocationContext, HttpScriptInvocationResult invocationResult)
+        {
+            // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
+            System.Threading.ExecutionContext.Run(scriptInvocationContext.AsyncExecutionContext, (s) =>
+            {
+                foreach (var userLog in invocationResult.Logs)
+                {
+                    scriptInvocationContext.Logger.LogInformation(userLog);
+                }
+            }, null);
         }
     }
 }
