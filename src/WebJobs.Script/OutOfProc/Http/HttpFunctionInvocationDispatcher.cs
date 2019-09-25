@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private readonly IHttpInvokerChannelFactory _httpInvokerChannelFactory;
         private readonly IEnvironment _environment;
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
-        private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(LanguageWorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
+        private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(OutOfProcConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
         private IDisposable _workerErrorSubscription;

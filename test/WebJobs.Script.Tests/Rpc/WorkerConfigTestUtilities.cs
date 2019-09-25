@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Newtonsoft.Json.Linq;
 
@@ -21,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             WorkerDescription description = GetTestDefaultWorkerDescription(language, arguments);
 
             JObject config = new JObject();
-            config[LanguageWorkerConstants.WorkerDescription] = JObject.FromObject(description);
+            config[OutOfProcConstants.WorkerDescription] = JObject.FromObject(description);
 
             if (!string.IsNullOrEmpty(profileName))
             {
@@ -32,17 +33,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
                 JObject profiles = new JObject();
                 profiles[profileName] = JObject.FromObject(appSvcDescription);
-                config[LanguageWorkerConstants.WorkerDescriptionProfiles] = profiles;
+                config[OutOfProcConstants.WorkerDescriptionProfiles] = profiles;
             }
 
             if (invalid)
             {
-                config[LanguageWorkerConstants.WorkerDescription] = "invalidWorkerConfig";
+                config[OutOfProcConstants.WorkerDescription] = "invalidWorkerConfig";
             }
 
             if (emptyWorkerPath)
             {
-                config[LanguageWorkerConstants.WorkerDescription][LanguageWorkerConstants.WorkerDescriptionDefaultWorkerPath] = null;
+                config[OutOfProcConstants.WorkerDescription][OutOfProcConstants.WorkerDescriptionDefaultWorkerPath] = null;
             }
 
             return config;
@@ -82,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             WorkerDescription description = GetTestHttpInvokerDescription(arguments, invalid);
 
             JObject config = new JObject();
-            config[LanguageWorkerConstants.WorkerDescription] = JObject.FromObject(description);
+            config[OutOfProcConstants.WorkerDescription] = JObject.FromObject(description);
             return config;
         }
 

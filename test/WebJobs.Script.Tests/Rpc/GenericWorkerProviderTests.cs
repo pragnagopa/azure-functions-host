@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -101,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
-                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDescriptionArguments}"] = "--inspect=5689  --no-deprecation"
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{OutOfProcConstants.WorkerDescriptionArguments}"] = "--inspect=5689  --no-deprecation"
             };
             var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
             Assert.Single(providers);
@@ -119,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
-                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDescriptionArguments}"] = "--inspect=5689  --no-deprecation"
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{OutOfProcConstants.WorkerDescriptionArguments}"] = "--inspect=5689  --no-deprecation"
             };
             var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage));
             Assert.Single(providers);
@@ -134,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
-                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDescriptionArguments}"] = "--inspect=5689"
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{OutOfProcConstants.WorkerDescriptionArguments}"] = "--inspect=5689"
             };
             var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
             Assert.Single(providers);
@@ -169,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             WorkerConfigTestUtilities.CreateWorkerFolder(customRootPath, testConfig);
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
-                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDirectorySectionName}"] = Path.Combine(customRootPath, testLanguage)
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{OutOfProcConstants.WorkerDirectorySectionName}"] = Path.Combine(customRootPath, testLanguage)
             };
 
             var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
@@ -186,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             WorkerConfigTestUtilities.CreateWorkerFolder(customRootPath, testConfig, false);
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
-                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDirectorySectionName}"] = customRootPath
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{OutOfProcConstants.WorkerDirectorySectionName}"] = customRootPath
             };
 
             var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
@@ -211,12 +212,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ReadWorkerProviderFromConfig_OverrideDefaultExePath()
         {
-            var configs = new List<TestLanguageWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], false, LanguageWorkerConstants.WorkerDescriptionAppServiceEnvProfileName) };
+            var configs = new List<TestLanguageWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], false, OutOfProcConstants.WorkerDescriptionAppServiceEnvProfileName) };
             var testLogger = new TestLogger(testLanguage);
             var testExePath = "./mySrc/myIndex";
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
-                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDescriptionDefaultExecutablePath}"] = testExePath
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{OutOfProcConstants.WorkerDescriptionDefaultExecutablePath}"] = testExePath
             };
             var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs, true);
             Assert.Single(providers);
@@ -242,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private IEnumerable<IWorkerProvider> TestReadWorkerProviderFromConfig(IEnumerable<TestLanguageWorkerConfig> configs, ILogger testLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)
         {
             Mock<IEnvironment> mockEnvironment = new Mock<IEnvironment>();
-            var workerPathSection = $"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}";
+            var workerPathSection = $"{LanguageWorkerConstants.LanguageWorkersSectionName}:{OutOfProcConstants.WorkersDirectorySectionName}";
             try
             {
                 foreach (var workerConfig in configs)
@@ -254,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
-                var configFactory = new WorkerConfigFactory(config, testLogger, mockEnvironment.Object);
+                var configFactory = new WorkerConfigFactory(config, testLogger);
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>

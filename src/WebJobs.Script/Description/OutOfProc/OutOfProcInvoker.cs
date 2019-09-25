@@ -11,6 +11,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (_functionDispatcher != null && _functionDispatcher.State == FunctionDispatcherState.Initializing)
             {
                 _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
-                await Utility.DelayAsync(LanguageWorkerConstants.ProcessStartTimeoutSeconds, 25, () =>
+                await Utility.DelayAsync(OutOfProcConstants.ProcessStartTimeoutSeconds, 25, () =>
                 {
                     return _functionDispatcher.State != FunctionDispatcherState.Initialized;
                 });

@@ -4,8 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -13,21 +12,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private static int maxNumberOfErrorMessages = 3;
 
-        private static JsonSerializerSettings verboseSerializerSettings = new JsonSerializerSettings()
-        {
-            Formatting = Formatting.Indented,
-            NullValueHandling = NullValueHandling.Ignore,
-            Converters = new List<JsonConverter>()
-                    {
-                        new StringEnumConverter()
-                    }
-        };
-
-        public static JsonSerializerSettings VerboseSerializerSettings { get => verboseSerializerSettings; set => verboseSerializerSettings = value; }
-
         public static bool IsLanguageWorkerConsoleLog(string msg)
         {
-            if (msg.StartsWith(LanguageWorkerConstants.LanguageWorkerConsoleLogPrefix, StringComparison.OrdinalIgnoreCase))
+            if (msg.StartsWith(OutOfProcConstants.LanguageWorkerConsoleLogPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -50,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public static string RemoveLogPrefix(string msg)
         {
-            return Regex.Replace(msg, LanguageWorkerConstants.LanguageWorkerConsoleLogPrefix, string.Empty, RegexOptions.IgnoreCase);
+            return Regex.Replace(msg, OutOfProcConstants.LanguageWorkerConsoleLogPrefix, string.Empty, RegexOptions.IgnoreCase);
         }
     }
 }

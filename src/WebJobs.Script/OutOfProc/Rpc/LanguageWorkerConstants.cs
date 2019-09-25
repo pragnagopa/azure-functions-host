@@ -7,7 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public static class LanguageWorkerConstants
     {
-        public const int ProcessStartTimeoutSeconds = 60;
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
         public const string FunctionsWorkerProcessCountSettingName = "FUNCTIONS_WORKER_PROCESS_COUNT";
         public const string DotNetLanguageWorkerName = "dotnet";
@@ -20,27 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         // Section names in host.json or AppSettings
         public const string LanguageWorkersSectionName = "languageWorkers";
-        public const string WorkersDirectorySectionName = "workersDirectory";
-        public const string WorkerDirectorySectionName = "workerDirectory";
-        public const string HttpInvokerSectionName = "httpInvoker";
 
         // Worker description constants
         public const string WorkerDescriptionLanguage = "language";
-        public const string WorkerDescriptionDefaultExecutablePath = "defaultExecutablePath";
-        public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
-        public const string WorkerDescription = "description";
-        public const string WorkerDescriptionArguments = "arguments";
-        public const string WorkerDescriptionHttpInvokerConfigKey = "httpInvoker";
 
-        // Profiles
-        public const string WorkerDescriptionProfiles = "profiles";
-        public const string WorkerDescriptionAppServiceEnvProfileName = "appServiceEnvironment";
-
+        // Rpc message length
         public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
-
-        // Logs
-        public const string LanguageWorkerConsoleLogPrefix = "LanguageWorkerConsoleLog";
-        public const string FunctionConsoleLogCategoryName = "Host.Function.Console";
 
         // Rpc Http Constants
         public const string RpcHttpBody = "body";
@@ -55,12 +39,5 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string TypedDataCollection = "TypedDataCollection";
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
         public const string RpcHttpTriggerMetadataRemoved = "RpcHttpTriggerMetadataRemoved";
-
-        // Thresholds
-        public const int WorkerRestartErrorIntervalThresholdInMinutes = 30;
-
-        // Language Worker process exit codes
-        public const int SuccessExitCode = 0;
-        public const int IntentionalRestartExitCode = 200;
     }
 }

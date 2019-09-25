@@ -5,7 +5,7 @@ using System;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Rpc
+namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     internal class GenericWorkerProvider : IWorkerProvider
     {

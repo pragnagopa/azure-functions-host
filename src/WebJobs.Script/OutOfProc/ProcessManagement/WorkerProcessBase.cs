@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -135,12 +136,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             try
             {
-                if (_process.ExitCode == LanguageWorkerConstants.SuccessExitCode)
+                if (_process.ExitCode == OutOfProcConstants.SuccessExitCode)
                 {
                     _process.WaitForExit();
                     _process.Close();
                 }
-                else if (_process.ExitCode == LanguageWorkerConstants.IntentionalRestartExitCode)
+                else if (_process.ExitCode == OutOfProcConstants.IntentionalRestartExitCode)
                 {
                     HandleWorkerProcessRestart();
                 }

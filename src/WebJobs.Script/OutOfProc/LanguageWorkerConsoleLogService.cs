@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
 
             _source = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
-            _logger = loggerFactory.CreateLogger(LanguageWorkerConstants.FunctionConsoleLogCategoryName);
+            _logger = loggerFactory.CreateLogger(OutOfProcConstants.FunctionConsoleLogCategoryName);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

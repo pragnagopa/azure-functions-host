@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -19,16 +20,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
-        private readonly IEnvironment _environment;
         private Dictionary<string, IWorkerProvider> _workerProviderDictionary = new Dictionary<string, IWorkerProvider>();
 
-        public WorkerConfigFactory(IConfiguration config, ILogger logger, IEnvironment environment)
+        public WorkerConfigFactory(IConfiguration config, ILogger logger)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             WorkersDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
-            var workersDirectorySection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}");
+            var workersDirectorySection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{OutOfProcConstants.WorkersDirectorySectionName}");
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
                 WorkersDirPath = workersDirectorySection.Value;
@@ -55,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     WorkerPath = description.GetWorkerPath()
                 };
 
-                if (description.Language != null && description.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
+                if (description.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
                 {
                     arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
                 }
@@ -80,12 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void BuildWorkerProviderDictionary()
         {
-            if (_environment.IsHttpInvokerEnabled())
-            {
-                _logger.LogDebug($"Http Invoker is enabled");
-                AddHttpInvokerProviderFromAppSettings();
-                return;
-            }
             AddProviders();
             AddProvidersFromAppSettings();
         }
@@ -110,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var languagesSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}");
             foreach (var languageSection in languagesSection.GetChildren())
             {
-                var workerDirectorySection = languageSection.GetSection(LanguageWorkerConstants.WorkerDirectorySectionName);
+                var workerDirectorySection = languageSection.GetSection(OutOfProcConstants.WorkerDirectorySectionName);
                 if (workerDirectorySection.Value != null)
                 {
                     _workerProviderDictionary.Remove(languageSection.Key);
@@ -119,92 +112,43 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal void AddHttpInvokerProviderFromAppSettings()
-        {
-            var httpInvokerSection = _config.GetSection($"{LanguageWorkerConstants.HttpInvokerSectionName}");
-            var workerDirectorySection = httpInvokerSection.GetSection(LanguageWorkerConstants.WorkerDirectorySectionName);
-            if (workerDirectorySection.Value != null)
-            {
-                AddHttpInvokerProvider(workerDirectorySection.Value);
-            }
-        }
-
         internal void AddProvider(string workerDir)
         {
             try
             {
-                WorkerDescription workerDescription = GetWorkerDescription(workerDir);
-                if (workerDescription != null)
+                string workerConfigPath = Path.Combine(workerDir, LanguageWorkerConstants.WorkerConfigFileName);
+                if (!File.Exists(workerConfigPath))
                 {
-                    var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
-                    GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
-                    AddArgumentsFromAppSettings(workerDescription, languageSection);
+                    _logger.LogDebug($"Did not find worker config file at: {workerConfigPath}");
+                    return;
+                }
+                _logger.LogDebug($"Found worker config: {workerConfigPath}");
+                string json = File.ReadAllText(workerConfigPath);
+                JObject workerConfig = JObject.Parse(json);
+                WorkerDescription workerDescription = workerConfig.Property(OutOfProcConstants.WorkerDescription).Value.ToObject<WorkerDescription>();
+                workerDescription.WorkerDirectory = workerDir;
+                var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
+                workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
 
-                    string workerPath = workerDescription.GetWorkerPath();
-                    if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
-                    {
-                        _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
-                        workerDescription.ValidateRpcWorkerDescription();
-                        _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
-                    }
-                    else
-                    {
-                        throw new FileNotFoundException($"Did not find worker for for language: {workerDescription.Language}", workerPath);
-                    }
+                GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
+                AddArgumentsFromAppSettings(workerDescription, languageSection);
+
+                string workerPath = workerDescription.GetWorkerPath();
+                if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
+                {
+                    _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
+                    workerDescription.ValidateRpcWorkerDescription();
+                    _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
+                }
+                else
+                {
+                    throw new FileNotFoundException($"Did not find worker for for language: {workerDescription.Language}", workerPath);
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
             }
-        }
-
-        internal void AddHttpInvokerProvider(string workerDir)
-        {
-            try
-            {
-                WorkerDescription workerDescription = GetWorkerDescription(workerDir);
-                if (workerDescription != null)
-                {
-                    string workerPath = workerDescription.GetWorkerPath();
-
-                    if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
-                    {
-                        _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
-                        if (string.IsNullOrEmpty(workerDescription.DefaultWorkerPath))
-                        {
-                            workerDescription.DefaultExecutablePath = Path.Combine(workerDescription.WorkerDirectory, workerDescription.DefaultExecutablePath);
-                            workerDescription.ValidateHttpInvokerDescription();
-                        }
-                        _workerProviderDictionary[LanguageWorkerConstants.WorkerDescriptionHttpInvokerConfigKey] = new GenericWorkerProvider(workerDescription, workerDir);
-                    }
-                    else
-                    {
-                        throw new FileNotFoundException($"Did not find worker for for http invoker", workerPath);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
-            }
-        }
-
-        private WorkerDescription GetWorkerDescription(string workerDir)
-        {
-            string workerConfigPath = Path.Combine(workerDir, LanguageWorkerConstants.WorkerConfigFileName);
-            if (!File.Exists(workerConfigPath))
-            {
-                _logger.LogDebug($"Did not find worker config file at: {workerConfigPath}");
-                return null;
-            }
-            _logger.LogDebug($"Found worker config: {workerConfigPath}");
-            string json = File.ReadAllText(workerConfigPath);
-            JObject workerConfig = JObject.Parse(json);
-            WorkerDescription workerDescription = workerConfig.Property(LanguageWorkerConstants.WorkerDescription).Value.ToObject<WorkerDescription>();
-            workerDescription.WorkerDirectory = workerDir;
-            workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
-            return workerDescription;
         }
 
         private static Dictionary<string, WorkerDescription> GetWorkerDescriptionProfiles(JObject workerConfig)
@@ -242,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private static void GetDefaultExecutablePathFromAppSettings(WorkerDescription workerDescription, IConfigurationSection languageSection)
         {
-            var defaultExecutablePath = languageSection.GetSection($"{LanguageWorkerConstants.WorkerDescriptionDefaultExecutablePath}");
+            var defaultExecutablePath = languageSection.GetSection($"{OutOfProcConstants.WorkerDescriptionDefaultExecutablePath}");
             workerDescription.DefaultExecutablePath = defaultExecutablePath.Value != null ? defaultExecutablePath.Value : workerDescription.DefaultExecutablePath;
         }
 
@@ -258,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     return;
                 }
             }
-            var argumentsSection = languageSection.GetSection($"{LanguageWorkerConstants.WorkerDescriptionArguments}");
+            var argumentsSection = languageSection.GetSection($"{OutOfProcConstants.WorkerDescriptionArguments}");
             if (argumentsSection.Value != null)
             {
                 workerDescription.Arguments.AddRange(Regex.Split(argumentsSection.Value, @"\s+"));
