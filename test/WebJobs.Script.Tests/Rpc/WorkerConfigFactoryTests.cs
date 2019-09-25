@@ -235,7 +235,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var configFactory = new WorkerConfigFactory(config, testLogger, mockEnvironment.Object);
             IList<WorkerConfig> workerConfigs = configFactory.GetConfigs();
             Assert.Equal(workerConfigs.Count, 1);
-            Assert.Equal(workerConfigs[0].Description.DefaultExecutablePath, WorkerConfigTestUtilities.HttpInvokerExe);
+            var expectedDefaultExecutablePath = Path.Combine(expectedWorkersDir, WorkerConfigTestUtilities.HttpInvokerExe);
+            Assert.Equal(workerConfigs[0].Description.DefaultExecutablePath, expectedDefaultExecutablePath);
         }
 
         [Fact]
@@ -244,6 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Mock<IEnvironment> mockEnvironment = new Mock<IEnvironment>();
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker)).Returns("1");
             string expectedWorkersDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var expectedDefaultExecutablePath = Path.Combine(expectedWorkersDir, WorkerConfigTestUtilities.HttpInvokerExe);
             var config = new ConfigurationBuilder()
                    .AddInMemoryCollection(new Dictionary<string, string>
                    {
@@ -261,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var configFactory = new WorkerConfigFactory(config, testLogger, mockEnvironment.Object);
             IList<WorkerConfig> workerConfigs = configFactory.GetConfigs();
             Assert.Equal(workerConfigs.Count, 1);
-            Assert.Equal(workerConfigs[0].Description.DefaultExecutablePath, WorkerConfigTestUtilities.HttpInvokerExe);
+            Assert.Equal(workerConfigs[0].Description.DefaultExecutablePath, expectedDefaultExecutablePath);
             Assert.Equal(workerConfigs[0].Description.Arguments.Count, 1);
             Assert.Equal(workerConfigs[0].Description.Arguments[0], "debugport:10001");
         }

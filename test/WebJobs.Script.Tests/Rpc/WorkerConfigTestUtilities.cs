@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     {
         public const string TestWorkerPathInWorkerConfig = "./src/index";
         public const string HttpInvokerExe = "httpServer.exe";
+        public const string TestDefaultExecutablePath = "testWorkerPath";
 
         public static JObject GetTestWorkerConfig(string language, string[] arguments, bool invalid, string profileName, bool emptyWorkerPath = false)
         {
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             return new WorkerDescription()
             {
-                DefaultExecutablePath = "fooPath",
+                DefaultExecutablePath = TestDefaultExecutablePath,
                 DefaultWorkerPath = $"{TestWorkerPathInWorkerConfig}.{language}",
                 Language = language,
                 Extensions = new List<string> { $".{language}" },

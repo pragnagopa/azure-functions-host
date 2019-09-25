@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Single(providers);
 
             IWorkerProvider worker = providers.FirstOrDefault();
-            Assert.Equal("foopath", worker.GetDescription().DefaultExecutablePath);
+            Assert.Equal(WorkerConfigTestUtilities.TestDefaultExecutablePath, worker.GetDescription().DefaultExecutablePath);
         }
 
         [Fact]
