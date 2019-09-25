@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class HttpFunctionDescriptorProvider : OutOfProcDescriptorProviderBase
+    internal class HttpFunctionDescriptorProvider : OutOfProcDescriptorProvider
     {
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionDispatcher _dispatcher;

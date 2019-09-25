@@ -16,12 +16,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class OutOfProcDescriptorProviderBase : FunctionDescriptorProvider
+    internal abstract class OutOfProcDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionDispatcher _dispatcher;
 
-        public OutOfProcDescriptorProviderBase(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
+        public OutOfProcDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
             IFunctionDispatcher dispatcher, ILoggerFactory loggerFactory)
             : base(host, config, bindingProviders)
         {

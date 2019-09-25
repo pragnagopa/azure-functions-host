@@ -10,9 +10,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class RpcFunctionDescriptorProvider : OutOfProcDescriptorProviderBase
+    internal class RpcFunctionDescriptorProvider : OutOfProcDescriptorProvider
     {
-        private readonly ILoggerFactory _loggerFactory;
         private IFunctionDispatcher _dispatcher;
         private string _workerRuntime;
 
@@ -20,8 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IFunctionDispatcher dispatcher, ILoggerFactory loggerFactory)
             : base(host, config, bindingProviders, dispatcher, loggerFactory)
         {
-            _dispatcher = dispatcher;
-            _loggerFactory = loggerFactory;
+            _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _workerRuntime = workerRuntime;
         }
 
@@ -32,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
 
-            if (!_dispatcher.IsSupported(functionMetadata, _workerRuntime))
+            if (!Utility.IsSupported(functionMetadata, _workerRuntime))
             {
                 return (false, null);
             }

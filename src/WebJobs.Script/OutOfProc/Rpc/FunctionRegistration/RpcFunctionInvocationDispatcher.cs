@@ -20,7 +20,7 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class RpcFunctionInvokeDispatcher : IFunctionDispatcher
+    internal class RpcFunctionInvocationDispatcher : IFunctionDispatcher
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
 
-        public RpcFunctionInvokeDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
+        public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
             IEnvironment environment,
             IScriptJobHostEnvironment scriptJobHostEnvironment,
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager = eventManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _managedDependencyOptions = managedDependencyOptions;
-            _logger = loggerFactory.CreateLogger<RpcFunctionInvokeDispatcher>();
+            _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _languageWorkerChannelFactory = languageWorkerChannelFactory;
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
 
@@ -148,19 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 startAction = startAction.Debounce(_processStartCancellationToken.Token, count * _debounceSeconds * 1000);
                 startAction();
             }
-        }
-
-        public bool IsSupported(FunctionMetadata functionMetadata, string workerRuntime)
-        {
-            if (string.IsNullOrEmpty(functionMetadata.Language))
-            {
-                return false;
-            }
-            if (string.IsNullOrEmpty(workerRuntime))
-            {
-                return true;
-            }
-            return functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions)

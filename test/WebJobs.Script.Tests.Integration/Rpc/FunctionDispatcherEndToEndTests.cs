@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private LanguageWorkerChannel GetCurrentJobHostWorkerChannel()
         {
-            RpcFunctionInvokeDispatcher fd = Fixture.JobHost.FunctionDispatcher as RpcFunctionInvokeDispatcher;
+            RpcFunctionInvocationDispatcher fd = Fixture.JobHost.FunctionDispatcher as RpcFunctionInvocationDispatcher;
             return (LanguageWorkerChannel)fd.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
         }
 

@@ -3,14 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -19,13 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     internal static class HttpMessageConversionExtensions
     {
-        private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
-
-        public static Task<object> ToObject(this HttpResponseMessage responseMessage)
-        {
-            return HttpMessageExtensionUtilities.ConvertFromHttpMessageToExpando(responseMessage);
-        }
-
         public static JToken ToJToken(this object value)
         {
             if (value == null)

@@ -18,7 +18,7 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
-    internal class HttpFunctionInvokeDispatcher : IFunctionDispatcher
+    internal class HttpFunctionInvocationDispatcher : IFunctionDispatcher
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
@@ -34,25 +34,24 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private bool _disposed = false;
         private bool _disposing = false;
         private IEnumerable<FunctionMetadata> _functions;
-        private ConcurrentStack<HttpWorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<HttpWorkerErrorEvent>();
+        private ConcurrentStack<HttpWorkerErrorEvent> _invokerErrors = new ConcurrentStack<HttpWorkerErrorEvent>();
         private IHttpInvokerChannel _httpInvokerChannel;
 
-        public HttpFunctionInvokeDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
+        public HttpFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
             IEnvironment environment,
             IScriptJobHostEnvironment scriptJobHostEnvironment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IHttpInvokerChannelFactory httpInvokerChannelFactory,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager)
+            IOptions<LanguageWorkerOptions> languageWorkerOptions)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
             _environment = environment;
             _scriptJobHostEnvironment = scriptJobHostEnvironment;
             _eventManager = eventManager;
-            _logger = loggerFactory.CreateLogger<HttpFunctionInvokeDispatcher>();
+            _logger = loggerFactory.CreateLogger<HttpFunctionInvocationDispatcher>();
             _httpInvokerChannelFactory = httpInvokerChannelFactory ?? throw new ArgumentNullException(nameof(httpInvokerChannelFactory));
 
             State = FunctionDispatcherState.Default;
@@ -65,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public FunctionDispatcherState State { get; private set; }
 
-        internal ConcurrentStack<HttpWorkerErrorEvent> LanguageWorkerErrors => _languageWorkerErrors;
+        internal ConcurrentStack<HttpWorkerErrorEvent> LanguageWorkerErrors => _invokerErrors;
 
         internal async void InitializeJobhostLanguageWorkerChannelAsync()
         {
@@ -92,16 +91,11 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             return Task.CompletedTask;
         }
 
-        public bool IsSupported(FunctionMetadata functionMetadata, string workerRuntime)
-        {
-            return true;
-        }
-
         public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions)
         {
             _functions = functions;
 
-            if (functions == null || functions.Count() == 0)
+            if (functions == null || !functions.Any())
             {
                 // do not initialize function dispachter if there are no functions
                 return;
@@ -149,9 +143,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         private async Task RestartWorkerChannel(string workerId)
         {
-            if (_languageWorkerErrors.Count < 3)
+            if (_invokerErrors.Count < 3)
             {
-                await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
+                await InitializeJobhostLanguageWorkerChannelAsync(_invokerErrors.Count);
             }
             else if (_httpInvokerChannel == null)
             {
@@ -162,25 +156,25 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         private void AddOrUpdateErrorBucket(HttpWorkerErrorEvent currentErrorEvent)
         {
-            if (_languageWorkerErrors.TryPeek(out HttpWorkerErrorEvent top))
+            if (_invokerErrors.TryPeek(out HttpWorkerErrorEvent top))
             {
                 if ((currentErrorEvent.CreatedAt - top.CreatedAt) > thresholdBetweenRestarts)
                 {
-                    while (!_languageWorkerErrors.IsEmpty)
+                    while (!_invokerErrors.IsEmpty)
                     {
-                        _languageWorkerErrors.TryPop(out HttpWorkerErrorEvent popped);
+                        _invokerErrors.TryPop(out HttpWorkerErrorEvent popped);
                         _logger.LogDebug($"Popping out errorEvent createdAt:{popped.CreatedAt} workerId:{popped.WorkerId}");
                     }
                 }
             }
-            _languageWorkerErrors.Push(currentErrorEvent);
+            _invokerErrors.Push(currentErrorEvent);
         }
 
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
             {
-                _logger.LogDebug("Disposing HttpFunctionInvokeDispatcher");
+                _logger.LogDebug("Disposing {HttpFunctionInvokeDispatcher}", nameof(HttpFunctionInvocationDispatcher));
                 _workerErrorSubscription.Dispose();
                 _workerRestartSubscription.Dispose();
                 _disposed = true;

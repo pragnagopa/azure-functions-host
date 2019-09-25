@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             {
                 expando.body = await inputMessage.Content.ReadAsStringAsync();
             }
-            //return expando;
             return expando.body;
         }
     }
