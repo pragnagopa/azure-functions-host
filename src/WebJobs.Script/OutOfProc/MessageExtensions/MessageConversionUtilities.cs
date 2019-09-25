@@ -6,8 +6,6 @@ using System.IO;
 using System.Net.Http.Headers;
 using System.Text;
 using Microsoft.AspNetCore.Http;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
@@ -37,11 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             }
             request.Body.Position = 0;
             return result;
-        }
-
-        internal static JObject ToJsonString(this object value)
-        {
-            return JObject.FromObject(value);
         }
     }
 }

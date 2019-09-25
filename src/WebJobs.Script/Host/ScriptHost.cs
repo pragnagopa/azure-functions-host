@@ -472,11 +472,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
-            else if (_environment.IsHttpInvokerEnabled())
-            {
-                _logger.AddingDescriptorProviderForLanguage("HttpInvoker");
-                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
-            }
             else
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
@@ -642,7 +637,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            if (!_environment.IsPlaceholderModeEnabled() && !_environment.IsHttpInvokerEnabled())
+            if (!_environment.IsPlaceholderModeEnabled())
             {
                 Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime);
             }
