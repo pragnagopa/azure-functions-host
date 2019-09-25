@@ -276,10 +276,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 return config.Extensions.Contains("." + extension);
             });
-            if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsHttpInvoker) == "1")
-            {
-                workerConfig = workerConfigs.FirstOrDefault();
-            }
             if (workerConfig != null)
             {
                 return workerConfig.Language;

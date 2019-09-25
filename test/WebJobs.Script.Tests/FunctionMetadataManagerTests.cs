@@ -243,5 +243,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Assert.Equal(language, FunctionMetadataManager.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigs()));
         }
+
+        [Theory]
+        [InlineData("test.js")]
+        [InlineData("test.jar")]
+        [InlineData("test.x")]
+        [InlineData("test.py")]
+        public void ParseLanguage_HttpInvoker_Returns_Null(string scriptFile)
+        {
+            Assert.Equal(null, FunctionMetadataManager.ParseLanguage(scriptFile, TestHelpers.GetTestHttpInvokerWorkerConfig()));
+        }
     }
 }

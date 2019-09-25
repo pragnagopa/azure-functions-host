@@ -263,6 +263,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
         }
 
+        public static IList<WorkerConfig> GetTestHttpInvokerWorkerConfig()
+        {
+            var httpInvokerDesc = new WorkerDescription();
+
+            return new List<WorkerConfig>()
+            {
+                new WorkerConfig() { Description = httpInvokerDesc }
+            };
+        }
+
         public static string CreateOfflineFile()
         {
             // create a test offline file
