@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             var arguments = new WorkerProcessArguments()
             {
                 ExecutablePath = options.Description.DefaultExecutablePath,
-                WorkerPath = options.Description.GetWorkerPath()
+                WorkerPath = options.Description.DefaultWorkerPath
             };
 
             var workerProvider = new GenericWorkerProvider(options.Description, options.Description.WorkerDirectory);
@@ -53,12 +53,15 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             {
                 if (workerDescription != null)
                 {
-                    string workerPath = workerDescription.GetWorkerPath();
                     workerDescription.WorkerDirectory = workerDescription.WorkerDirectory ?? Directory.GetCurrentDirectory();
                     workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
+                    workerDescription.DefaultWorkerPath = workerDescription.GetWorkerPath();
                     if (string.IsNullOrEmpty(workerDescription.DefaultWorkerPath))
                     {
-                        workerDescription.DefaultExecutablePath = Path.Combine(workerDescription.WorkerDirectory, workerDescription.DefaultExecutablePath);
+                        if (!Path.IsPathRooted(workerDescription.DefaultExecutablePath))
+                        {
+                            workerDescription.DefaultExecutablePath = Path.Combine(workerDescription.WorkerDirectory, workerDescription.DefaultExecutablePath);
+                        }
                     }
                     workerDescription.ValidateHttpInvokerDescription();
                 }

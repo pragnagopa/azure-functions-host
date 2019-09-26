@@ -51,6 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
             {
                 return null;
             }
+            if (Path.IsPathRooted(DefaultWorkerPath))
+            {
+                return DefaultWorkerPath;
+            }
             else
             {
                 return Path.Combine(WorkerDirectory, DefaultWorkerPath);

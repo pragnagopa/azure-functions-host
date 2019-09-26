@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private readonly ScriptApplicationHostOptions _options;
         private ILoggerProvider _testLoggerProvider;
         private ILoggerFactory _testLoggerFactory;
+        private static string _currentDirectory = Directory.GetCurrentDirectory();
 
         public HttpInvokerOptionsSetupTests()
         {
@@ -82,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'version': '2.0',
                     'httpInvoker': {
                             'description': {
-                                'arguments': ['--xTest1 --xTest2']
+                                'arguments': ['--xTest1 --xTest2'],
                                 'defaultExecutablePath': 'c:\testPath\testExe'
                             }
                         }
@@ -93,7 +94,89 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = BuildHostJsonConfiguration();
             HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(configuration, _testLoggerFactory);
             HttpInvokerOptions options = new HttpInvokerOptions();
+            setup.Configure(options);
             Assert.Equal("c:\testPath\testExe", options.Description.DefaultExecutablePath);
+            Assert.Equal(1, options.Description.Arguments.Count);
+            Assert.Equal("--xTest1 --xTest2", options.Description.Arguments[0]);
+        }
+
+        [Theory]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'httpInvoker': {
+                            'description': {
+                                'arguments': ['--xTest1 --xTest2'],
+                                'defaultExecutablePath': 'node',
+                                'defaultWorkerPath': 'httpInvoker.js'
+                            }
+                        }
+                    }", false, true, true)]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'httpInvoker': {
+                            'description': {
+                                'arguments': ['--xTest1 --xTest2'],
+                                'defaultExecutablePath': 'node'
+                            }
+                        }
+                    }", true, false, false)]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'httpInvoker': {
+                            'description': {
+                                'arguments': ['--xTest1 --xTest2'],
+                                'defaultExecutablePath': 'c:/myruntime/node'
+                            }
+                        }
+                    }", false, false, false)]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'httpInvoker': {
+                            'description': {
+                                'arguments': ['--xTest1 --xTest2'],
+                                'defaultExecutablePath': 'c:/myruntime/node',
+                                'defaultWorkerPath': 'c:/myworkerPath/httpInvoker.js'
+                            }
+                        }
+                    }", false, false, true)]
+        public void HttpInvoker_Config_ExpectedValues(string hostJsonContent, bool appendCurrentDirectoryToExe, bool appendCurrentDirToWorkerPath, bool workerPathSet)
+        {
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            var configuration = BuildHostJsonConfiguration();
+            HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(configuration, _testLoggerFactory);
+            HttpInvokerOptions options = new HttpInvokerOptions();
+            setup.Configure(options);
+
+            //Verify worker exe path is expected
+            if (appendCurrentDirectoryToExe)
+            {
+                Assert.Equal(Path.Combine(Directory.GetCurrentDirectory(), "node"), options.Description.DefaultExecutablePath);
+            }
+            else if (Path.IsPathRooted(options.Description.DefaultExecutablePath))
+            {
+                Assert.Equal(@"c:/myruntime/node", options.Description.DefaultExecutablePath);
+            }
+            else
+            {
+                Assert.Equal("node", options.Description.DefaultExecutablePath);
+            }
+
+            //Verify worker path is expected
+            if (appendCurrentDirToWorkerPath)
+            {
+                Assert.Equal(Path.Combine(Directory.GetCurrentDirectory(), "httpInvoker.js"), options.Description.DefaultWorkerPath);
+            }
+            else if (!workerPathSet)
+            {
+                Assert.Null(options.Description.DefaultWorkerPath);
+            }
+            else
+            {
+                Assert.Equal(@"c:/myworkerPath/httpInvoker.js", options.Description.DefaultWorkerPath);
+            }
+
+            Assert.Equal(1, options.Description.Arguments.Count);
+            Assert.Equal("--xTest1 --xTest2", options.Description.Arguments[0]);
         }
 
         private IConfiguration BuildHostJsonConfiguration(IEnvironment environment = null)
