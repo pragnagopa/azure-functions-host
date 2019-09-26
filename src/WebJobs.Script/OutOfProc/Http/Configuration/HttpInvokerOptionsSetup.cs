@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
@@ -27,48 +26,49 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         {
             IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
             var httpInvokerSection = jobHostSection.GetSection(ConfigurationSectionNames.HttpInvoker);
-            httpInvokerSection.Bind(options);
-            ValidateWorkerDescription(options.Description);
-            var arguments = new WorkerProcessArguments()
+            if (httpInvokerSection.Exists())
             {
-                ExecutablePath = options.Description.DefaultExecutablePath,
-                WorkerPath = options.Description.DefaultWorkerPath
-            };
+                httpInvokerSection.Bind(options);
 
-            var workerProvider = new GenericWorkerProvider(options.Description, options.Description.WorkerDirectory);
-            if (workerProvider.TryConfigureArguments(arguments, _logger))
-            {
-                _logger.LogError("Configured httpInvoker with DefaultExecutalbePath: {exepath} with arguments {args}", options.Description.DefaultExecutablePath, options.Arguments);
-                options.Arguments = arguments;
-            }
-            else
-            {
-                _logger.LogError("Could not configure httpInvoker with DefaultExecutalbePath: {exepath}", options.Description.DefaultExecutablePath);
+                if (options.Description == null || string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
+                {
+                    throw new HostConfigurationException($"Invalid WorkerDescription for HttpInvoker");
+                }
+
+                ValidateWorkerDescription(options.Description);
+                var arguments = new WorkerProcessArguments()
+                {
+                    ExecutablePath = options.Description.DefaultExecutablePath,
+                    WorkerPath = options.Description.DefaultWorkerPath
+                };
+
+                var workerProvider = new GenericWorkerProvider(options.Description, options.Description.WorkerDirectory);
+                if (workerProvider.TryConfigureArguments(arguments, _logger))
+                {
+                    _logger.LogDebug("Configured httpInvoker with DefaultExecutalbePath: {exepath} with arguments {args}", options.Description.DefaultExecutablePath, options.Arguments);
+                    options.Arguments = arguments;
+                }
+                else
+                {
+                    throw new HostConfigurationException($"Could not configure httpInvoker with DefaultExecutalbePath: {options.Description.DefaultExecutablePath}");
+                }
             }
         }
 
         internal void ValidateWorkerDescription(WorkerDescription workerDescription)
         {
-            try
+            if (workerDescription != null)
             {
-                if (workerDescription != null)
+                workerDescription.WorkerDirectory = workerDescription.WorkerDirectory ?? Directory.GetCurrentDirectory();
+                workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
+                workerDescription.DefaultWorkerPath = workerDescription.GetWorkerPath();
+                if (string.IsNullOrEmpty(workerDescription.DefaultWorkerPath))
                 {
-                    workerDescription.WorkerDirectory = workerDescription.WorkerDirectory ?? Directory.GetCurrentDirectory();
-                    workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
-                    workerDescription.DefaultWorkerPath = workerDescription.GetWorkerPath();
-                    if (string.IsNullOrEmpty(workerDescription.DefaultWorkerPath))
+                    if (!Path.IsPathRooted(workerDescription.DefaultExecutablePath))
                     {
-                        if (!Path.IsPathRooted(workerDescription.DefaultExecutablePath))
-                        {
-                            workerDescription.DefaultExecutablePath = Path.Combine(workerDescription.WorkerDirectory, workerDescription.DefaultExecutablePath);
-                        }
+                        workerDescription.DefaultExecutablePath = Path.Combine(workerDescription.WorkerDirectory, workerDescription.DefaultExecutablePath);
                     }
-                    workerDescription.ValidateHttpInvokerDescription();
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, $"Failed to initialize HttpInvoker worker provider for");
             }
         }
     }
