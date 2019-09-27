@@ -80,12 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void BuildWorkerProviderDictionary()
         {
-            if (_environment.IsHttpInvokerEnabled())
-            {
-                _logger.LogDebug($"Http Invoker is enabled");
-                AddHttpInvokerProviderFromAppSettings();
-                return;
-            }
             AddProviders();
             AddProvidersFromAppSettings();
         }
