@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
@@ -29,10 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             _processRegistry = processRegistry ?? throw new ArgumentNullException(nameof(processRegistry));
         }
 
-        public ILanguageWorkerProcess CreateHttpInvokerProcess(string workerId, string scriptRootPath, WorkerConfig workerConfig)
+        public ILanguageWorkerProcess CreateHttpInvokerProcess(string workerId, string scriptRootPath, WorkerProcessArguments workerArgs)
         {
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerProcess.{workerId}");
-            return new HttpInvokerProcess(workerId, scriptRootPath, workerConfig.Arguments, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
+            return new HttpInvokerProcess(workerId, scriptRootPath, workerArgs, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
         }
     }
 }
