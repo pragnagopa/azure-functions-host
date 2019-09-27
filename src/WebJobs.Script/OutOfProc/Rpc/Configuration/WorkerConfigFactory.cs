@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
-        private Dictionary<string, IWorkerProvider> _workerProviderDictionary = new Dictionary<string, IWorkerProvider>();
+        private Dictionary<string, WorkerDescription> _workerDescripionDictionary = new Dictionary<string, WorkerDescription>();
 
         public WorkerConfigFactory(IConfiguration config, ILogger logger)
         {
@@ -34,8 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public List<IWorkerProvider> WorkerProviders => _workerProviderDictionary.Values.ToList();
-
         public string WorkersDirPath { get; }
 
         public IList<WorkerConfig> GetConfigs()
@@ -43,9 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             BuildWorkerProviderDictionary();
             var result = new List<WorkerConfig>();
 
-            foreach (var provider in WorkerProviders)
+            foreach (var description in _workerDescripionDictionary.Values)
             {
-                var description = provider.GetDescription();
                 _logger.LogDebug($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
 
                 var arguments = new WorkerProcessArguments()
@@ -58,20 +55,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
                 }
-
-                if (provider.TryConfigureArguments(arguments, _logger))
+                arguments.ExecutableArguments.AddRange(description.Arguments);
+                var config = new WorkerConfig()
                 {
-                    var config = new WorkerConfig()
-                    {
-                        Description = description,
-                        Arguments = arguments
-                    };
-                    result.Add(config);
-                }
-                else
-                {
-                    _logger.LogError($"Could not configure language worker {description.Language}.");
-                }
+                    Description = description,
+                    Arguments = arguments
+                };
+                result.Add(config);
             }
 
             return result;
@@ -85,7 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void AddProviders()
         {
-            var providers = new List<IWorkerProvider>();
             _logger.LogDebug($"Workers Directory set to: {WorkersDirPath}");
 
             foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
@@ -106,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var workerDirectorySection = languageSection.GetSection(OutOfProcConstants.WorkerDirectorySectionName);
                 if (workerDirectorySection.Value != null)
                 {
-                    _workerProviderDictionary.Remove(languageSection.Key);
+                    _workerDescripionDictionary.Remove(languageSection.Key);
                     AddProvider(workerDirectorySection.Value);
                 }
             }
@@ -138,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
                     workerDescription.ValidateRpcWorkerDescription();
-                    _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
+                    _workerDescripionDictionary[workerDescription.Language] = workerDescription;
                 }
                 else
                 {

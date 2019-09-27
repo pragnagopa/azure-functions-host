@@ -517,7 +517,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsSupportedRuntime(string workerRuntime, IEnumerable<WorkerConfig> workerConfigs)
         {
-            return workerConfigs.Any(config => string.Equals(config.Language, workerRuntime, StringComparison.OrdinalIgnoreCase));
+            return workerConfigs.Any(config => string.Equals(config.Description.Language, workerRuntime, StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool ContainsFunctionWithWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)

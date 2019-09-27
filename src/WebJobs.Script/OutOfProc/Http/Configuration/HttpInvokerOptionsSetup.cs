@@ -42,16 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                     WorkerPath = options.Description.DefaultWorkerPath
                 };
 
-                var workerProvider = new GenericWorkerProvider(options.Description, options.Description.WorkerDirectory);
-                if (workerProvider.TryConfigureArguments(arguments, _logger))
-                {
-                    _logger.LogDebug("Configured httpInvoker with DefaultExecutalbePath: {exepath} with arguments {args}", options.Description.DefaultExecutablePath, options.Arguments);
-                    options.Arguments = arguments;
-                }
-                else
-                {
-                    throw new HostConfigurationException($"Could not configure httpInvoker with DefaultExecutalbePath: {options.Description.DefaultExecutablePath}");
-                }
+                arguments.ExecutableArguments.AddRange(options.Description.Arguments);
+                _logger.LogDebug("Configured httpInvoker with DefaultExecutalbePath: {exepath} with arguments {args}", options.Description.DefaultExecutablePath, options.Arguments);
             }
         }
 

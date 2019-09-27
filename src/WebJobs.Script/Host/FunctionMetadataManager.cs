@@ -270,15 +270,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             WorkerConfig workerConfig = workerConfigs.FirstOrDefault(config =>
             {
-                if (config.Extensions == null)
+                if (config.Description.Extensions == null)
                 {
                     return false;
                 }
-                return config.Extensions.Contains("." + extension);
+                return config.Description.Extensions.Contains("." + extension);
             });
             if (workerConfig != null)
             {
-                return workerConfig.Language;
+                return workerConfig.Description.Language;
             }
             return null;
         }

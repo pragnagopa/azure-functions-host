@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
             _workerConfig = workerConfig;
-            _runtime = workerConfig.Language;
+            _runtime = workerConfig.Description.Language;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
 
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Subscribe(SystemLog));
 
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
-                .Where(msg => _workerConfig.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
+                .Where(msg => _workerConfig.Description.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
                 .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
 
-            _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
+            _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
             _managedDependencyOptions = managedDependencyOptions;
 
             _state = LanguageWorkerChannelState.Default;
@@ -254,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             if (_managedDependencyOptions?.Value != null && _managedDependencyOptions.Value.Enabled)
             {
-                _workerChannelLogger?.LogDebug($"Adding dependency download request to {_workerConfig.Language} language worker");
+                _workerChannelLogger?.LogDebug($"Adding dependency download request to {_workerConfig.Description.Language} language worker");
                 request.ManagedDependencyEnabled = _managedDependencyOptions.Value.Enabled;
             }
 
@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             if (loadResponse.IsDependencyDownloaded)
             {
-                _workerChannelLogger?.LogInformation($"Managed dependency successfully downloaded by the {_workerConfig.Language} language worker");
+                _workerChannelLogger?.LogInformation($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
             }
 
             // link the invocation inputs to the invoke call
