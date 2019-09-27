@@ -54,9 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.IsNullOrEmpty(siteName) ? false : siteName.Equals(ScriptConstants.LegacyPlaceholderTemplateSiteName, StringComparison.InvariantCultureIgnoreCase);
         }
 
-        public static bool IsHttpInvokerEnabled(this IEnvironment environment)
+        public static bool IsRuntimeScaleMonitoringEnabled(this IEnvironment environment)
         {
-            return environment.GetEnvironmentVariable(FunctionsHttpInvoker) == "1";
+            return environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled) == "1";
         }
 
         public static bool IsEasyAuthEnabled(this IEnvironment environment)
