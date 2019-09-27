@@ -117,21 +117,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 workerDescription.WorkerDirectory = workerDir;
                 var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                 workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
-
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
-
-                string workerPath = workerDescription.DefaultWorkerPath;
-                if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
-                {
-                    _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
-                    workerDescription.Validate();
-                    _workerDescripionDictionary[workerDescription.Language] = workerDescription;
-                }
-                else
-                {
-                    throw new FileNotFoundException($"Did not find worker for for language: {workerDescription.Language}", workerPath);
-                }
+                workerDescription.FixAndValidate();
+                _workerDescripionDictionary[workerDescription.Language] = workerDescription;
             }
             catch (Exception ex)
             {

@@ -6,19 +6,17 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class WorkerConfigTests
+    public class RpcWorkerConfigTests
     {
         private static string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string customRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
@@ -40,8 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             get
             {
                 yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe" } };
-                yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig } };
-                yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig, Arguments = new List<string>() } };
+                yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestDefaultWorkerFile } };
+                yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestDefaultWorkerFile, Arguments = new List<string>() } };
             }
         }
 
@@ -101,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage));
             Assert.Single(workerConfigs);
-            Assert.True(workerConfigs.Single().Description.DefaultWorkerPath == null);
+            Assert.Null(workerConfigs.Single().Description.DefaultWorkerPath);
         }
 
         [Fact]
@@ -207,14 +205,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [MemberData(nameof(InvalidWorkerDescriptions))]
         public void InvalidWorkerDescription_Throws(WorkerDescription workerDescription)
         {
-            Assert.Throws<ValidationException>(() => workerDescription.Validate());
+            Assert.Throws<ValidationException>(() => workerDescription.FixAndValidate());
         }
 
         [Theory]
         [MemberData(nameof(ValidWorkerDescriptions))]
         public void ValidateWorkerDescription_Succeeds(WorkerDescription workerDescription)
         {
-            workerDescription.Validate();
+            try
+            {
+                WorkerConfigTestUtilities.CreateTestWorkerFileInCurrentDir();
+                workerDescription.FixAndValidate();
+            }
+            finally
+            {
+                WorkerConfigTestUtilities.DeleteTestWorkerFileInCurrentDir();
+            }
         }
 
         private IEnumerable<WorkerConfig> TestReadWorkerProviderFromConfig(IEnumerable<TestLanguageWorkerConfig> configs, ILogger testLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)
@@ -250,23 +256,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
             finally
             {
-                DeleteTestDir(rootPath);
-                DeleteTestDir(customRootPath);
-            }
-        }
-
-        private static void DeleteTestDir(string testDir)
-        {
-            if (Directory.Exists(testDir))
-            {
-                try
-                {
-                    Directory.Delete(testDir, true);
-                }
-                catch
-                {
-                    // best effort cleanup
-                }
+                WorkerConfigTestUtilities.DeleteTestDir(rootPath);
+                WorkerConfigTestUtilities.DeleteTestDir(customRootPath);
             }
         }
 

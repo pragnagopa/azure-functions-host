@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.IO;
-using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
@@ -12,75 +11,31 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         /// <summary>
         /// Gets or sets the default executable path.
         /// </summary>
-        [JsonProperty(PropertyName = "defaultExecutablePath")]
         public string DefaultExecutablePath { get; set; }
 
         /// <summary>
         /// Gets or sets the default path to the worker (relative to the bin/workers/{language} directory)
         /// </summary>
-        [JsonProperty(PropertyName = "defaultWorkerPath")]
-        public string DefaultWorkerPath
-        {
-            get
-            {
-                return DefaultWorkerPath;
-            }
-
-            set
-            {
-                if (string.IsNullOrEmpty(value) || Path.IsPathRooted(value))
-                {
-                    DefaultWorkerPath = value;
-                }
-                else
-                {
-                    DefaultWorkerPath = Path.Combine(WorkerDirectory, value);
-                }
-            }
-        }
+        public string DefaultWorkerPath { get; set; }
 
         /// <summary>
         /// Gets or sets the default base directory for the worker
         /// </summary>
-        [JsonProperty(PropertyName = "workerDirectory")]
-        public string WorkerDirectory
-        {
-            get
-            {
-                return WorkerDirectory;
-            }
-
-            set
-            {
-                WorkerDirectory = value;
-                if (string.IsNullOrEmpty(value))
-                {
-                    WorkerDirectory = Directory.GetCurrentDirectory();
-                }
-            }
-        }
+        public string WorkerDirectory { get; set; }
 
         /// <summary>
         /// Gets or sets the default path to the worker (relative to the bin/workers/{language} directory)
         /// </summary>
-        [JsonProperty(PropertyName = "arguments")]
-        public List<string> Arguments
-        {
-            get
-            {
-                return Arguments;
-            }
+        public List<string> Arguments { get; set; }
 
-            set
+        public virtual void FixAndValidate()
+        {
+            WorkerDirectory = WorkerDirectory ?? Directory.GetCurrentDirectory();
+            Arguments = Arguments ?? new List<string>();
+            if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
             {
-                Arguments = value;
-                if (value == null)
-                {
-                    Arguments = new List<string>();
-                }
+                DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
             }
         }
-
-        public abstract void Validate();
     }
 }

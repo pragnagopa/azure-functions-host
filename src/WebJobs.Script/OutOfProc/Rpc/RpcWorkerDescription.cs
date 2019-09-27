@@ -11,6 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public class RpcWorkerDescription : WorkerDescription
     {
+        private List<string> _extensions = new List<string>();
+
         /// <summary>
         /// Gets or sets the name of the supported language. This is the same name as the IConfiguration section for the worker.
         /// </summary>
@@ -21,10 +23,25 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         /// Gets or sets the supported file extension type. Functions are registered with workers based on extension.
         /// </summary>
         [JsonProperty(PropertyName = "extensions")]
-        public List<string> Extensions { get; set; }
-
-        public override void Validate()
+        public List<string> Extensions
         {
+            get
+            {
+                return _extensions;
+            }
+
+            set
+            {
+                if (value != null)
+                {
+                    _extensions = value;
+                }
+            }
+        }
+
+        public override void FixAndValidate()
+        {
+            base.FixAndValidate();
             if (string.IsNullOrEmpty(Language))
             {
                 throw new ValidationException($"WorkerDescription {nameof(Language)} cannot be empty");
@@ -36,6 +53,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (string.IsNullOrEmpty(DefaultExecutablePath))
             {
                 throw new ValidationException($"WorkerDescription {nameof(DefaultExecutablePath)} cannot be empty");
+            }
+            if (!string.IsNullOrEmpty(DefaultWorkerPath) && !File.Exists(DefaultWorkerPath))
+            {
+                throw new FileNotFoundException($"Did not find {nameof(DefaultWorkerPath)} for language: {Language}");
             }
         }
     }

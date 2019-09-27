@@ -7,8 +7,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
     public class HttpInvokerDescription : WorkerDescription
     {
-        public override void Validate()
+        public override void FixAndValidate()
         {
+            base.FixAndValidate();
             if (string.IsNullOrEmpty(DefaultExecutablePath))
             {
                 throw new ValidationException($"WorkerDescription {nameof(DefaultExecutablePath)} cannot be empty");

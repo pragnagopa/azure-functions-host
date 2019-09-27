@@ -2,11 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
-using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
@@ -71,38 +70,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             HttpInvokerOptions options = new HttpInvokerOptions();
             var ex = Record.Exception(() => setup.Configure(options));
             Assert.Null(ex);
-            if (!string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
+            if (options.Description != null && !string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
             {
-                string expectedDefaultExecutablePath = Path.Combine(Directory.GetCurrentDirectory(), "textExe");
+                string expectedDefaultExecutablePath = Path.Combine(Directory.GetCurrentDirectory(), "testExe");
                 Assert.Equal(expectedDefaultExecutablePath, options.Description.DefaultExecutablePath);
             }
         }
 
-        [Theory]
-        [InlineData(@"{
+        [Fact]
+        public void InValid_HttpInvokerConfig_Throws_HostConfigurationException()
+        {
+            string hostJsonContent = @"{
                     'version': '2.0',
                     'httpInvoker': {
                             'invalid': {
                                 'defaultExecutablePath': 'testExe'
                             }
                         }
-                    }", "Invalid WorkerDescription for HttpInvoker")]
-        [InlineData(@"{
+                    }";
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            var configuration = BuildHostJsonConfiguration();
+            HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(configuration, _testLoggerFactory);
+            HttpInvokerOptions options = new HttpInvokerOptions();
+            var ex = Assert.Throws<HostConfigurationException>(() => setup.Configure(options));
+            Assert.Contains("Invalid WorkerDescription for HttpInvoker", ex.Message);
+        }
+
+        [Fact]
+        public void InValid_HttpInvokerConfig_Throws_ValidationException()
+        {
+            string hostJsonContent = @"{
                     'version': '2.0',
                     'httpInvoker': {
                             'description': {
                                 'langauge': 'testExe'
                             }
                         }
-                    }", "Invalid WorkerDescription for HttpInvoker")]
-        public void InValid_HttpInvokerConfig_Throws(string hostJsonContent, string expectedExMessage)
-        {
+                    }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
             HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(configuration, _testLoggerFactory);
             HttpInvokerOptions options = new HttpInvokerOptions();
-            var ex = Assert.Throws<HostConfigurationException>(() => setup.Configure(options));
-            Assert.Contains(expectedExMessage, ex.Message);
+            var ex = Assert.Throws<ValidationException>(() => setup.Configure(options));
+            Assert.Contains("WorkerDescription DefaultExecutablePath cannot be empty", ex.Message);
         }
 
         [Theory]

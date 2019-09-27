@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Newtonsoft.Json.Linq;
@@ -14,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     public class WorkerConfigTestUtilities
     {
         public const string TestWorkerPathInWorkerConfig = "./src/index";
+        public const string TestDefaultWorkerFile = "testWorker.py";
         public const string HttpInvokerExe = "httpServer.exe";
         public const string TestDefaultExecutablePath = "testWorkerPath";
 
@@ -96,6 +96,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 Directory.CreateDirectory(Path.Combine(workerPath, $"{TestWorkerPathInWorkerConfig}"));
                 File.WriteAllText(Path.Combine(workerPath, $"{TestWorkerPathInWorkerConfig}.{workerConfig.Language}"), "test worker");
+            }
+        }
+
+        public static void CreateTestWorkerFileInCurrentDir()
+        {
+            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), TestDefaultWorkerFile), "Hello test worker");
+        }
+
+        public static void DeleteTestDir(string testDir)
+        {
+            if (Directory.Exists(testDir))
+            {
+                try
+                {
+                    Directory.Delete(testDir, true);
+                }
+                catch
+                {
+                    // best effort cleanup
+                }
+            }
+        }
+
+        public static void DeleteTestWorkerFileInCurrentDir()
+        {
+            if (File.Exists(TestWorkerPathInWorkerConfig))
+            {
+                try
+                {
+                    File.Delete(TestWorkerPathInWorkerConfig);
+                }
+                catch
+                {
+                    // best effort cleanup
+                }
             }
         }
     }

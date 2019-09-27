@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 {
                     throw new HostConfigurationException($"Invalid WorkerDescription for HttpInvoker");
                 }
-                httpInvokerDescription.Validate();
+                httpInvokerDescription.FixAndValidate();
                 if (string.IsNullOrEmpty(httpInvokerDescription.DefaultWorkerPath))
                 {
                     if (!Path.IsPathRooted(httpInvokerDescription.DefaultExecutablePath))
