@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
-    internal class HttpInvokerProcess : WorkerProcessBase
+    internal class HttpInvokerProcess : WorkerProcess
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly ILogger _workerProcessLogger;

@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.WebJobs.Script.Abstractions
+namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     public class WorkerProcessArguments
     {

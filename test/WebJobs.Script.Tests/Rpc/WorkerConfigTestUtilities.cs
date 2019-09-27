@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             if (!string.IsNullOrEmpty(profileName))
             {
-                var appSvcDescription = new WorkerDescription()
+                var appSvcDescription = new RpcWorkerDescription()
                 {
                     DefaultExecutablePath = "myFooPath",
                 };
@@ -49,9 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             return config;
         }
 
-        public static WorkerDescription GetTestDefaultWorkerDescription(string language, string[] arguments)
+        public static RpcWorkerDescription GetTestDefaultWorkerDescription(string language, string[] arguments)
         {
-            return new WorkerDescription()
+            return new RpcWorkerDescription()
             {
                 DefaultExecutablePath = TestDefaultExecutablePath,
                 DefaultWorkerPath = $"{TestWorkerPathInWorkerConfig}.{language}",
@@ -65,9 +65,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             if (invalid)
             {
-                return new WorkerDescription();
+                return new RpcWorkerDescription();
             }
-            WorkerDescription workerDescription = new WorkerDescription()
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
                 DefaultExecutablePath = HttpInvokerExe
             };

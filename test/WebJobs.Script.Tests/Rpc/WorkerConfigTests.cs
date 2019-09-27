@@ -29,9 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             get
             {
-                yield return new object[] { new WorkerDescription() { Extensions = new List<string>() } };
-                yield return new object[] { new WorkerDescription() { Language = testLanguage } };
-                yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>() } };
+                yield return new object[] { new RpcWorkerDescription() { Extensions = new List<string>() } };
+                yield return new object[] { new RpcWorkerDescription() { Language = testLanguage } };
+                yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>() } };
             }
         }
 
@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             get
             {
-                yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe" } };
-                yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig } };
-                yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig, Arguments = new List<string>() } };
+                yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe" } };
+                yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig } };
+                yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig, Arguments = new List<string>() } };
             }
         }
 
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage));
             Assert.Single(workerConfigs);
-            Assert.Equal(Path.Combine(rootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfigs.Single().Description.GetWorkerPath());
+            Assert.Equal(Path.Combine(rootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfigs.Single().Description.DefaultWorkerPath);
             WorkerConfig worker = workerConfigs.FirstOrDefault();
             Assert.True(worker.Description.Arguments.Count == 0);
         }
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
             Assert.Single(workerConfigs);
-            Assert.Equal(Path.Combine(rootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfigs.Single().Description.GetWorkerPath());
+            Assert.Equal(Path.Combine(rootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfigs.Single().Description.DefaultWorkerPath);
             WorkerConfig worker = workerConfigs.FirstOrDefault();
             Assert.True(worker.Description.Arguments.Count == 2);
             Assert.True(worker.Description.Arguments.Contains("--inspect=5689"));
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage));
             Assert.Single(workerConfigs);
-            Assert.True(workerConfigs.Single().Description.GetWorkerPath() == null);
+            Assert.True(workerConfigs.Single().Description.DefaultWorkerPath == null);
         }
 
         [Fact]
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
             Assert.Single(workerConfigs);
             WorkerConfig workerConfig = workerConfigs.Single();
-            Assert.Equal(Path.Combine(rootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfig.Description.GetWorkerPath());
+            Assert.Equal(Path.Combine(rootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfig.Description.DefaultWorkerPath);
             Assert.True(workerConfig.Description.Arguments.Count == 3);
             Assert.True(workerConfig.Description.Arguments.Contains("--inspect=5689"));
             Assert.True(workerConfig.Description.Arguments.Contains("--no-deprecation"));
@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
             Assert.Single(workerConfigs);
             WorkerConfig workerConfig = workerConfigs.Single();
-            Assert.Equal(Path.Combine(customRootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfig.Description.GetWorkerPath());
+            Assert.Equal(Path.Combine(customRootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfig.Description.DefaultWorkerPath);
         }
 
         [Fact]
@@ -207,14 +207,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [MemberData(nameof(InvalidWorkerDescriptions))]
         public void InvalidWorkerDescription_Throws(WorkerDescription workerDescription)
         {
-            Assert.Throws<ValidationException>(() => workerDescription.ValidateRpcWorkerDescription());
+            Assert.Throws<ValidationException>(() => workerDescription.Validate());
         }
 
         [Theory]
         [MemberData(nameof(ValidWorkerDescriptions))]
         public void ValidateWorkerDescription_Succeeds(WorkerDescription workerDescription)
         {
-            workerDescription.ValidateRpcWorkerDescription();
+            workerDescription.Validate();
         }
 
         private IEnumerable<WorkerConfig> TestReadWorkerProviderFromConfig(IEnumerable<TestLanguageWorkerConfig> configs, ILogger testLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)

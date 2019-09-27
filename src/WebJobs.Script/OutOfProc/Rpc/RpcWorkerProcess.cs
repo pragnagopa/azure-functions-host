@@ -2,18 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class RpcWorkerProcess : WorkerProcessBase
+    internal class RpcWorkerProcess : WorkerProcess
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly ILogger _workerProcessLogger;

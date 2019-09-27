@@ -1,9 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
 using System.IO;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -29,13 +27,20 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             if (httpInvokerSection.Exists())
             {
                 httpInvokerSection.Bind(options);
+                HttpInvokerDescription httpInvokerDescription = options.Description;
 
-                if (options.Description == null || string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
+                if (httpInvokerDescription == null)
                 {
                     throw new HostConfigurationException($"Invalid WorkerDescription for HttpInvoker");
                 }
-
-                ValidateWorkerDescription(options.Description);
+                httpInvokerDescription.Validate();
+                if (string.IsNullOrEmpty(httpInvokerDescription.DefaultWorkerPath))
+                {
+                    if (!Path.IsPathRooted(httpInvokerDescription.DefaultExecutablePath))
+                    {
+                        httpInvokerDescription.DefaultExecutablePath = Path.Combine(httpInvokerDescription.WorkerDirectory, httpInvokerDescription.DefaultExecutablePath);
+                    }
+                }
                 var arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = options.Description.DefaultExecutablePath,
@@ -44,23 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
                 arguments.ExecutableArguments.AddRange(options.Description.Arguments);
                 _logger.LogDebug("Configured httpInvoker with DefaultExecutalbePath: {exepath} with arguments {args}", options.Description.DefaultExecutablePath, options.Arguments);
-            }
-        }
-
-        internal void ValidateWorkerDescription(WorkerDescription workerDescription)
-        {
-            if (workerDescription != null)
-            {
-                workerDescription.WorkerDirectory = workerDescription.WorkerDirectory ?? Directory.GetCurrentDirectory();
-                workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
-                workerDescription.DefaultWorkerPath = workerDescription.GetWorkerPath();
-                if (string.IsNullOrEmpty(workerDescription.DefaultWorkerPath))
-                {
-                    if (!Path.IsPathRooted(workerDescription.DefaultExecutablePath))
-                    {
-                        workerDescription.DefaultExecutablePath = Path.Combine(workerDescription.WorkerDirectory, workerDescription.DefaultExecutablePath);
-                    }
-                }
             }
         }
     }

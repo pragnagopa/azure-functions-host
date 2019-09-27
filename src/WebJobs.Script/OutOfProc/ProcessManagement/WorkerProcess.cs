@@ -7,14 +7,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal abstract class WorkerProcessBase : ILanguageWorkerProcess, IDisposable
+    internal abstract class WorkerProcess : ILanguageWorkerProcess, IDisposable
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
@@ -27,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal WorkerProcessBase(string workerId,
+        internal WorkerProcess(string workerId,
                                        string rootScriptPath,
                                        WorkerProcessArguments workerProcessArguments,
                                        IScriptEventManager eventManager,

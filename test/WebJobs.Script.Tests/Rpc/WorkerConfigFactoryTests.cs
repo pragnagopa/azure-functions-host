@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005", "")]
         public void AddArgumentsFromAppSettings_JavaOpts(string expectedArgument, string javaOpts)
         {
-            WorkerDescription workerDescription = new WorkerDescription()
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
                 Arguments = new List<string>() { "-jar" },
                 DefaultExecutablePath = "java",

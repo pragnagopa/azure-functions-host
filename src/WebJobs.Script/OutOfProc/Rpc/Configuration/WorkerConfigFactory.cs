@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Configuration;
@@ -20,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
-        private Dictionary<string, WorkerDescription> _workerDescripionDictionary = new Dictionary<string, WorkerDescription>();
+        private Dictionary<string, RpcWorkerDescription> _workerDescripionDictionary = new Dictionary<string, RpcWorkerDescription>();
 
         public WorkerConfigFactory(IConfiguration config, ILogger logger)
         {
@@ -48,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = description.DefaultExecutablePath,
-                    WorkerPath = description.GetWorkerPath()
+                    WorkerPath = description.DefaultWorkerPath
                 };
 
                 if (description.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
@@ -114,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _logger.LogDebug($"Found worker config: {workerConfigPath}");
                 string json = File.ReadAllText(workerConfigPath);
                 JObject workerConfig = JObject.Parse(json);
-                WorkerDescription workerDescription = workerConfig.Property(OutOfProcConstants.WorkerDescription).Value.ToObject<WorkerDescription>();
+                RpcWorkerDescription workerDescription = workerConfig.Property(OutOfProcConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>();
                 workerDescription.WorkerDirectory = workerDir;
                 var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                 workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
@@ -122,11 +121,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
 
-                string workerPath = workerDescription.GetWorkerPath();
+                string workerPath = workerDescription.DefaultWorkerPath;
                 if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
                 {
                     _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
-                    workerDescription.ValidateRpcWorkerDescription();
+                    workerDescription.Validate();
                     _workerDescripionDictionary[workerDescription.Language] = workerDescription;
                 }
                 else
@@ -157,9 +156,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return descriptionProfiles;
         }
 
-        private static WorkerDescription GetWorkerDescriptionFromProfiles(string key, Dictionary<string, WorkerDescription> descriptionProfiles, WorkerDescription defaultWorkerDescription)
+        private static WorkerDescription GetWorkerDescriptionFromProfiles(string key, Dictionary<string, RpcWorkerDescription> descriptionProfiles, RpcWorkerDescription defaultWorkerDescription)
         {
-            WorkerDescription profileDescription = null;
+            RpcWorkerDescription profileDescription = null;
             if (descriptionProfiles.TryGetValue(key, out profileDescription))
             {
                 profileDescription.Arguments = profileDescription.Arguments?.Count > 0 ? profileDescription.Arguments : defaultWorkerDescription.Arguments;
@@ -179,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             workerDescription.DefaultExecutablePath = defaultExecutablePath.Value != null ? defaultExecutablePath.Value : workerDescription.DefaultExecutablePath;
         }
 
-        internal static void AddArgumentsFromAppSettings(WorkerDescription workerDescription, IConfigurationSection languageSection)
+        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
         {
             if (workerDescription.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
             {
