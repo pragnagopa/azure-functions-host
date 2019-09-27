@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DotnetSkipFirstTimeExperience = "DOTNET_SKIP_FIRST_TIME_EXPERIENCE";
         public const string AzureFilesConnectionString = "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING";
         public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
-        public const string FunctionsHttpInvoker = "FUNCTIONS_HTTP_INVOKER";
+        public const string FunctionsRuntimeScaleMonitoringEnabled = "FUNCTIONS_RUNTIME_SCALE_MONITORING_ENABLED";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
