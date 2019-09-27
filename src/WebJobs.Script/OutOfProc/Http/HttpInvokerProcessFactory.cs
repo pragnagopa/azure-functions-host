@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.OutOfProc
+namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
     internal class HttpInvokerProcessFactory : IHttpInvokerProcessFactory
     {
