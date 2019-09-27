@@ -18,7 +18,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class GenericWorkerProviderTests
+    public class WorkerConfigTests
     {
         private static string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string customRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());

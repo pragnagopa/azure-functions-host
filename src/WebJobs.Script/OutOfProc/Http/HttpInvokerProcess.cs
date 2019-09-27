@@ -5,9 +5,10 @@ using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Rpc
+namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
     internal class HttpInvokerProcess : WorkerProcessBase
     {
@@ -39,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal override Process CreateWorkerProcess()
         {
-            var workerContext = new WorkerContext()
+            var workerContext = new HttpWorkerContext()
             {
                 RequestId = Guid.NewGuid().ToString(),
                 WorkerId = _workerId,

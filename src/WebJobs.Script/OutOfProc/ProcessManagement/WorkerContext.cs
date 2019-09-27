@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     // Arguments to start a worker process
-    internal class WorkerContext
+    public abstract class WorkerContext
     {
         public WorkerProcessArguments Arguments { get; set; }
 
@@ -15,5 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public string RequestId { get; set; }
 
         public string WorkingDirectory { get; set; }
+
+        public abstract string GetFormatedArguments();
     }
 }

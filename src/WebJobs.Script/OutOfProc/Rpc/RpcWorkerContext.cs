@@ -11,5 +11,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public Uri ServerUri { get; set; }
 
         public int MaxMessageLength { get; set; }
+
+        public override string GetFormatedArguments()
+        {
+            return $" --host {ServerUri.Host} --port {ServerUri.Port} --workerId {WorkerId} --requestId {RequestId} --grpcMaxMessageLength {MaxMessageLength}";
+        }
     }
 }

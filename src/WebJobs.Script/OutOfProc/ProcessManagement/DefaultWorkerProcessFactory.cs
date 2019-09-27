@@ -35,16 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 argumentsBuilder.AppendFormat(" \"{0}\"", context.Arguments.WorkerPath);
             }
             context.Arguments.WorkerArguments.Aggregate(argumentsBuilder, MergeArguments);
-            if (context is RpcWorkerContext rpcWorkerContext)
-            {
-                argumentsBuilder.AppendFormat(" --host {0} --port {1} --workerId {2} --requestId {3} --grpcMaxMessageLength {4}",
-                                rpcWorkerContext.ServerUri.Host, rpcWorkerContext.ServerUri.Port, context.WorkerId, context.RequestId, rpcWorkerContext.MaxMessageLength);
-            }
-            else
-            {
-                // TODO: port number?
-                argumentsBuilder.AppendFormat(" --workerId {1} --requestId {1} ", context.WorkerId, context.RequestId);
-            }
+            argumentsBuilder.Append(context.GetFormatedArguments());
             return argumentsBuilder.ToString();
         }
     }
