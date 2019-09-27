@@ -82,22 +82,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData(@"{
                     'version': '2.0',
                     'httpInvoker': {
-                            'description': {
-                                'arguments': ['--xTest1 --xTest2'],
-                                'defaultExecutablePath': 'c:\testPath\testExe'
+                            'invalid': {
+                                'defaultExecutablePath': 'testExe'
                             }
                         }
-                    }")]
-        public void HttpInvoker_Custom_WorkerDirectory_Arguments(string hostJsonContent)
+                    }", "Invalid WorkerDescription for HttpInvoker")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'httpInvoker': {
+                            'description': {
+                                'langauge': 'testExe'
+                            }
+                        }
+                    }", "Invalid WorkerDescription for HttpInvoker")]
+        public void InValid_HttpInvokerConfig_Throws(string hostJsonContent, string expectedExMessage)
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
             HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(configuration, _testLoggerFactory);
             HttpInvokerOptions options = new HttpInvokerOptions();
-            setup.Configure(options);
-            Assert.Equal("c:\testPath\testExe", options.Description.DefaultExecutablePath);
-            Assert.Equal(1, options.Description.Arguments.Count);
-            Assert.Equal("--xTest1 --xTest2", options.Description.Arguments[0]);
+            var ex = Assert.Throws<HostConfigurationException>(() => setup.Configure(options));
+            Assert.Contains(expectedExMessage, ex.Message);
         }
 
         [Theory]
