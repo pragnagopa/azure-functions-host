@@ -13,9 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
     {
         private IConfiguration _configuration;
         private ILogger _logger;
+        private ScriptJobHostOptions _scriptOptions;
 
-        public HttpInvokerOptionsSetup(IConfiguration configuration, ILoggerFactory loggerFactory)
+        public HttpInvokerOptionsSetup(IOptions<ScriptJobHostOptions> scriptHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory)
         {
+            _scriptOptions = scriptHostOptions.Value;
             _configuration = configuration;
             _logger = loggerFactory.CreateLogger<HttpInvokerOptionsSetup>();
         }
@@ -38,16 +40,16 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 {
                     if (!Path.IsPathRooted(httpInvokerDescription.DefaultExecutablePath))
                     {
-                        httpInvokerDescription.DefaultExecutablePath = Path.Combine(httpInvokerDescription.WorkerDirectory, httpInvokerDescription.DefaultExecutablePath);
+                        httpInvokerDescription.DefaultExecutablePath = Path.Combine(_scriptOptions.RootScriptPath, httpInvokerDescription.DefaultExecutablePath);
                     }
                 }
-                var arguments = new WorkerProcessArguments()
+                options.Arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = options.Description.DefaultExecutablePath,
                     WorkerPath = options.Description.DefaultWorkerPath
                 };
 
-                arguments.ExecutableArguments.AddRange(options.Description.Arguments);
+                options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
                 _logger.LogDebug("Configured httpInvoker with DefaultExecutalbePath: {exepath} with arguments {args}", options.Description.DefaultExecutablePath, options.Arguments);
             }
         }

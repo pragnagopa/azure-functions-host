@@ -23,6 +23,8 @@ using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
+using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Configuration;
@@ -123,7 +125,12 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
-                services.AddSingleton<IFunctionDispatcher, RpcFunctionInvocationDispatcher>();
+                // TODO: pgopa add HttpFunctionInvocationDispatcher if httpInvoker is enabled
+                services.AddSingleton<IFunctionDispatcher, HttpFunctionInvocationDispatcher>();
+                //services.AddSingleton<IFunctionDispatcher, RpcFunctionInvocationDispatcher>();
+                services.AddSingleton<IHttpInvokerProcessFactory, HttpInvokerProcessFactory>();
+                services.AddSingleton<IHttpInvokerChannelFactory, HttpInvokerChannelFactory>();
+                services.AddSingleton<IHttpInvokerService, DefaultHttpInvokerService>();
                 services.AddSingleton<IJobHostLanguageWorkerChannelManager, JobHostLanguageWorkerChannelManager>();
                 services.AddSingleton<IFunctionDispatcherLoadBalancer, FunctionDispatcherLoadBalancer>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
@@ -149,19 +156,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // TODO: pgopa only add this to WebHostServiceCollection
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
+                services.ConfigureOptions<HttpInvokerOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
                     {
                         c.GetSection(ConfigurationSectionNames.JobHost)
                          .GetSection(ConfigurationSectionNames.Aggregator)
-                         .Bind(o);
-                    });
-                services.AddOptions<ScaleOptions>()
-                    .Configure<IConfiguration>((o, c) =>
-                    {
-                        c.GetSection(ConfigurationSectionNames.JobHost)
-                         .GetSection(ConfigurationSectionNames.Scale)
                          .Bind(o);
                     });
 
@@ -175,12 +176,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IHostedService, LanguageWorkerConsoleLogService>();
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
-
-                if (SystemEnvironment.Instance.IsRuntimeScaleMonitoringEnabled())
-                {
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsScaleMonitorService>());
-                }
-                services.TryAddSingleton<FunctionsScaleManager>();
             });
 
             RegisterFileProvisioningService(builder);

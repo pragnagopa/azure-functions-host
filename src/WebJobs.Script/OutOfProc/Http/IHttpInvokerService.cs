@@ -8,6 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     public interface IHttpInvokerService
     {
-        Task GetInvocationResponse(ScriptInvocationContext scriptInvocationContext);
+        Task InvokeAsync(ScriptInvocationContext scriptInvocationContext);
     }
 }

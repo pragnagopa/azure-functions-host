@@ -95,6 +95,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(413, nameof(ScriptHostStarted)),
             "Host started ({ms}ms)");
 
+        private static readonly Action<ILogger, Exception> _addingDescriptorProviderForHttpInvoker =
+           LoggerMessage.Define(
+           LogLevel.Debug,
+           new EventId(414, nameof(AddingDescriptorProviderForHttpInvoker)),
+           "Creating function descriptors.");
+
         public static void HostIdIsSet(this ILogger logger)
         {
             _hostIdIsSet(logger, null);
@@ -119,6 +125,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void AddingDescriptorProviderForLanguage(this ILogger logger, string workerRuntime)
         {
             _addingDescriptorProviderForLanguage(logger, workerRuntime, null);
+        }
+
+        public static void AddingDescriptorProviderForHttpInvoker(this ILogger logger)
+        {
+            _addingDescriptorProviderForHttpInvoker(logger, null);
         }
 
         public static void CreatingDescriptors(this ILogger logger)

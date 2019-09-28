@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
-namespace Microsoft.Azure.WebJobs.Script.OutOfProc
+namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
     internal class HttpFunctionInvocationDispatcher : IFunctionDispatcher
     {
@@ -43,8 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             IScriptJobHostEnvironment scriptJobHostEnvironment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IHttpInvokerChannelFactory httpInvokerChannelFactory,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions)
+            IHttpInvokerChannelFactory httpInvokerChannelFactory)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;

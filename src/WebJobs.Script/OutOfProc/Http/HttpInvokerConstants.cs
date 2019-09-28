@@ -5,8 +5,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     public static class HttpInvokerConstants
     {
-        public const string InvocatoinIdHeaderName = "X-Azure-FUNCTIONS-InvocationId";
-        public const string HostVersionHeader = "X-Azure-FUNCTIONS-HostVersion";
+        public const string InvocationIdHeaderName = "X-Azure-Functions-InvocationId";
+        public const string HostVersionHeaderName = "X-Azure-Function-Host-Version";
+        public const string UserAgentHeaderValue = "Azure-Function-Host";
 
         //worker config constants
         public const string HttpInvokerSectionName = "httpInvoker";
