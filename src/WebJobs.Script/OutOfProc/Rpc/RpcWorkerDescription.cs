@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
@@ -39,9 +40,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public override void FixAndValidate()
+        public override void FixAndValidate(string workerDirectory)
         {
-            base.FixAndValidate();
+            if (workerDirectory == null)
+            {
+                throw new ArgumentNullException(nameof(workerDirectory));
+            }
+            Arguments = Arguments ?? new List<string>();
+            WorkerDirectory = WorkerDirectory ?? workerDirectory;
+            if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
+            {
+                DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
+            }
             if (string.IsNullOrEmpty(Language))
             {
                 throw new ValidationException($"WorkerDescription {nameof(Language)} cannot be empty");

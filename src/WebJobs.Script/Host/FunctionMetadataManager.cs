@@ -251,6 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static string ParseLanguage(string scriptFilePath, IEnumerable<WorkerConfig> workerConfigs)
         {
+            // scriptFilePath can be null for a customer worker such as httpInvoker
             if (string.IsNullOrEmpty(scriptFilePath))
             {
                 return null;

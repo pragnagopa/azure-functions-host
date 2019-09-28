@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.IO;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -13,11 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
     {
         private IConfiguration _configuration;
         private ILogger _logger;
-        private ScriptJobHostOptions _scriptOptions;
+        private ScriptJobHostOptions _scriptJobHostOptions;
 
-        public HttpInvokerOptionsSetup(IOptions<ScriptJobHostOptions> scriptHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory)
+        public HttpInvokerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory)
         {
-            _scriptOptions = scriptHostOptions.Value;
+            _scriptJobHostOptions = scriptJobHostOptions.Value;
             _configuration = configuration;
             _logger = loggerFactory.CreateLogger<HttpInvokerOptionsSetup>();
         }
@@ -35,14 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 {
                     throw new HostConfigurationException($"Invalid WorkerDescription for HttpInvoker");
                 }
-                httpInvokerDescription.FixAndValidate();
-                if (string.IsNullOrEmpty(httpInvokerDescription.DefaultWorkerPath))
-                {
-                    if (!Path.IsPathRooted(httpInvokerDescription.DefaultExecutablePath))
-                    {
-                        httpInvokerDescription.DefaultExecutablePath = Path.Combine(_scriptOptions.RootScriptPath, httpInvokerDescription.DefaultExecutablePath);
-                    }
-                }
+                httpInvokerDescription.FixAndValidate(_scriptJobHostOptions.RootScriptPath);
                 options.Arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = options.Description.DefaultExecutablePath,

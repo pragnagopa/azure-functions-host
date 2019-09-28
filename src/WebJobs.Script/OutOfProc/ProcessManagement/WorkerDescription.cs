@@ -28,14 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         /// </summary>
         public List<string> Arguments { get; set; }
 
-        public virtual void FixAndValidate()
-        {
-            WorkerDirectory = WorkerDirectory ?? Directory.GetCurrentDirectory();
-            Arguments = Arguments ?? new List<string>();
-            if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
-            {
-                DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
-            }
-        }
+        public abstract void FixAndValidate(string workerDirectory);
     }
 }
