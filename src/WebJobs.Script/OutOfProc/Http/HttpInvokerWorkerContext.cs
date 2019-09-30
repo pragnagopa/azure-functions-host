@@ -6,11 +6,13 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
     // Arguments to start a worker process
-    internal class HttpWorkerContext : WorkerContext
+    internal class HttpInvokerWorkerContext : WorkerContext
     {
+        public int HttpInvokerPort { get; set; }
+
         public override string GetFormatedArguments()
         {
-            return $" --workerId {WorkerId} --requestId {RequestId}";
+            return $" --httpInvokerPort {HttpInvokerPort}";
         }
     }
 }

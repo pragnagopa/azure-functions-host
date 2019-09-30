@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal WorkerProcess(string workerId,
                                        string rootScriptPath,
-                                       WorkerProcessArguments workerProcessArguments,
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,

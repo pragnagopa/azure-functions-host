@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                        IProcessRegistry processRegistry,
                                        ILogger workerProcessLogger,
                                        ILanguageWorkerConsoleLogSource consoleLogSource)
-            : base(workerId, rootScriptPath, workerProcessArguments, eventManager, processFactory, processRegistry, workerProcessLogger, consoleLogSource)
+            : base(workerId, rootScriptPath, eventManager, processFactory, processRegistry, workerProcessLogger, consoleLogSource)
         {
             _runtime = runtime;
             _processFactory = processFactory;

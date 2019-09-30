@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
     public class HttpInvokerChannel : IHttpInvokerChannel, IDisposable
     {
         private readonly string _rootScriptPath;
+        private readonly string _httpInvokerBaseUrl;
         private readonly IScriptEventManager _eventManager;
         private bool _disposed;
         private string _workerId;
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         internal HttpInvokerChannel(
            string workerId,
            string rootScriptPath,
+           string httpInvokerBaseUrl,
            IScriptEventManager eventManager,
            ILanguageWorkerProcess languageWorkerProcess,
            IHttpInvokerService httpInvokerService,
@@ -34,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         {
             _workerId = workerId;
             _rootScriptPath = rootScriptPath;
+            _httpInvokerBaseUrl = httpInvokerBaseUrl;
             _eventManager = eventManager;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
@@ -45,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public async Task InvokeFunction(ScriptInvocationContext context)
         {
-            await _httpInvokerService.InvokeAsync(context);
+            await _httpInvokerService.InvokeAsync(context, _httpInvokerBaseUrl);
         }
 
         public async Task StartWorkerProcessAsync()

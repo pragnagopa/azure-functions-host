@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Net;
+using System.Net.Sockets;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -42,8 +44,19 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 };
 
                 options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
+                options.Port = GetUnusedTcpPort();
                 _logger.LogDebug("Configured httpInvoker with DefaultExecutalbePath: {exepath} with arguments {args}", options.Description.DefaultExecutablePath, options.Arguments);
             }
+        }
+
+        internal static int GetUnusedTcpPort()
+        {
+            // TODO verify in Azure
+            TcpListener tcpListener = new TcpListener(IPAddress.Loopback, 0);
+            tcpListener.Start();
+            int port = ((IPEndPoint)tcpListener.LocalEndpoint).Port;
+            tcpListener.Stop();
+            return port;
         }
     }
 }

@@ -19,19 +19,17 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
     public class DefaultHttpInvokerService : IHttpInvokerService
     {
         private readonly HttpClient _httpClient;
-        private readonly string _httpInvokerBaseUrl;
 
         public DefaultHttpInvokerService(HttpClient httpClient)
         {
             _httpClient = httpClient;
             // TODO: user agent ok?
             _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(HttpInvokerConstants.UserAgentHeaderValue);
-            _httpInvokerBaseUrl = "http://localhost:8090/";
         }
 
-        public async Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
+        public async Task InvokeAsync(ScriptInvocationContext scriptInvocationContext, string httpInvokerBaseUrl)
         {
-            var requestUri = _httpInvokerBaseUrl + scriptInvocationContext.FunctionMetadata.Name;
+            var requestUri = httpInvokerBaseUrl + scriptInvocationContext.FunctionMetadata.Name;
             if (Utility.IsSimpleHttpTriggerFunction(scriptInvocationContext.FunctionMetadata))
             {
                 await ProcessSimpleHttpInvocationRequest(scriptInvocationContext, requestUri);

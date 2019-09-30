@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         private readonly IWorkerProcessFactory _processFactory;
         private readonly ILogger _workerProcessLogger;
         private readonly IScriptEventManager _eventManager;
+        private readonly HttpInvokerOptions _httpInvokerOptions;
 
         private string _workerId;
         private string _scriptRootPath;
@@ -22,30 +23,32 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
         internal HttpInvokerProcess(string workerId,
                                        string rootScriptPath,
-                                       WorkerProcessArguments workerProcessArguments,
+                                       HttpInvokerOptions httpInvokerOptions,
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
                                        ILogger workerProcessLogger,
                                        ILanguageWorkerConsoleLogSource consoleLogSource)
-            : base(workerId, rootScriptPath, workerProcessArguments, eventManager, processFactory, processRegistry, workerProcessLogger, consoleLogSource)
+            : base(workerId, rootScriptPath, eventManager, processFactory, processRegistry, workerProcessLogger, consoleLogSource)
         {
             _processFactory = processFactory;
             _eventManager = eventManager;
             _workerProcessLogger = workerProcessLogger;
             _workerId = workerId;
             _scriptRootPath = rootScriptPath;
-            _workerProcessArguments = workerProcessArguments;
+            _httpInvokerOptions = httpInvokerOptions;
+            _workerProcessArguments = _httpInvokerOptions.Arguments;
         }
 
         internal override Process CreateWorkerProcess()
         {
-            var workerContext = new HttpWorkerContext()
+            var workerContext = new HttpInvokerWorkerContext()
             {
                 RequestId = Guid.NewGuid().ToString(),
                 WorkerId = _workerId,
                 Arguments = _workerProcessArguments,
                 WorkingDirectory = _scriptRootPath,
+                HttpInvokerPort = _httpInvokerOptions.Port
             };
             return _processFactory.CreateWorkerProcess(workerContext);
         }
