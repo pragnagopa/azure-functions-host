@@ -2,10 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -28,6 +32,58 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         public async Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
         {
             var requestUri = _httpInvokerBaseUrl + scriptInvocationContext.FunctionMetadata.Name;
+            if (Utility.IsSimpleHttpTriggerFunction(scriptInvocationContext.FunctionMetadata))
+            {
+                await ProcessSimpleHttpInvocationRequest(scriptInvocationContext, requestUri);
+                return;
+            }
+            await ProcessDefaultInvocationRequest(scriptInvocationContext, requestUri);
+        }
+
+        private async Task ProcessSimpleHttpInvocationRequest(ScriptInvocationContext scriptInvocationContext, string requestUri)
+        {
+            HttpRequestMessage httpRequestMessage = null;
+            var input = scriptInvocationContext.Inputs.FirstOrDefault();
+            HttpRequest httpRequest = (HttpRequest)input.val;
+            if (httpRequest == null)
+            {
+                throw new ArgumentNullException(nameof(input.val));
+            }
+            try
+            {
+                // populate input bindings
+                HttpRequestMessageFeature hreqmf = new HttpRequestMessageFeature(httpRequest.HttpContext);
+                httpRequestMessage = hreqmf.HttpRequestMessage;
+                string httpInvokerUri = QueryHelpers.AddQueryString(requestUri, HttpRequestMessageConverters.ConvertQueryCollectionToDictionary(httpRequest.Query));
+                httpRequestMessage.RequestUri = new Uri(httpInvokerUri);
+
+                // TODO Add standard headers
+                httpRequestMessage.Headers.Add(HttpInvokerConstants.InvocationIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+                httpRequestMessage.Headers.Add(HttpInvokerConstants.HostVersionHeaderName, ScriptHost.Version);
+
+                HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
+                ScriptInvocationResult scriptInvocationResult = new ScriptInvocationResult()
+                {
+                    Outputs = new Dictionary<string, object>(),
+                    Return = new object()
+                };
+                BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
+                if (httpOutputBinding != null)
+                {
+                    scriptInvocationResult.Outputs.Add(httpOutputBinding.Name, invocationResponse);
+                    // TODO set reuturn always?
+                    scriptInvocationResult.Return = invocationResponse;
+                }
+                scriptInvocationContext.ResultSource.SetResult(scriptInvocationResult);
+            }
+            catch (Exception responseEx)
+            {
+                scriptInvocationContext.ResultSource.TrySetException(responseEx);
+            }
+        }
+
+        private async Task ProcessDefaultInvocationRequest(ScriptInvocationContext scriptInvocationContext, string requestUri)
+        {
             HttpScriptInvocationContext httpScriptInvocationContext = new HttpScriptInvocationContext();
 
             // populate metadata

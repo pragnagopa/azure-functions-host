@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Dynamic;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -59,13 +61,18 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
         internal static string ConvertQueryCollectionToJson(IQueryCollection query)
         {
-            var dict = new Dictionary<string, string>();
+            return JsonConvert.SerializeObject(ConvertQueryCollectionToDictionary(query));
+        }
+
+        internal static IDictionary<string, string> ConvertQueryCollectionToDictionary(IQueryCollection query)
+        {
+            var queryParamsDictionary = new Dictionary<string, string>();
             foreach (var key in query.Keys)
             {
                 query.TryGetValue(key, out StringValues value);
-                dict.Add(key, value.ToString());
+                queryParamsDictionary.Add(key, value.ToString());
             }
-            return JsonConvert.SerializeObject(dict);
+            return queryParamsDictionary;
         }
     }
 }

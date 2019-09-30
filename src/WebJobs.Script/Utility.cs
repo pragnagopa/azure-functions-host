@@ -572,6 +572,32 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
+        public static bool IsSimpleHttpTriggerFunction(FunctionMetadata functionMetadata)
+        {
+            if (functionMetadata == null)
+            {
+                throw new ArgumentNullException(nameof(functionMetadata));
+            }
+            if (functionMetadata.InputBindings == null || functionMetadata.OutputBindings == null)
+            {
+                return false;
+            }
+            if (functionMetadata.InputBindings.Count() != 1 || functionMetadata.OutputBindings.Count() != 1)
+            {
+                return false;
+            }
+
+            BindingMetadata inputBindingMetadata = functionMetadata.InputBindings.ElementAt(0);
+            BindingMetadata outputBindingMetadata = functionMetadata.OutputBindings.ElementAt(0);
+            if (string.Compare("httptrigger", inputBindingMetadata.Type, StringComparison.OrdinalIgnoreCase) == 0 &&
+                string.Compare("http", outputBindingMetadata.Type, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Computes a stable non-cryptographic hash
         /// </summary>

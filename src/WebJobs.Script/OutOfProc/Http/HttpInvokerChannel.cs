@@ -43,10 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public string Id => _workerId;
 
-        public Task InvokeFunction(ScriptInvocationContext context)
+        public async Task InvokeFunction(ScriptInvocationContext context)
         {
-            // TODO: convert to Http request
-            return _httpInvokerService.InvokeAsync(context);
+            await _httpInvokerService.InvokeAsync(context);
         }
 
         public async Task StartWorkerProcessAsync()
