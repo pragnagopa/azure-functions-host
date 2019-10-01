@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
@@ -19,27 +20,29 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
     public class DefaultHttpInvokerService : IHttpInvokerService
     {
         private readonly HttpClient _httpClient;
+        private readonly HttpInvokerOptions _httpInvokerOptions;
+        private readonly string _httpInvokerBaseUrl;
 
-        public DefaultHttpInvokerService(HttpClient httpClient)
+        public DefaultHttpInvokerService(HttpClient httpClient, IOptions<HttpInvokerOptions> httpInvokerOptions)
         {
             _httpClient = httpClient;
-            // TODO: user agent ok?
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(HttpInvokerConstants.UserAgentHeaderValue);
+            _httpInvokerOptions = httpInvokerOptions.Value;
+            _httpInvokerBaseUrl = $"http://localhost:{_httpInvokerOptions.Port}/";
         }
 
-        public async Task InvokeAsync(ScriptInvocationContext scriptInvocationContext, string httpInvokerBaseUrl)
+        public async Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
         {
-            var requestUri = httpInvokerBaseUrl + scriptInvocationContext.FunctionMetadata.Name;
             if (Utility.IsSimpleHttpTriggerFunction(scriptInvocationContext.FunctionMetadata))
             {
-                await ProcessSimpleHttpInvocationRequest(scriptInvocationContext, requestUri);
+                await ProcessSimpleHttpInvocationRequest(scriptInvocationContext);
                 return;
             }
-            await ProcessDefaultInvocationRequest(scriptInvocationContext, requestUri);
+            await ProcessDefaultInvocationRequest(scriptInvocationContext);
         }
 
-        internal async Task ProcessSimpleHttpInvocationRequest(ScriptInvocationContext scriptInvocationContext, string requestUri)
+        internal async Task ProcessSimpleHttpInvocationRequest(ScriptInvocationContext scriptInvocationContext)
         {
+            var functionInvocationUri = _httpInvokerBaseUrl + scriptInvocationContext.FunctionMetadata.Name;
             HttpRequestMessage httpRequestMessage = null;
             var input = scriptInvocationContext.Inputs.FirstOrDefault();
             HttpRequest httpRequest = (HttpRequest)input.val;
@@ -52,12 +55,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 // populate input bindings
                 HttpRequestMessageFeature hreqmf = new HttpRequestMessageFeature(httpRequest.HttpContext);
                 httpRequestMessage = hreqmf.HttpRequestMessage;
-                string httpInvokerUri = QueryHelpers.AddQueryString(requestUri, HttpRequestMessageConverters.ConvertQueryCollectionToDictionary(httpRequest.Query));
+                string httpInvokerUri = QueryHelpers.AddQueryString(functionInvocationUri, HttpRequestMessageConverters.ConvertQueryCollectionToDictionary(httpRequest.Query));
                 httpRequestMessage.RequestUri = new Uri(httpInvokerUri);
 
                 // TODO Add standard headers
                 httpRequestMessage.Headers.Add(HttpInvokerConstants.InvocationIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
                 httpRequestMessage.Headers.Add(HttpInvokerConstants.HostVersionHeaderName, ScriptHost.Version);
+                // TODO: user agent or X-header?
+                httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpInvokerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
 
                 HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
                 ScriptInvocationResult scriptInvocationResult = new ScriptInvocationResult()
@@ -80,8 +85,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             }
         }
 
-        internal async Task ProcessDefaultInvocationRequest(ScriptInvocationContext scriptInvocationContext, string requestUri)
+        internal async Task ProcessDefaultInvocationRequest(ScriptInvocationContext scriptInvocationContext)
         {
+            var functionInvocationUri = _httpInvokerBaseUrl + scriptInvocationContext.FunctionMetadata.Name;
             HttpScriptInvocationContext httpScriptInvocationContext = new HttpScriptInvocationContext();
 
             // populate metadata
@@ -118,8 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             {
                 HttpRequestMessage hmr = new HttpRequestMessage();
                 hmr.Content = content;
-                requestUri = requestUri.TrimEnd('/');
-                hmr.RequestUri = new Uri($"{requestUri}/{scriptInvocationContext.FunctionMetadata.Name}");
+                hmr.RequestUri = new Uri($"{functionInvocationUri}/{scriptInvocationContext.FunctionMetadata.Name}");
                 HttpResponseMessage response = await _httpClient.SendAsync(hmr);
                 HttpScriptInvocationResult invocationResult = null;
                 var scriptInvocationResult = new ScriptInvocationResult();
