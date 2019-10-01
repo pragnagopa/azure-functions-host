@@ -38,14 +38,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             await ProcessDefaultInvocationRequest(scriptInvocationContext, requestUri);
         }
 
-        private async Task ProcessSimpleHttpInvocationRequest(ScriptInvocationContext scriptInvocationContext, string requestUri)
+        internal async Task ProcessSimpleHttpInvocationRequest(ScriptInvocationContext scriptInvocationContext, string requestUri)
         {
             HttpRequestMessage httpRequestMessage = null;
             var input = scriptInvocationContext.Inputs.FirstOrDefault();
             HttpRequest httpRequest = (HttpRequest)input.val;
             if (httpRequest == null)
             {
-                throw new ArgumentNullException(nameof(input.val));
+                throw new ArgumentNullException(nameof(httpRequest));
             }
             try
             {
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             }
         }
 
-        private async Task ProcessDefaultInvocationRequest(ScriptInvocationContext scriptInvocationContext, string requestUri)
+        internal async Task ProcessDefaultInvocationRequest(ScriptInvocationContext scriptInvocationContext, string requestUri)
         {
             HttpScriptInvocationContext httpScriptInvocationContext = new HttpScriptInvocationContext();
 
@@ -113,17 +113,31 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             // Add standard headers
             content.Headers.Add(HttpInvokerConstants.InvocationIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
             content.Headers.Add(HttpInvokerConstants.HostVersionHeaderName, ScriptHost.Version);
+
             try
             {
-                HttpResponseMessage response = await _httpClient.PostAsync(requestUri, content);
-                HttpScriptInvocationResult invocationResult = await response.Content.ReadAsAsync<HttpScriptInvocationResult>();
-                ProcessLogsFromHttpResponse(scriptInvocationContext, invocationResult);
-                var result = new ScriptInvocationResult()
+                HttpRequestMessage hmr = new HttpRequestMessage();
+                hmr.Content = content;
+                requestUri = requestUri.TrimEnd('/');
+                hmr.RequestUri = new Uri($"{requestUri}/{scriptInvocationContext.FunctionMetadata.Name}");
+                HttpResponseMessage response = await _httpClient.SendAsync(hmr);
+                HttpScriptInvocationResult invocationResult = null;
+                var scriptInvocationResult = new ScriptInvocationResult();
+                try
                 {
-                    Outputs = invocationResult.Outputs,
-                    Return = invocationResult?.ReturnValue
-                };
-                scriptInvocationContext.ResultSource.SetResult(result);
+                    invocationResult = await response.Content.ReadAsAsync<HttpScriptInvocationResult>();
+                }
+                catch (Exception)
+                {
+                    //ignore
+                }
+                if (invocationResult != null)
+                {
+                    ProcessLogsFromHttpResponse(scriptInvocationContext, invocationResult);
+                    scriptInvocationResult.Outputs = invocationResult.Outputs;
+                    scriptInvocationResult.Return = invocationResult?.ReturnValue;
+                }
+                scriptInvocationContext.ResultSource.SetResult(scriptInvocationResult);
             }
             catch (Exception responseEx)
             {
@@ -133,14 +147,17 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
         internal void ProcessLogsFromHttpResponse(ScriptInvocationContext scriptInvocationContext, HttpScriptInvocationResult invocationResult)
         {
-            // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
-            System.Threading.ExecutionContext.Run(scriptInvocationContext.AsyncExecutionContext, (s) =>
+            if (invocationResult.Logs != null)
             {
-                foreach (var userLog in invocationResult.Logs)
+                // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
+                System.Threading.ExecutionContext.Run(scriptInvocationContext.AsyncExecutionContext, (s) =>
                 {
-                    scriptInvocationContext.Logger.LogInformation(userLog);
-                }
-            }, null);
+                    foreach (var userLog in invocationResult.Logs)
+                    {
+                        scriptInvocationContext.Logger.LogInformation(userLog);
+                    }
+                }, null);
+            }
         }
     }
 }
