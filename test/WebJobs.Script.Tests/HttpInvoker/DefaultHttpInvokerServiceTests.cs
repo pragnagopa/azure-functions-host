@@ -6,12 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
@@ -39,10 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>())
                 .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateRequest(request))
-                .ReturnsAsync(new HttpResponseMessage
-                {
-                    StatusCode = HttpStatusCode.OK
-                });
+                .ReturnsAsync(GetValidHttpResponseMessage());
 
             _httpClient = new HttpClient(handlerMock.Object);
             _testInvocationId = Guid.NewGuid();
@@ -63,9 +60,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
         }
 
         [Fact]
-        public async Task DefaultHttpTriggerRequest_Expected()
+        public async Task ProcessDefaultInvocationRequest_Succeeds()
         {
-            await _defaultHttpInvokerService.ProcessDefaultInvocationRequest(GetScriptInvocationContext());
+            var testScriptInvocationContext = GetScriptInvocationContext();
+            await _defaultHttpInvokerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
+            var invocationResult = await testScriptInvocationContext.ResultSource.Task;
+
+            var expectedHttpScriptInvocationResult = GetTestHttpScriptInvocationResult();
+            var testLogs = _testLogger.GetLogMessages();
+            Assert.True(testLogs.Count() == expectedHttpScriptInvocationResult.Logs.Count());
+            Assert.True(testLogs.All(m => m.FormattedMessage.Contains("invocation log")));
+            Assert.Equal(expectedHttpScriptInvocationResult.Outputs.Count(), invocationResult.Outputs.Count());
+            Assert.Equal(expectedHttpScriptInvocationResult.ReturnValue, invocationResult.Return);
         }
 
         [Theory]
@@ -165,6 +171,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
             bindingData["VisibleTime"] = new DateTime(2019, 10, 1);
             bindingData["helloString"] = "helloMetadata";
             return bindingData;
+        }
+
+        private HttpResponseMessage GetValidHttpResponseMessage()
+        {
+            var httpScriptInvocationResult = new HttpScriptInvocationResult()
+            {
+                Logs = new List<string>() { "invocation log1", "invocation log2" },
+                Outputs = new Dictionary<string, object>()
+                {
+                    { "output1", "output1Value" },
+                    { "output2", "output2Value" }
+                },
+                ReturnValue = "Hello return"
+            };
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ObjectContent<HttpScriptInvocationResult>(httpScriptInvocationResult, new JsonMediaTypeFormatter())
+            };
+        }
+
+        private HttpScriptInvocationResult GetTestHttpScriptInvocationResult()
+        {
+            return new HttpScriptInvocationResult()
+            {
+                Logs = new List<string>() { "invocation log1", "invocation log2" },
+                Outputs = new Dictionary<string, object>()
+                {
+                    { "output1", "output1Value" },
+                    { "output2", "output2Value" }
+                },
+                ReturnValue = "Hello return"
+            };
         }
     }
 }
