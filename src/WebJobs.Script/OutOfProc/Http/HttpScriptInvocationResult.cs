@@ -9,8 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
     {
         public object ReturnValue { get; set; }
 
-        public IDictionary<string, object> Outputs { get; set; }
+        public IDictionary<string, object> Outputs { get; set; } = new Dictionary<string, object>();
 
-        public List<string> Logs { get; set; }
+        public List<string> Logs { get; set; } = new List<string>();
     }
 }

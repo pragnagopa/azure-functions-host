@@ -30,19 +30,22 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             _httpInvokerBaseUrl = $"http://localhost:{_httpInvokerOptions.Port}/";
         }
 
-        public async Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
+        public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
         {
             if (Utility.IsSimpleHttpTriggerFunction(scriptInvocationContext.FunctionMetadata))
             {
-                await ProcessSimpleHttpInvocationRequest(scriptInvocationContext);
-                return;
+                return ProcessSimpleHttpInvocationRequest(scriptInvocationContext);
             }
-            await ProcessDefaultInvocationRequest(scriptInvocationContext);
+            return ProcessDefaultInvocationRequest(scriptInvocationContext);
         }
 
         internal async Task ProcessSimpleHttpInvocationRequest(ScriptInvocationContext scriptInvocationContext)
         {
-            var functionInvocationUri = _httpInvokerBaseUrl + scriptInvocationContext.FunctionMetadata.Name;
+            ScriptInvocationResult scriptInvocationResult = new ScriptInvocationResult()
+            {
+                Outputs = new Dictionary<string, object>(),
+                Return = new object()
+            };
             HttpRequestMessage httpRequestMessage = null;
             var input = scriptInvocationContext.Inputs.FirstOrDefault();
             HttpRequest httpRequest = (HttpRequest)input.val;
@@ -52,29 +55,24 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             }
             try
             {
-                // populate input bindings
-                HttpRequestMessageFeature hreqmf = new HttpRequestMessageFeature(httpRequest.HttpContext);
-                httpRequestMessage = hreqmf.HttpRequestMessage;
-                string httpInvokerUri = QueryHelpers.AddQueryString(functionInvocationUri, HttpRequestMessageConverters.ConvertQueryCollectionToDictionary(httpRequest.Query));
+                // Build HttpRequestMessage from HttpTrigger binding
+                HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
+                httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
+
+                AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+
+                // Populate query params from httpTrigger
+                string httpInvokerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), HttpRequestMessageConverters.ConvertQueryCollectionToDictionary(httpRequest.Query));
                 httpRequestMessage.RequestUri = new Uri(httpInvokerUri);
 
-                // TODO Add standard headers
-                httpRequestMessage.Headers.Add(HttpInvokerConstants.InvocationIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
-                httpRequestMessage.Headers.Add(HttpInvokerConstants.HostVersionHeaderName, ScriptHost.Version);
-                // TODO: user agent or X-header?
-                httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpInvokerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
-
                 HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
-                ScriptInvocationResult scriptInvocationResult = new ScriptInvocationResult()
-                {
-                    Outputs = new Dictionary<string, object>(),
-                    Return = new object()
-                };
+
                 BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
                 if (httpOutputBinding != null)
                 {
+                    // handle http output binding
                     scriptInvocationResult.Outputs.Add(httpOutputBinding.Name, invocationResponse);
-                    // TODO set reuturn always?
+                    // handle $return
                     scriptInvocationResult.Return = invocationResponse;
                 }
                 scriptInvocationContext.ResultSource.SetResult(scriptInvocationResult);
@@ -87,7 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
         internal async Task ProcessDefaultInvocationRequest(ScriptInvocationContext scriptInvocationContext)
         {
-            var functionInvocationUri = _httpInvokerBaseUrl + scriptInvocationContext.FunctionMetadata.Name;
             HttpScriptInvocationContext httpScriptInvocationContext = new HttpScriptInvocationContext();
 
             // populate metadata
@@ -115,27 +112,18 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 }
                 httpScriptInvocationContext.Data[input.name] = JsonConvert.SerializeObject(input.val);
             }
+
+            // build HttpContent from ScriptInvocationContext
             HttpContent content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
-            // Add standard headers
-            content.Headers.Add(HttpInvokerConstants.InvocationIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
-            content.Headers.Add(HttpInvokerConstants.HostVersionHeaderName, ScriptHost.Version);
 
             try
             {
-                HttpRequestMessage hmr = new HttpRequestMessage();
-                hmr.Content = content;
-                hmr.RequestUri = new Uri($"{functionInvocationUri}/{scriptInvocationContext.FunctionMetadata.Name}");
-                HttpResponseMessage response = await _httpClient.SendAsync(hmr);
-                HttpScriptInvocationResult invocationResult = null;
-                var scriptInvocationResult = new ScriptInvocationResult();
-                try
-                {
-                    invocationResult = await response.Content.ReadAsAsync<HttpScriptInvocationResult>();
-                }
-                catch (Exception)
-                {
-                    //ignore
-                }
+                HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
+                AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+                httpRequestMessage.Content = content;
+                HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
+                HttpScriptInvocationResult invocationResult = await response.Content.ReadAsAsync<HttpScriptInvocationResult>();
+                ScriptInvocationResult scriptInvocationResult = new ScriptInvocationResult();
                 if (invocationResult != null)
                 {
                     ProcessLogsFromHttpResponse(scriptInvocationContext, invocationResult);
@@ -152,6 +140,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
         internal void ProcessLogsFromHttpResponse(ScriptInvocationContext scriptInvocationContext, HttpScriptInvocationResult invocationResult)
         {
+            if (scriptInvocationContext == null)
+            {
+                throw ArgumentNullException(nameof(scriptInvocationContext));
+            }
+            if (invocationResult == null)
+            {
+                throw ArgumentNullException(nameof(invocationResult));
+            }
             if (invocationResult.Logs != null)
             {
                 // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
@@ -159,10 +155,25 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 {
                     foreach (var userLog in invocationResult.Logs)
                     {
-                        scriptInvocationContext.Logger.LogInformation(userLog);
+                        scriptInvocationContext.Logger?.LogInformation(userLog);
                     }
                 }, null);
             }
+        }
+
+        private Exception ArgumentNullException(string v)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
+        {
+            httpRequestMessage.RequestUri = new Uri(new UriBuilder("http", "localhost", _httpInvokerOptions.Port, functionName).ToString());
+            // TODO any other standard headers? DateTime?
+            httpRequestMessage.Headers.Add(HttpInvokerConstants.InvocationIdHeaderName, invocationId);
+            httpRequestMessage.Headers.Add(HttpInvokerConstants.HostVersionHeaderName, ScriptHost.Version);
+            // TODO: user agent or X-header?
+            httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpInvokerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
         }
     }
 }

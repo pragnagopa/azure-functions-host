@@ -1,129 +1,170 @@
-﻿//// Copyright (c) .NET Foundation. All rights reserved.
-//// Licensed under the MIT License. See License.txt in the project root for license information.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
-//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Net;
-//using System.Net.Http;
-//using System.Threading;
-//using System.Threading.Tasks;
-//using Microsoft.Azure.WebJobs.Script.Description;
-//using Microsoft.Azure.WebJobs.Script.OutOfProc;
-//using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
-//using Moq;
-//using Moq.Protected;
-//using Newtonsoft.Json.Linq;
-//using Xunit;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
+using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Moq;
+using Moq.Protected;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Xunit;
 
-//namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
-//{
-//    public class DefaultHttpInvokerServiceTests
-//    {
-//        private HttpClient _httpClient;
-//        private DefaultHttpInvokerService _defaultHttpInvokerService;
-//        private Guid _testInvocationId;
+namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
+{
+    public class DefaultHttpInvokerServiceTests
+    {
+        private const string TestFunctionName = "testFunctionName";
+        private HttpClient _httpClient;
+        private DefaultHttpInvokerService _defaultHttpInvokerService;
+        private Guid _testInvocationId;
+        private HttpInvokerOptions _httpInvokerOptions;
+        private int _defaultPort = 8090;
+        private TestLogger _testLogger = new TestLogger(TestFunctionName);
 
-//        public DefaultHttpInvokerServiceTests()
-//        {
-//            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        public DefaultHttpInvokerServiceTests()
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
 
-//            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
-//                ItExpr.IsAny<HttpRequestMessage>(),
-//                ItExpr.IsAny<CancellationToken>())
-//                .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateRequest(request))
-//                .ReturnsAsync(new HttpResponseMessage
-//                {
-//                    StatusCode = HttpStatusCode.OK
-//                });
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateRequest(request))
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK
+                });
 
-//            _httpClient = new HttpClient(handlerMock.Object);
-//            _defaultHttpInvokerService = new DefaultHttpInvokerService(_httpClient);
-//            _testInvocationId = Guid.NewGuid();
-//        }
+            _httpClient = new HttpClient(handlerMock.Object);
+            _testInvocationId = Guid.NewGuid();
+            _httpInvokerOptions = new HttpInvokerOptions()
+            {
+                Port = _defaultPort
+            };
+            _defaultHttpInvokerService = new DefaultHttpInvokerService(_httpClient, new OptionsWrapper<HttpInvokerOptions>(_httpInvokerOptions));
+        }
 
-//        [Fact]
-//        public async Task DefaultHttpTriggerRequest_Expected()
-//        {
-//            string requestUri = "http://localhost:8090/";
-//            await _defaultHttpInvokerService.ProcessDefaultInvocationRequest(GetScriptInvocationContext("testFunction", _testInvocationId), requestUri);
-//        }
+        public static IEnumerable<object[]> TestLogs
+        {
+            get
+            {
+                yield return new object[] { new HttpScriptInvocationResult() { Logs = new List<string>() { "test log1", "test log2" } } };
+                yield return new object[] { new HttpScriptInvocationResult() };
+            }
+        }
 
-//        public static ScriptInvocationContext GetScriptInvocationContext(string functionName, Guid invocationId)
-//        {
-//            ScriptInvocationContext scriptInvocationContext = new ScriptInvocationContext()
-//            {
-//                ExecutionContext = new ExecutionContext()
-//                {
-//                    InvocationId = invocationId,
-//                    FunctionName = functionName,
-//                },
-//                BindingData = new Dictionary<string, object>(),
-//                Inputs = new List<(string name, DataType type, object val)>(),
-//                ResultSource = new TaskCompletionSource<ScriptInvocationResult>()
-//            };
-//            var functionMetadata = new FunctionMetadata
-//            {
-//                Name = functionName
-//            };
-//            var httpTriggerBinding = new BindingMetadata
-//            {
-//                Name = "req",
-//                Type = "httpTrigger",
-//                Direction = BindingDirection.In,
-//                Raw = new JObject()
-//            };
-//            var queueInputBinding = new BindingMetadata
-//            {
-//                Name = "queueInput",
-//                Type = "queue",
-//                Direction = BindingDirection.In
-//            };
-//            var httpOutputBinding = new BindingMetadata
-//            {
-//                Name = "res",
-//                Type = "http",
-//                Direction = BindingDirection.Out,
-//                Raw = new JObject()
-//            };
-//            scriptInvocationContext.FunctionMetadata = functionMetadata;
-//            scriptInvocationContext.Inputs = new List<(string name, DataType type, object val)>();
-//            return scriptInvocationContext;
-//        }
+        [Fact]
+        public async Task DefaultHttpTriggerRequest_Expected()
+        {
+            await _defaultHttpInvokerService.ProcessDefaultInvocationRequest(GetScriptInvocationContext());
+        }
 
-//        private void ValidateRequest(HttpRequestMessage httpRequestMessage)
-//        {
-//            Assert.Equal(HttpInvokerConstants.UserAgentHeaderValue, httpRequestMessage.Headers.GetValues("User-Agent").Single());
-//            Assert.Equal(_testInvocationId.ToString(), httpRequestMessage.Content.Headers.GetValues(HttpInvokerConstants.InvocationIdHeaderName).Single());
-//            Assert.StartsWith("2.0", httpRequestMessage.Content.Headers.GetValues(HttpInvokerConstants.HostVersionHeaderName).Single());
+        [Theory]
+        [MemberData(nameof(TestLogs))]
+        public void ProcessOutputLogs_Succeeds(HttpScriptInvocationResult httpScriptInvocationResult)
+        {
+            _defaultHttpInvokerService.ProcessLogsFromHttpResponse(GetScriptInvocationContext(), httpScriptInvocationResult);
+            var testLogs = _testLogger.GetLogMessages();
+            Assert.True(testLogs.Count() == httpScriptInvocationResult.Logs?.Count());
+            if (httpScriptInvocationResult.Logs != null && httpScriptInvocationResult.Logs.Count() > 1)
+            {
+                Assert.True(testLogs.All(m => m.FormattedMessage.Contains("test log")));
+            }
+        }
 
-//            Assert.Equal(httpRequestMessage.RequestUri.ToString(), "http://localhost:8090/testFunction");
+        public ScriptInvocationContext GetScriptInvocationContext()
+        {
+            ScriptInvocationContext scriptInvocationContext = new ScriptInvocationContext()
+            {
+                ExecutionContext = new ExecutionContext()
+                {
+                    InvocationId = _testInvocationId,
+                    FunctionName = TestFunctionName,
+                },
+                BindingData = GetScriptInvocationBindingData(),
+                Inputs = GetScriptInvocationInputs(),
+                ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
+                Logger = _testLogger,
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
+            };
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = TestFunctionName
+            };
+            var httpTriggerBinding = new BindingMetadata
+            {
+                Name = "req",
+                Type = "httpTrigger",
+                Direction = BindingDirection.In,
+                Raw = new JObject()
+            };
+            var queueInputBinding = new BindingMetadata
+            {
+                Name = "queueInput",
+                Type = "queue",
+                Direction = BindingDirection.In
+            };
+            var httpOutputBinding = new BindingMetadata
+            {
+                Name = "res",
+                Type = "http",
+                Direction = BindingDirection.Out,
+                Raw = new JObject()
+            };
+            scriptInvocationContext.FunctionMetadata = functionMetadata;
+            return scriptInvocationContext;
+        }
 
-//            //if (requestPath.Contains(LinuxContainerMetricsPublisher.PublishFunctionActivityPath))
-//            //{
-//            //    ObjectContent requestContent = (ObjectContent)request.Content;
-//            //    Assert.Equal(requestContent.Value.GetType(), typeof(FunctionActivity[]));
+        private async void ValidateRequest(HttpRequestMessage httpRequestMessage)
+        {
+            Assert.Contains($"{HttpInvokerConstants.UserAgentHeaderValue}/{ScriptHost.Version}", httpRequestMessage.Headers.UserAgent.ToString());
+            Assert.Equal(_testInvocationId.ToString(), httpRequestMessage.Headers.GetValues(HttpInvokerConstants.InvocationIdHeaderName).Single());
+            Assert.Equal(ScriptHost.Version, httpRequestMessage.Headers.GetValues(HttpInvokerConstants.HostVersionHeaderName).Single());
+            Assert.Equal(httpRequestMessage.RequestUri.ToString(), $"http://localhost:{_defaultPort}/{TestFunctionName}");
 
-//            //    IEnumerable<FunctionActivity> activitesPayload = (FunctionActivity[])requestContent.Value;
-//            //    Assert.Equal(activitesPayload.Single().FunctionName, _testFunctionActivity.FunctionName);
-//            //    Assert.Equal(activitesPayload.Single().InvocationId, _testFunctionActivity.InvocationId);
-//            //    Assert.Equal(activitesPayload.Single().Concurrency, _testFunctionActivity.Concurrency);
-//            //    Assert.Equal(activitesPayload.Single().ExecutionStage, _testFunctionActivity.ExecutionStage);
-//            //    Assert.Equal(activitesPayload.Single().IsSucceeded, _testFunctionActivity.IsSucceeded);
-//            //    Assert.Equal(activitesPayload.Single().ExecutionTimeSpanInMs, _testFunctionActivity.ExecutionTimeSpanInMs);
-//            //    Assert.Equal(activitesPayload.Single().Tenant, _testTenant);
-//            //    Assert.Equal(activitesPayload.Single().EventTimeStamp, _testFunctionActivity.EventTimeStamp);
-//            //}
-//            //else if (requestPath.Contains(LinuxContainerMetricsPublisher.PublishMemoryActivityPath))
-//            //{
-//            //    ObjectContent requestContent = (ObjectContent)request.Content;
-//            //    Assert.Equal(requestContent.Value.GetType(), typeof(MemoryActivity[]));
+            HttpScriptInvocationContext httpScriptInvocationContext = await httpRequestMessage.Content.ReadAsAsync<HttpScriptInvocationContext>();
 
-//            //    IEnumerable<MemoryActivity> activitesPayload = (MemoryActivity[])requestContent.Value;
-//            //    Assert.Equal(activitesPayload.Single().CommitSizeInBytes, _testMemoryActivity.CommitSizeInBytes);
-//            //    Assert.Equal(activitesPayload.Single().EventTimeStamp, _testMemoryActivity.EventTimeStamp);
-//            //    Assert.Equal(activitesPayload.Single().Tenant, _testTenant);
-//            //}
-//        }
-//    }
-//}
+            // Verify Metadata
+            var expectedMetadata = GetScriptInvocationBindingData();
+            Assert.Equal(expectedMetadata.Count(), httpScriptInvocationContext.Metadata.Count());
+            foreach (var key in expectedMetadata.Keys)
+            {
+                Assert.Equal(JsonConvert.SerializeObject(expectedMetadata[key]), httpScriptInvocationContext.Metadata[key]);
+            }
+
+            // Verify Data
+            var expectedData = GetScriptInvocationInputs();
+            Assert.Equal(expectedData.Count(), httpScriptInvocationContext.Data.Count());
+            foreach (var item in expectedData)
+            {
+                Assert.True(httpScriptInvocationContext.Data.Keys.Contains(item.name));
+                Assert.Equal(JsonConvert.SerializeObject(item.val), httpScriptInvocationContext.Data[item.name]);
+            }
+        }
+
+        private List<(string name, DataType type, object val)> GetScriptInvocationInputs()
+        {
+            List<(string name, DataType type, object val)> inputs = new List<(string name, DataType type, object val)>();
+            inputs.Add(("myqueueItem", DataType.String, "HelloWorld"));
+            return inputs;
+        }
+
+        private Dictionary<string, object> GetScriptInvocationBindingData()
+        {
+            Dictionary<string, object> bindingData = new Dictionary<string, object>();
+            bindingData["dequeueCount"] = 4;
+            bindingData["VisibleTime"] = new DateTime(2019, 10, 1);
+            bindingData["helloString"] = "helloMetadata";
+            return bindingData;
+        }
+    }
+}
