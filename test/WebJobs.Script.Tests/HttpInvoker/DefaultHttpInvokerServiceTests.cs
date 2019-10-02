@@ -93,13 +93,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
             var expectedHttpResponseMessage = HttpInvokerTestUtilities.GetValidSimpleHttpResponseMessage();
             var expectedResponseContent = await expectedHttpResponseMessage.Content.ReadAsStringAsync();
+
             var testLogs = _testLogger.GetLogMessages();
             Assert.Equal(0, testLogs.Count());
-            if (invocationResult.Return is HttpResponseMessage response)
-            {
-                Assert.Equal(expectedHttpResponseMessage.StatusCode, response.StatusCode);
-                Assert.Equal(expectedResponseContent, await response.Content.ReadAsStringAsync());
-            }
+
+            Assert.Equal(1, invocationResult.Outputs.Count());
+            var httpOutputResponse = invocationResult.Outputs.FirstOrDefault().Value as HttpResponseMessage;
+            Assert.NotNull(httpOutputResponse);
+            Assert.Equal(expectedHttpResponseMessage.StatusCode, httpOutputResponse.StatusCode);
+            Assert.Equal(expectedResponseContent, await httpOutputResponse.Content.ReadAsStringAsync());
+
+            var response = invocationResult.Return as HttpResponseMessage;
+            Assert.NotNull(response);
+            Assert.Equal(expectedHttpResponseMessage.StatusCode, response.StatusCode);
+            Assert.Equal(expectedResponseContent, await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public async Task ProcessSimpleHttpTriggerInvocationRequest_Sets_ExpectedResult()
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => RequestHandler(request))
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.InternalServerError
+                });
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpInvokerService = new DefaultHttpInvokerService(_httpClient, new OptionsWrapper<HttpInvokerOptions>(_httpInvokerOptions), _testLoggerFactory);
+            var testScriptInvocationContext = HttpInvokerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger);
+            await _defaultHttpInvokerService.ProcessSimpleHttpInvocationRequest(testScriptInvocationContext);
+            var invocationResult = await testScriptInvocationContext.ResultSource.Task;
+            var expectedHttpResponseMessage = HttpInvokerTestUtilities.GetValidSimpleHttpResponseMessage();
+            var expectedResponseContent = await expectedHttpResponseMessage.Content.ReadAsStringAsync();
+
+            var testLogs = _testLogger.GetLogMessages();
+            Assert.Equal(0, testLogs.Count());
+
+            Assert.Equal(1, invocationResult.Outputs.Count());
+            var httpOutputResponse = invocationResult.Outputs.FirstOrDefault().Value as HttpResponseMessage;
+            Assert.NotNull(httpOutputResponse);
+            Assert.Equal(HttpStatusCode.InternalServerError, httpOutputResponse.StatusCode);
+
+            var response = invocationResult.Return as HttpResponseMessage;
+            Assert.NotNull(response);
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         [Fact]
