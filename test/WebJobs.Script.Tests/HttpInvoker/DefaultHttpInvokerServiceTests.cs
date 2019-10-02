@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
@@ -28,26 +29,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
         private DefaultHttpInvokerService _defaultHttpInvokerService;
         private Guid _testInvocationId;
         private HttpInvokerOptions _httpInvokerOptions;
+        private ILoggerFactory _testLoggerFactory;
         private int _defaultPort = 8090;
         private TestLogger _testLogger = new TestLogger(TestFunctionName);
 
         public DefaultHttpInvokerServiceTests()
         {
-            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
-
-            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateRequest(request))
-                .ReturnsAsync(GetValidHttpResponseMessage());
-
-            _httpClient = new HttpClient(handlerMock.Object);
+            _testLoggerFactory = new LoggerFactory();
             _testInvocationId = Guid.NewGuid();
             _httpInvokerOptions = new HttpInvokerOptions()
             {
                 Port = _defaultPort
             };
-            _defaultHttpInvokerService = new DefaultHttpInvokerService(_httpClient, new OptionsWrapper<HttpInvokerOptions>(_httpInvokerOptions));
         }
 
         public static IEnumerable<object[]> TestLogs
@@ -62,6 +55,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
         [Fact]
         public async Task ProcessDefaultInvocationRequest_Succeeds()
         {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateRequest(request))
+                .ReturnsAsync(GetValidHttpResponseMessage());
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpInvokerService = new DefaultHttpInvokerService(_httpClient, new OptionsWrapper<HttpInvokerOptions>(_httpInvokerOptions), _testLoggerFactory);
             var testScriptInvocationContext = GetScriptInvocationContext();
             await _defaultHttpInvokerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
@@ -74,10 +77,79 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
             Assert.Equal(expectedHttpScriptInvocationResult.ReturnValue, invocationResult.Return);
         }
 
+        [Fact]
+        public async Task ProcessDefaultInvocationRequest_JsonResponse_Succeeds()
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => RequestHandler(request))
+                .ReturnsAsync(GetHttpResponseMessageWithJsonContent());
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpInvokerService = new DefaultHttpInvokerService(_httpClient, new OptionsWrapper<HttpInvokerOptions>(_httpInvokerOptions), _testLoggerFactory);
+            var testScriptInvocationContext = GetScriptInvocationContext();
+            await _defaultHttpInvokerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
+            var invocationResult = await testScriptInvocationContext.ResultSource.Task;
+            Assert.Equal(0, invocationResult.Outputs.Count());
+            Assert.Null(invocationResult.Return);
+        }
+
+        [Fact]
+        public async Task ProcessDefaultInvocationRequest_InvalidMediaType_Throws()
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => RequestHandler(request))
+                .ReturnsAsync(GetHttpResponseMessageWithStringContent());
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpInvokerService = new DefaultHttpInvokerService(_httpClient, new OptionsWrapper<HttpInvokerOptions>(_httpInvokerOptions), _testLoggerFactory);
+            var testScriptInvocationContext = GetScriptInvocationContext();
+            await _defaultHttpInvokerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
+            await Assert.ThrowsAsync<UnsupportedMediaTypeException>(async () => await testScriptInvocationContext.ResultSource.Task);
+        }
+
+        [Fact]
+        public async Task ProcessDefaultInvocationRequest_BadRequestResponse_Throws()
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => RequestHandler(request))
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.BadRequest
+                });
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpInvokerService = new DefaultHttpInvokerService(_httpClient, new OptionsWrapper<HttpInvokerOptions>(_httpInvokerOptions), _testLoggerFactory);
+            var testScriptInvocationContext = GetScriptInvocationContext();
+            await _defaultHttpInvokerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
+            await Assert.ThrowsAsync<HttpRequestException>(async () => await testScriptInvocationContext.ResultSource.Task);
+        }
+
         [Theory]
         [MemberData(nameof(TestLogs))]
         public void ProcessOutputLogs_Succeeds(HttpScriptInvocationResult httpScriptInvocationResult)
         {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => RequestHandler(request))
+                .ReturnsAsync(GetValidHttpResponseMessage());
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpInvokerService = new DefaultHttpInvokerService(_httpClient, new OptionsWrapper<HttpInvokerOptions>(_httpInvokerOptions), _testLoggerFactory);
             _defaultHttpInvokerService.ProcessLogsFromHttpResponse(GetScriptInvocationContext(), httpScriptInvocationResult);
             var testLogs = _testLogger.GetLogMessages();
             Assert.True(testLogs.Count() == httpScriptInvocationResult.Logs?.Count());
@@ -157,6 +229,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
             }
         }
 
+        private void RequestHandler(HttpRequestMessage httpRequestMessage)
+        {
+            //used for tests that do not need request validation
+        }
+
         private List<(string name, DataType type, object val)> GetScriptInvocationInputs()
         {
             List<(string name, DataType type, object val)> inputs = new List<(string name, DataType type, object val)>();
@@ -175,20 +252,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
 
         private HttpResponseMessage GetValidHttpResponseMessage()
         {
-            var httpScriptInvocationResult = new HttpScriptInvocationResult()
-            {
-                Logs = new List<string>() { "invocation log1", "invocation log2" },
-                Outputs = new Dictionary<string, object>()
-                {
-                    { "output1", "output1Value" },
-                    { "output2", "output2Value" }
-                },
-                ReturnValue = "Hello return"
-            };
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ObjectContent<HttpScriptInvocationResult>(httpScriptInvocationResult, new JsonMediaTypeFormatter())
+                Content = new ObjectContent<HttpScriptInvocationResult>(GetTestHttpScriptInvocationResult(), new JsonMediaTypeFormatter())
             };
+        }
+
+        private HttpResponseMessage GetHttpResponseMessageWithStringContent()
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("TestMessage") };
+        }
+
+        private HttpResponseMessage GetHttpResponseMessageWithJsonContent()
+        {
+            JObject response = new JObject();
+            response["key1"] = "value1";
+            response["key2"] = "value2";
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(response.ToString(), System.Text.Encoding.UTF8, "application/json") };
         }
 
         private HttpScriptInvocationResult GetTestHttpScriptInvocationResult()
