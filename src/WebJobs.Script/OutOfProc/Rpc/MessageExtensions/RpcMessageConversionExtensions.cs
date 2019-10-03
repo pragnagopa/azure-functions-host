@@ -10,6 +10,7 @@ using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Logging;
@@ -202,11 +203,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             object body = null;
             if ((MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType) && MessageConversionUtilities.IsMediaTypeOctetOrMultipart(mediaType)) || IsRawBodyBytesRequested(capabilities))
             {
-                body = MessageConversionUtilities.RequestBodyToBytes(request);
+                body = request.GetRequestBodyAsBytes();
             }
             else
             {
-                body = MessageConversionUtilities.GetStringRepresentationOfBody(request);
+                body = request.GetRequestBodyAsString();
             }
             http.Body = body.ToRpc(logger, capabilities);
         }
@@ -215,13 +216,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             object body = null;
             string rawBodyString = null;
-            byte[] bytes = MessageConversionUtilities.RequestBodyToBytes(request);
+            byte[] bytes = request.GetRequestBodyAsBytes();
 
             if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType))
             {
                 if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
                 {
-                    rawBodyString = MessageConversionUtilities.GetStringRepresentationOfBody(request);
+                    rawBodyString = request.GetRequestBodyAsString();
                     try
                     {
                         body = JsonConvert.DeserializeObject(rawBodyString);
@@ -243,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             // default if content-tye not found or recognized
             if (body == null && rawBodyString == null)
             {
-                body = rawBodyString = MessageConversionUtilities.GetStringRepresentationOfBody(request);
+                body = rawBodyString = request.GetRequestBodyAsString();
             }
 
             http.Body = body.ToRpc(logger, capabilities);

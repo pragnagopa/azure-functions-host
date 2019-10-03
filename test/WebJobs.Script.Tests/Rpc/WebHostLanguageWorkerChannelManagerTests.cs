@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
 
             _languageWorkerProcessFactory = new Mock<ILanguageWorkerProcessFactory>();
-            _languageWorkerProcessFactory.Setup(m => m.CreateLanguageWorkerProcess(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(_languageWorkerProcess.Object);
+            _languageWorkerProcessFactory.Setup(m => m.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(_languageWorkerProcess.Object);
 
             _languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, null, _scriptRootPath);
             _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         private ILanguageWorkerChannel CreateTestChannel(string language)
         {
-            var testChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptRootPath, language, null, 0, null);
+            var testChannel = _languageWorkerChannelFactory.Create(_scriptRootPath, language, null, 0, null);
             _languageWorkerChannelManager.AddOrUpdateWorkerChannels(language, testChannel);
             _languageWorkerChannelManager.SetInitializedWorkerChannel(language, testChannel);
             return testChannel;

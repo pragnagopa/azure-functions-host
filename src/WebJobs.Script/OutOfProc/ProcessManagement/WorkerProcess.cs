@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal abstract class WorkerProcessBase : ILanguageWorkerProcess, IDisposable
+    internal abstract class WorkerProcess : ILanguageWorkerProcess, IDisposable
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal WorkerProcessBase(string workerId,
+        internal WorkerProcess(string workerId,
                                        string rootScriptPath,
                                        WorkerProcessArguments workerProcessArguments,
                                        IScriptEventManager eventManager,

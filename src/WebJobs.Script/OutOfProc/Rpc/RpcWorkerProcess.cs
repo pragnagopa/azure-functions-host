@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class RpcWorkerProcess : WorkerProcessBase
+    internal class RpcWorkerProcess : WorkerProcess
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly ILogger _workerProcessLogger;
