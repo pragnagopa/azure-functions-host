@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         /// </summary>
         public List<string> Arguments { get; set; }
 
-        public virtual void FixAndValidate()
+        public virtual void ApplyDefaultsAndValidate()
         {
             WorkerDirectory = WorkerDirectory ?? Directory.GetCurrentDirectory();
             Arguments = Arguments ?? new List<string>();

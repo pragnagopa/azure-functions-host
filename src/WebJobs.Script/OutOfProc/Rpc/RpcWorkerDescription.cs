@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public override void FixAndValidate()
+        public override void ApplyDefaultsAndValidate()
         {
-            base.FixAndValidate();
+            base.ApplyDefaultsAndValidate();
             if (string.IsNullOrEmpty(Language))
             {
                 throw new ValidationException($"WorkerDescription {nameof(Language)} cannot be empty");

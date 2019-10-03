@@ -5,11 +5,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
-    public class HttpInvokerDescription : WorkerDescription
+    public class HttpWorkerDescription : WorkerDescription
     {
-        public override void FixAndValidate()
+        public override void ApplyDefaultsAndValidate()
         {
-            base.FixAndValidate();
+            base.ApplyDefaultsAndValidate();
             if (string.IsNullOrEmpty(DefaultExecutablePath))
             {
                 throw new ValidationException($"WorkerDescription {nameof(DefaultExecutablePath)} cannot be empty");
