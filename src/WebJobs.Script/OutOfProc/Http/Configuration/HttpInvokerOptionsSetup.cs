@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
                 if (httpInvokerDescription == null)
                 {
-                    throw new HostConfigurationException($"WorkerDescription for HttpInvoker is requuired");
+                    throw new HostConfigurationException($"Missing WorkerDescription for HttpInvoker");
                 }
                 httpInvokerDescription.ApplyDefaultsAndValidate();
                 if (string.IsNullOrEmpty(httpInvokerDescription.DefaultWorkerPath))

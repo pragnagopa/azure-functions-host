@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(configuration, _testLoggerFactory);
             HttpInvokerOptions options = new HttpInvokerOptions();
             var ex = Assert.Throws<HostConfigurationException>(() => setup.Configure(options));
-            Assert.Contains("Invalid WorkerDescription for HttpInvoker", ex.Message);
+            Assert.Contains("Missing WorkerDescription for HttpInvoker", ex.Message);
         }
 
         [Fact]
