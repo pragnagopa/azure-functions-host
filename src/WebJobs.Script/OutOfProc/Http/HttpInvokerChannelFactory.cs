@@ -2,9 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reactive.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
@@ -36,12 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         {
             string workerId = Guid.NewGuid().ToString();
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerChannel.{workerId}");
-            ILanguageWorkerProcess httpInokerProcess = _httpInvokerProcessFactory.Create(workerId, scriptRootPath, _httpInvokerOptions);
+            ILanguageWorkerProcess httpWorkerProcess = _httpInvokerProcessFactory.Create(workerId, scriptRootPath, _httpInvokerOptions.Arguments);
             return new HttpInvokerChannel(
                          workerId,
                          scriptRootPath,
                          _eventManager,
-                         httpInokerProcess,
+                         httpWorkerProcess,
                          _httpInvokerService,
                          workerLogger,
                          metricsLogger,
