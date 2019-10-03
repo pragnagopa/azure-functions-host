@@ -125,9 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
-                // TODO: pgopa add HttpFunctionInvocationDispatcher if httpInvoker is enabled
-                services.AddSingleton<IFunctionDispatcher, HttpFunctionInvocationDispatcher>();
-                //services.AddSingleton<IFunctionDispatcher, RpcFunctionInvocationDispatcher>();
+                services.AddSingleton<IFunctionDispatcher, RpcFunctionInvocationDispatcher>();
                 services.AddSingleton<IHttpInvokerProcessFactory, HttpInvokerProcessFactory>();
                 services.AddSingleton<IHttpInvokerChannelFactory, HttpInvokerChannelFactory>();
                 services.AddSingleton<IHttpInvokerService, DefaultHttpInvokerService>();
