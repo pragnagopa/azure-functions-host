@@ -28,13 +28,13 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             if (httpInvokerSection.Exists())
             {
                 httpInvokerSection.Bind(options);
-                HttpInvokerDescription httpInvokerDescription = options.Description;
+                HttpWorkerDescription httpInvokerDescription = options.Description;
 
                 if (httpInvokerDescription == null)
                 {
                     throw new HostConfigurationException($"WorkerDescription for HttpInvoker is requuired");
                 }
-                httpInvokerDescription.FixAndValidate(_scriptJobHostOptions.RootScriptPath);
+                httpInvokerDescription.ApplyDefaultsAndValidate();
                 options.Arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = options.Description.DefaultExecutablePath,

@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [MemberData(nameof(InvalidWorkerDescriptions))]
         public void InvalidWorkerDescription_Throws(WorkerDescription workerDescription)
         {
-            Assert.Throws<ValidationException>(() => workerDescription.FixAndValidate(Directory.GetCurrentDirectory()));
+            Assert.Throws<ValidationException>(() => workerDescription.ApplyDefaultsAndValidate());
         }
 
         [Theory]
@@ -215,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             try
             {
                 WorkerConfigTestUtilities.CreateTestWorkerFileInCurrentDir();
-                workerDescription.FixAndValidate(Directory.GetCurrentDirectory());
+                workerDescription.ApplyDefaultsAndValidate();
             }
             finally
             {
