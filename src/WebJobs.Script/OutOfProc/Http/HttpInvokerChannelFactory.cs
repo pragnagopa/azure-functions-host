@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         {
             string workerId = Guid.NewGuid().ToString();
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerChannel.{workerId}");
-            ILanguageWorkerProcess httpInokerProcess = _httpInvokerProcessFactory.Create(workerId, scriptRootPath, _workerConfigs.ElementAt(0));
+            ILanguageWorkerProcess httpInokerProcess = _httpInvokerProcessFactory.Create(workerId, scriptRootPath, _httpInvokerOptions.Arguments);
             return new HttpInvokerChannel(
                          workerId,
                          scriptRootPath,
