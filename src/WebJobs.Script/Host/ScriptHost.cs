@@ -470,7 +470,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (_httpInvokerOptions != null)
+            if (_httpInvokerOptions.Description != null)
             {
                 _logger.AddingDescriptorProviderForHttpInvoker();
                 _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
@@ -646,7 +646,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            if (!_environment.IsPlaceholderModeEnabled() && _httpInvokerOptions == null)
+            if (!_environment.IsPlaceholderModeEnabled() && _httpInvokerOptions.Description == null)
             {
                 Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime);
             }
