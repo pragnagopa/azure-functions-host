@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 };
 
                 arguments.ExecutableArguments.AddRange(options.Description.Arguments);
-                _logger.LogDebug("Configured httpInvoker with DefaultExecutalbePath: {exepath} with arguments {args}", options.Description.DefaultExecutablePath, options.Arguments);
+                _logger.LogDebug("Configured httpInvoker with {DefaultExecutablePath}: {exepath} with arguments {args}", nameof(options.Description.DefaultExecutablePath), options.Description.DefaultExecutablePath, options.Arguments);
             }
         }
     }
