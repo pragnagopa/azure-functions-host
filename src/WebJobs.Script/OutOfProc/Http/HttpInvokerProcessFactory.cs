@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         public ILanguageWorkerProcess Create(string workerId, string scriptRootPath, WorkerProcessArguments workerArgs)
         {
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerProcess.{workerId}");
-            return new HttpInvokerProcess(workerId, scriptRootPath, workerArgs, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
+            return new HttpWorkerProcess(workerId, scriptRootPath, workerArgs, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
         }
     }
 }

@@ -3,14 +3,13 @@
 
 using System;
 using System.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
-    internal class HttpInvokerProcess : WorkerProcess
+    internal class HttpWorkerProcess : WorkerProcess
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly ILogger _workerProcessLogger;
@@ -19,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         private readonly string _scriptRootPath;
         private readonly WorkerProcessArguments _workerProcessArguments;
 
-        internal HttpInvokerProcess(string workerId,
+        internal HttpWorkerProcess(string workerId,
                                        string rootScriptPath,
                                        WorkerProcessArguments workerProcessArguments,
                                        IScriptEventManager eventManager,
