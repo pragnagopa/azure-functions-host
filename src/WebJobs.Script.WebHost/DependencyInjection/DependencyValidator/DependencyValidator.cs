@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             expected.ExpectNone<IEventGenerator>();
 
             expected.Expect<ILoggerFactory, ScriptLoggerFactory>();
-            expected.Expect<IMetricsLogger, WebHostMetricsLogger>();
+            expected.ExpectInstance<IMetricsLogger, WebHostMetricsLogger>();
 
             expected.Expect<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
 
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             if (descriptor.ImplementationInstance != null)
             {
-                format += $", {nameof(descriptor.ImplementationInstance)}: {descriptor.ImplementationInstance}";
+                format += $", {nameof(descriptor.ImplementationInstance)}: {descriptor.ImplementationInstance.GetType()}";
             }
 
             if (descriptor.ImplementationType != null)

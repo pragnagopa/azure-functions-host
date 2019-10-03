@@ -497,7 +497,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
-        internal static bool IsSupported(FunctionMetadata functionMetadata, string workerRuntime)
+        internal static bool IsFunctionMetadataLanguageSupportedByWorkerRuntime(FunctionMetadata functionMetadata, string workerRuntime)
         {
             if (string.IsNullOrEmpty(functionMetadata.Language))
             {

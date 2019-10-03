@@ -32,11 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             _httpInvokerService = httpInvokerService ?? throw new ArgumentNullException(nameof(httpInvokerService));
         }
 
-        public IHttpInvokerChannel CreateHttpInvokerChannel(string scriptRootPath, IMetricsLogger metricsLogger, int attemptCount)
+        public IHttpInvokerChannel Create(string scriptRootPath, IMetricsLogger metricsLogger, int attemptCount)
         {
             string workerId = Guid.NewGuid().ToString();
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerChannel.{workerId}");
-            ILanguageWorkerProcess httpInokerProcess = _httpInvokerProcessFactory.CreateHttpInvokerProcess(workerId, scriptRootPath, _httpInvokerOptions.Arguments);
+            ILanguageWorkerProcess httpInokerProcess = _httpInvokerProcessFactory.Create(workerId, scriptRootPath, _httpInvokerOptions.Arguments);
             return new HttpInvokerChannel(
                          workerId,
                          scriptRootPath,

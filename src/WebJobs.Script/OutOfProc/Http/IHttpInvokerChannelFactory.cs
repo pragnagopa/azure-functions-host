@@ -7,6 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     public interface IHttpInvokerChannelFactory
     {
-        IHttpInvokerChannel CreateHttpInvokerChannel(string scriptRootPath, IMetricsLogger metricsLogger, int attemptCount);
+        IHttpInvokerChannel Create(string scriptRootPath, IMetricsLogger metricsLogger, int attemptCount);
     }
 }

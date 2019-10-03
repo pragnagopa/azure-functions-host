@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _processRegistry = processRegistry;
         }
 
-        public ILanguageWorkerProcess CreateLanguageWorkerProcess(string workerId, string runtime, string scriptRootPath)
+        public ILanguageWorkerProcess Create(string workerId, string runtime, string scriptRootPath)
         {
             WorkerConfig workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerProcess.{runtime}.{workerId}");
