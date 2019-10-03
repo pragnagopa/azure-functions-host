@@ -8,11 +8,11 @@ using System.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
-    public class HttpInvokerDescription : WorkerDescription
+    public class HttpWorkerDescription : WorkerDescription
     {
-        public override void FixAndValidate(string workerDirectory)
+        public override void ApplyDefaultsAndValidate()
         {
-            if (workerDirectory == null)
+            base.ApplyDefaultsAndValidate();
             {
                 throw new ArgumentNullException(nameof(workerDirectory));
             }

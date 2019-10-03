@@ -30,13 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             if (httpInvokerSection.Exists())
             {
                 httpInvokerSection.Bind(options);
-                HttpInvokerDescription httpInvokerDescription = options.Description;
+                HttpWorkerDescription httpInvokerDescription = options.Description;
 
                 if (httpInvokerDescription == null)
                 {
-                    throw new HostConfigurationException($"Invalid WorkerDescription for HttpInvoker");
+                    throw new HostConfigurationException($"WorkerDescription for HttpInvoker is requuired");
                 }
-                httpInvokerDescription.FixAndValidate(_scriptJobHostOptions.RootScriptPath);
+                httpInvokerDescription.ApplyDefaultsAndValidate();
                 options.Arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = options.Description.DefaultExecutablePath,
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
                 options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
                 options.Port = GetUnusedTcpPort();
-                _logger.LogDebug("Configured httpInvoker with DefaultExecutalbePath: {exepath} with arguments {args}", options.Description.DefaultExecutablePath, options.Arguments);
+                _logger.LogDebug("Configured httpInvoker with {DefaultExecutablePath}: {exepath} with arguments {args}", nameof(options.Description.DefaultExecutablePath), options.Description.DefaultExecutablePath, options.Arguments);
             }
         }
 

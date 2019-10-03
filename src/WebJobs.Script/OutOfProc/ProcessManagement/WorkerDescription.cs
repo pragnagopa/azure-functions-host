@@ -28,6 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         /// </summary>
         public List<string> Arguments { get; set; }
 
-        public abstract void FixAndValidate(string workerDirectory);
+        public virtual void ApplyDefaultsAndValidate()
     }
 }

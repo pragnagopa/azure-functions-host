@@ -407,7 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "func1",
                 Language = funcMetadataLanguage
             };
-            Assert.True(Utility.IsSupported(func1, language));
+            Assert.True(Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(func1, language));
         }
 
         [Theory]
@@ -421,7 +421,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "func1",
                 Language = funcMetadataLanguage
             };
-            Assert.False(Utility.IsSupported(func1, language));
+            Assert.False(Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(func1, language));
         }
 
         [Theory]
