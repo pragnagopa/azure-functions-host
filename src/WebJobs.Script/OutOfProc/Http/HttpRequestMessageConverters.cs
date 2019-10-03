@@ -2,11 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Dynamic;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -48,11 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             {
                 if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType) && MessageConversionUtilities.IsMediaTypeOctetOrMultipart(mediaType))
                 {
-                    jObjectHttp["Body"] = MessageConversionUtilities.RequestBodyToBytes(request);
+                    jObjectHttp["Body"] = request.GetRequestBodyAsBytes();
                 }
                 else
                 {
-                    jObjectHttp["Body"] = MessageConversionUtilities.GetStringRepresentationOfBody(request);
+                    jObjectHttp["Body"] = request.GetRequestBodyAsString();
                 }
             }
 

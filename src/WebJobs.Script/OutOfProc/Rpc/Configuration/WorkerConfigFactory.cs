@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
-                workerDescription.FixAndValidate(Directory.GetCurrentDirectory());
+                workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory());
                 _workerDescripionDictionary[workerDescription.Language] = workerDescription;
             }
             catch (Exception ex)

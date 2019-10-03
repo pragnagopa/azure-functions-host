@@ -5,6 +5,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface ILanguageWorkerProcessFactory
     {
-        ILanguageWorkerProcess CreateLanguageWorkerProcess(string workerId, string runtime, string scriptRootPath);
+        ILanguageWorkerProcess Create(string workerId, string runtime, string scriptRootPath);
     }
 }

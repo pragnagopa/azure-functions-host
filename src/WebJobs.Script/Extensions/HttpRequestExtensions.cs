@@ -2,10 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.Extensions
@@ -72,5 +73,25 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         }
 
         public static Uri GetRequestUri(this HttpRequest request) => new Uri(request.GetDisplayUrl());
+
+        public static byte[] GetRequestBodyAsBytes(this HttpRequest request)
+        {
+            var length = Convert.ToInt32(request.ContentLength);
+            var bytes = new byte[length];
+            request.Body.Read(bytes, 0, length);
+            request.Body.Position = 0;
+            return bytes;
+        }
+
+        public static string GetRequestBodyAsString(this HttpRequest request)
+        {
+            string result;
+            using (StreamReader reader = new StreamReader(request.Body, encoding: Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true))
+            {
+                result = reader.ReadToEnd();
+            }
+            request.Body.Position = 0;
+            return result;
+        }
     }
 }

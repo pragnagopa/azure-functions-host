@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _languageWorkerProcessFactory = languageWorkerProcessManager;
         }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+        public ILanguageWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             var languageWorkerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (languageWorkerConfig == null)
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             string workerId = Guid.NewGuid().ToString();
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
-            ILanguageWorkerProcess languageWorkerProcess = _languageWorkerProcessFactory.CreateLanguageWorkerProcess(workerId, runtime, scriptRootPath);
+            ILanguageWorkerProcess languageWorkerProcess = _languageWorkerProcessFactory.Create(workerId, runtime, scriptRootPath);
             return new LanguageWorkerChannel(
                          workerId,
                          scriptRootPath,

@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
     public class HttpInvokerOptions
     {
-        public HttpInvokerDescription Description { get; set; }
+        public HttpWorkerDescription Description { get; set; }
 
         internal WorkerProcessArguments Arguments { get; set; }
 
