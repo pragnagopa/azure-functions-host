@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
         private readonly IHttpInvokerChannelFactory _httpInvokerChannelFactory;
-        private readonly IEnvironment _environment;
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(OutOfProcConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
@@ -33,22 +32,18 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private ScriptJobHostOptions _scriptOptions;
         private bool _disposed = false;
         private bool _disposing = false;
-        private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentStack<HttpWorkerErrorEvent> _invokerErrors = new ConcurrentStack<HttpWorkerErrorEvent>();
         private IHttpInvokerChannel _httpInvokerChannel;
 
         public HttpFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
-            IEnvironment environment,
             IScriptJobHostEnvironment scriptJobHostEnvironment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IHttpInvokerChannelFactory httpInvokerChannelFactory,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions)
+            IHttpInvokerChannelFactory httpInvokerChannelFactory)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
-            _environment = environment;
             _scriptJobHostEnvironment = scriptJobHostEnvironment;
             _eventManager = eventManager;
             _logger = loggerFactory.CreateLogger<HttpFunctionInvocationDispatcher>();
@@ -64,8 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public FunctionDispatcherState State { get; private set; }
 
-        internal ConcurrentStack<HttpWorkerErrorEvent> LanguageWorkerErrors => _invokerErrors;
-
         internal async void InitializeJobhostLanguageWorkerChannelAsync()
         {
             await InitializeJobhostLanguageWorkerChannelAsync(0);
@@ -74,13 +67,12 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
             // TODO: Add process managment for http invoker
-            _httpInvokerChannel = _httpInvokerChannelFactory.CreateHttpInvokerChannel(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
+            _httpInvokerChannel = _httpInvokerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
             _httpInvokerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
                  {
                      if (workerInitTask.IsCompleted)
                      {
                          _logger.LogDebug("Adding http invoker channel. workerId:{id}", _httpInvokerChannel.Id);
-                         // TODO: wait for status api ok
                          State = FunctionDispatcherState.Initialized;
                      }
                      else
@@ -93,8 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions)
         {
-            _functions = functions;
-
             if (functions == null || !functions.Any())
             {
                 // do not initialize function dispachter if there are no functions

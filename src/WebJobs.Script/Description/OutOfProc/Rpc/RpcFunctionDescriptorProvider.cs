@@ -12,14 +12,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class RpcFunctionDescriptorProvider : OutOfProcDescriptorProvider
     {
-        private IFunctionDispatcher _dispatcher;
         private string _workerRuntime;
 
         public RpcFunctionDescriptorProvider(ScriptHost host, string workerRuntime, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
             IFunctionDispatcher dispatcher, ILoggerFactory loggerFactory)
             : base(host, config, bindingProviders, dispatcher, loggerFactory)
         {
-            _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _workerRuntime = workerRuntime;
         }
 
@@ -30,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
 
-            if (!Utility.IsSupported(functionMetadata, _workerRuntime))
+            if (!Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(functionMetadata, _workerRuntime))
             {
                 return (false, null);
             }

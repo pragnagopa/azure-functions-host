@@ -192,6 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (scriptHost != null)
                 {
                     scriptHost.HostInitializing += OnHostInitializing;
+                    scriptHost.HostInitialized += OnHostInitialized;
                 }
 
                 LogInitialization(localHost, isOffline, attemptCount, ++_hostStartCount);
@@ -295,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 else
                 {
                     logger.LogDebug($"Will start a new host after delay.");
-                    await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2))
+                    await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2), logger: logger)
                         .ContinueWith(t =>
                         {
                             if (cancellationToken.IsCancellationRequested)
@@ -389,6 +390,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // we check host health before starting to avoid starting
             // the host when connection or other issues exist
             IsHostHealthy(throwWhenUnhealthy: true);
+        }
+
+        /// <summary>
+        /// Called after the host has been fully initialized, but before it
+        /// has been started.
+        /// </summary>
+        private void OnHostInitialized(object sender, EventArgs e)
+        {
+            State = ScriptHostState.Initialized;
         }
 
         private IHost BuildHost(bool skipHostStartup, bool skipHostJsonConfiguration)
@@ -517,6 +527,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (scriptHost != null)
                 {
                     scriptHost.HostInitializing -= OnHostInitializing;
+                    scriptHost.HostInitialized -= OnHostInitialized;
                 }
             }
             catch (ObjectDisposedException)

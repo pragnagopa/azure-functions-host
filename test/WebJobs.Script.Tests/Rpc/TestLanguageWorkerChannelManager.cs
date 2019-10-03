@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async Task<ILanguageWorkerChannel> InitializeChannelAsync(string language)
         {
             var metricsLogger = new Mock<IMetricsLogger>();
-            ILanguageWorkerChannel workerChannel = _testLanguageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptRootPath, language, metricsLogger.Object, 0);
+            ILanguageWorkerChannel workerChannel = _testLanguageWorkerChannelFactory.Create(_scriptRootPath, language, metricsLogger.Object, 0);
             if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> workerChannels))
             {
                 workerChannels.Add(workerChannel.Id, new TaskCompletionSource<ILanguageWorkerChannel>());
