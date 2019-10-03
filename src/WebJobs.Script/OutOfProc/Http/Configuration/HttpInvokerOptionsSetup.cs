@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 {
                     throw new HostConfigurationException($"WorkerDescription for HttpInvoker is requuired");
                 }
-                httpInvokerDescription.ApplyDefaultsAndValidate();
+                httpInvokerDescription.ApplyDefaultsAndValidate(_scriptJobHostOptions.RootScriptPath);
                 options.Arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = options.Description.DefaultExecutablePath,

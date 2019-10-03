@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
@@ -28,6 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         /// </summary>
         public List<string> Arguments { get; set; }
 
-        public virtual void ApplyDefaultsAndValidate()
+        public abstract void ApplyDefaultsAndValidate(string workerDirectory);
     }
 }

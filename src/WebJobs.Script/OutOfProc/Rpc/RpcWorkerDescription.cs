@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public override void ApplyDefaultsAndValidate()
+        public override void ApplyDefaultsAndValidate(string workerDirectory)
         {
             if (workerDirectory == null)
             {

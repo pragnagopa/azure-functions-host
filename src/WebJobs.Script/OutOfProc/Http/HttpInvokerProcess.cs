@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         private readonly HttpInvokerOptions _httpInvokerOptions;
         private readonly string _scriptRootPath;
         private readonly WorkerProcessArguments _workerProcessArguments;
+        private readonly string _workerId;
 
         internal HttpInvokerProcess(string workerId,
                                        string rootScriptPath,

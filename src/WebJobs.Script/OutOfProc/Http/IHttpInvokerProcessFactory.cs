@@ -8,6 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     public interface IHttpInvokerProcessFactory
     {
-        ILanguageWorkerProcess CreateHttpInvokerProcess(string workerId, string scriptRootPath, HttpInvokerOptions httpInvokerOptions);
+        ILanguageWorkerProcess Create(string workerId, string scriptRootPath, HttpInvokerOptions httpInvokerOptions);
     }
 }

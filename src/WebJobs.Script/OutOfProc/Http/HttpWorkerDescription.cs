@@ -10,9 +10,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
     public class HttpWorkerDescription : WorkerDescription
     {
-        public override void ApplyDefaultsAndValidate()
+        public override void ApplyDefaultsAndValidate(string workerDirectory)
         {
-            base.ApplyDefaultsAndValidate();
+            if (workerDirectory == null)
             {
                 throw new ArgumentNullException(nameof(workerDirectory));
             }
