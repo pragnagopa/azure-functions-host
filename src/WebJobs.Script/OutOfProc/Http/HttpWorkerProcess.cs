@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 WorkerId = _workerId,
                 Arguments = _workerProcessArguments,
                 WorkingDirectory = _scriptRootPath,
-                HttpInvokerPort = _httpInvokerOptions.Port
+                Port = _httpInvokerOptions.Port
             };
             return _processFactory.CreateWorkerProcess(workerContext);
         }
