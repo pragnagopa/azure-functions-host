@@ -8,7 +8,6 @@ using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
