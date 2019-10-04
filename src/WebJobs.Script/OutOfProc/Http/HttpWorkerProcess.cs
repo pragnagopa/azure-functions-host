@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                                        IProcessRegistry processRegistry,
                                        ILogger workerProcessLogger,
                                        ILanguageWorkerConsoleLogSource consoleLogSource)
-            : base(workerId, rootScriptPath, workerProcessArguments, eventManager, processFactory, processRegistry, workerProcessLogger, consoleLogSource)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource)
         {
             _processFactory = processFactory;
             _eventManager = eventManager;

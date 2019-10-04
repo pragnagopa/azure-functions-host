@@ -14,12 +14,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IWorkerProcessFactory _processFactory;
         private readonly ILogger _workerProcessLogger;
         private readonly IScriptEventManager _eventManager;
-
-        private string _runtime;
-        private string _workerId;
-        private Uri _serverUri;
-        private string _scriptRootPath;
-        private WorkerProcessArguments _workerProcessArguments;
+        private readonly string _runtime;
+        private readonly string _workerId;
+        private readonly Uri _serverUri;
+        private readonly string _scriptRootPath;
+        private readonly WorkerProcessArguments _workerProcessArguments;
 
         internal RpcWorkerProcess(string runtime,
                                        string workerId,
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                        IProcessRegistry processRegistry,
                                        ILogger workerProcessLogger,
                                        ILanguageWorkerConsoleLogSource consoleLogSource)
-            : base(workerId, rootScriptPath, workerProcessArguments, eventManager, processFactory, processRegistry, workerProcessLogger, consoleLogSource)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource)
         {
             _runtime = runtime;
             _processFactory = processFactory;
