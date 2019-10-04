@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string WorkerDescriptionLanguage = "language";
         public const string OSPlaceholder = "{os}";
         public const string ArchitecturePlaceholder = "{architecture}";
-        public const string RuntimeVersionPlaceholder = "%{" + FunctionWorkerRuntimeVersionSettingName + "}%";
+        public const string RuntimeVersionPlaceholder = "%" + FunctionWorkerRuntimeVersionSettingName + "%";
 
         // Rpc message length
         public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
