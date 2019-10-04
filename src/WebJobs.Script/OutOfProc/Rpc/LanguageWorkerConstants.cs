@@ -8,6 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     public static class LanguageWorkerConstants
     {
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
+        public const string FunctionWorkerRuntimeVersionSettingName = "FUNCTIONS_WORKER_RUNTIME_VERSION";
         public const string FunctionsWorkerProcessCountSettingName = "FUNCTIONS_WORKER_PROCESS_COUNT";
         public const string DotNetLanguageWorkerName = "dotnet";
         public const string NodeLanguageWorkerName = "node";
@@ -22,6 +23,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         // Worker description constants
         public const string WorkerDescriptionLanguage = "language";
+        public const string OSPlaceholder = "{os}";
+        public const string ArchitecturePlaceholder = "{architecture}";
+        public const string RuntimeVersionPlaceholder = "%" + FunctionWorkerRuntimeVersionSettingName + "%";
 
         // Rpc message length
         public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;

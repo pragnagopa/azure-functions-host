@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Newtonsoft.Json;
 
@@ -19,6 +21,30 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         /// </summary>
         [JsonProperty(PropertyName = "language")]
         public string Language { get; set; }
+
+        /// <summary>
+        /// Gets or sets the default runtime version.
+        /// </summary>
+        [JsonProperty(PropertyName = "defaultRuntimeVersion")]
+        public string DefaultRuntimeVersion { get; set; }
+
+        /// <summary>
+        /// Gets or sets the supported architectures for this runtime.
+        /// </summary>
+        [JsonProperty(PropertyName = "supportedArchitectures")]
+        public List<string> SupportedArchitectures { get; set; }
+
+        /// <summary>
+        /// Gets or sets the supported operating systems for this runtime.
+        /// </summary>
+        [JsonProperty(PropertyName = "supportedOperatingSystems")]
+        public List<string> SupportedOperatingSystems { get; set; }
+
+        /// <summary>
+        /// Gets or sets the supported versions for this runtime.
+        /// </summary>
+        [JsonProperty(PropertyName = "supportedRuntimeVersions")]
+        public List<string> SupportedRuntimeVersions { get; set; }
 
         /// <summary>
         /// Gets or sets the supported file extension type. Functions are registered with workers based on extension.
@@ -67,6 +93,48 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (!string.IsNullOrEmpty(DefaultWorkerPath) && !File.Exists(DefaultWorkerPath))
             {
                 throw new FileNotFoundException($"Did not find {nameof(DefaultWorkerPath)} for language: {Language}");
+            }
+        }
+
+        public void ValidateWorkerPath(string workerPath, OSPlatform os, Architecture architecture, string version)
+        {
+            if (workerPath.Contains(LanguageWorkerConstants.OSPlaceholder))
+            {
+                ValidateOSPlatform(os);
+            }
+
+            if (workerPath.Contains(LanguageWorkerConstants.ArchitecturePlaceholder))
+            {
+                ValidateArchitecture(architecture);
+            }
+
+            if (workerPath.Contains(LanguageWorkerConstants.RuntimeVersionPlaceholder) && !string.IsNullOrEmpty(version))
+            {
+                ValidateRuntimeVersion(version);
+            }
+        }
+
+        private void ValidateOSPlatform(OSPlatform os)
+        {
+            if (!SupportedOperatingSystems.Any(s => s.Equals(os.ToString(), StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new PlatformNotSupportedException($"OS {os.ToString()} is not supported for language {Language}");
+            }
+        }
+
+        private void ValidateArchitecture(Architecture architecture)
+        {
+            if (!SupportedArchitectures.Any(s => s.Equals(architecture.ToString(), StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new PlatformNotSupportedException($"Architecture {architecture.ToString()} is not supported for language {Language}");
+            }
+        }
+
+        private void ValidateRuntimeVersion(string version)
+        {
+            if (!SupportedRuntimeVersions.Any(s => s.Equals(version, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new NotSupportedException($"Version {version} is not supported for language {Language}");
             }
         }
     }

@@ -15,27 +15,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal abstract class WorkerProcess : ILanguageWorkerProcess, IDisposable
     {
-        private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
         private readonly ILogger _workerProcessLogger;
         private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager;
 
         private Process _process;
-        private string _workerId;
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal WorkerProcess(string workerId,
-                                       string rootScriptPath,
-                                       IScriptEventManager eventManager,
-                                       IWorkerProcessFactory processFactory,
-                                       IProcessRegistry processRegistry,
-                                       ILogger workerProcessLogger,
-                                       ILanguageWorkerConsoleLogSource consoleLogSource)
+        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, ILanguageWorkerConsoleLogSource consoleLogSource)
         {
-            _workerId = workerId;
-            _processFactory = processFactory;
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
             _consoleLogSource = consoleLogSource;

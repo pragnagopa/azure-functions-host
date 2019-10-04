@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -16,12 +17,20 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class RpcWorkerConfigTests
+    public class RpcWorkerConfigTests : IDisposable
     {
         private static string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string customRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string testLanguagePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string testLanguage = "testLanguage";
+
+        private TestSystemRuntimeInformation _testSysRuntimeInfo = new TestSystemRuntimeInformation();
+        private TestEnvironment _testEnvironment;
+
+        public RpcWorkerConfigTests()
+        {
+            _testEnvironment = new TestEnvironment();
+        }
 
         public static IEnumerable<object[]> InvalidWorkerDescriptions
         {
@@ -41,6 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestDefaultWorkerFile } };
                 yield return new object[] { new RpcWorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = WorkerConfigTestUtilities.TestDefaultWorkerFile, Arguments = new List<string>() } };
             }
+        }
+
+        public void Dispose()
+        {
+            _testEnvironment.Clear();
         }
 
         [Fact]
@@ -238,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
-                var configFactory = new WorkerConfigFactory(config, testLogger);
+                var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>
