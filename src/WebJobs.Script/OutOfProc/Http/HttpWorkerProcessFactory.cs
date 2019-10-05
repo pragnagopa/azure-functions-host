@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
-    internal class HttpInvokerProcessFactory : IHttpInvokerProcessFactory
+    internal class HttpWorkerProcessFactory : IHttpWorkerProcessFactory
     {
         private readonly IWorkerProcessFactory _workerProcessFactory;
         private readonly IProcessRegistry _processRegistry;
@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         private readonly IScriptEventManager _eventManager = null;
         private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
 
-        public HttpInvokerProcessFactory(IScriptEventManager eventManager,
+        public HttpWorkerProcessFactory(IScriptEventManager eventManager,
                                        ILoggerFactory loggerFactory,
                                        IWorkerProcessFactory defaultWorkerProcessFactory,
                                        IProcessRegistry processRegistry,
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             _processRegistry = processRegistry ?? throw new ArgumentNullException(nameof(processRegistry));
         }
 
-        public ILanguageWorkerProcess Create(string workerId, string scriptRootPath, HttpInvokerOptions httpInvokerOptions)
+        public ILanguageWorkerProcess Create(string workerId, string scriptRootPath, HttpWorkerOptions httpInvokerOptions)
         {
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerProcess.{workerId}");
             return new HttpWorkerProcess(workerId, scriptRootPath, httpInvokerOptions, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);

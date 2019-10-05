@@ -4,7 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Primitives;
@@ -83,15 +83,14 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return bytes;
         }
 
-        public static string GetRequestBodyAsString(this HttpRequest request)
+        public static bool IsMediaTypeOctetOrMultipart(this HttpRequest request)
         {
-            string result;
-            using (StreamReader reader = new StreamReader(request.Body, encoding: Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true))
+            if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType))
             {
-                result = reader.ReadToEnd();
+                return mediaType != null && (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
+                                mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0);
             }
-            request.Body.Position = 0;
-            return result;
+            return false;
         }
     }
 }

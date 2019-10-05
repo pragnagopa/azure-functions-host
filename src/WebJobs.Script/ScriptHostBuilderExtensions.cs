@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // Only set our external startup if we're not suppressing host initialization
                     // as we don't want to load user assemblies otherwise.
-                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath, loggerFactory, bundleManager);
+                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions, loggerFactory, bundleManager);
                 }
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
 
@@ -126,9 +126,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
                 services.AddSingleton<IFunctionDispatcher, RpcFunctionInvocationDispatcher>();
-                services.AddSingleton<IHttpInvokerProcessFactory, HttpInvokerProcessFactory>();
-                services.AddSingleton<IHttpInvokerChannelFactory, HttpInvokerChannelFactory>();
-                services.AddSingleton<IHttpInvokerService, DefaultHttpInvokerService>();
+                services.AddSingleton<IHttpWorkerProcessFactory, HttpWorkerProcessFactory>();
+                services.AddSingleton<IHttpWorkerChannelFactory, HttpWorkerChannelFactory>();
+                services.AddSingleton<IHttpInvokerService, DefaultHttpWorkerService>();
                 services.AddSingleton<IJobHostLanguageWorkerChannelManager, JobHostLanguageWorkerChannelManager>();
                 services.AddSingleton<IFunctionDispatcherLoadBalancer, FunctionDispatcherLoadBalancer>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // TODO: pgopa only add this to WebHostServiceCollection
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
-                services.ConfigureOptions<HttpInvokerOptionsSetup>();
+                services.ConfigureOptions<HttpWorkerOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
@@ -197,8 +197,8 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<IRpcServer, GrpcServer>();
             services.TryAddSingleton<ILanguageWorkerConsoleLogSource, LanguageWorkerConsoleLogSource>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
-            services.AddSingleton<ILanguageWorkerProcessFactory, LanguageWorkerProcessFactory>();
-            services.AddSingleton<ILanguageWorkerChannelFactory, LanguageWorkerChannelFactory>();
+            services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
+            services.AddSingleton<IRpcWorkerChannelFactory, RpcWorkerChannelFactory>();
             services.TryAddSingleton<IWebHostLanguageWorkerChannelManager, WebHostLanguageWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
@@ -208,11 +208,11 @@ namespace Microsoft.Azure.WebJobs.Script
             AddProcessRegistry(services);
         }
 
-        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath, ILoggerFactory loggerFactory, IExtensionBundleManager extensionBundleManager)
+        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, ScriptApplicationHostOptions applicationHostOptions, ILoggerFactory loggerFactory, IExtensionBundleManager extensionBundleManager)
         {
             var logger = loggerFactory?.CreateLogger<ScriptStartupTypeLocator>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-
-            return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath, logger, extensionBundleManager));
+            var metadataServiceProvider = applicationHostOptions.RootServiceProvider.GetService<IFunctionMetadataProvider>();
+            return builder.UseExternalStartup(new ScriptStartupTypeLocator(applicationHostOptions.ScriptPath, logger, extensionBundleManager, metadataServiceProvider));
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)

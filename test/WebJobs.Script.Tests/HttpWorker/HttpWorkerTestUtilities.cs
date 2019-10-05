@@ -19,9 +19,9 @@ using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.HttpInvoker
+namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 {
-    public class HttpInvokerTestUtilities
+    public class HttpWorkerTestUtilities
     {
         public const string QueryParamString = "?id=149656222&name=Ink%20And%20Toner";
         public const string UTF8AcceptCharset = "UTF-8";

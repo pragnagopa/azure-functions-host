@@ -201,13 +201,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private static void PopulateBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
         {
             object body = null;
-            if ((MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType) && MessageConversionUtilities.IsMediaTypeOctetOrMultipart(mediaType)) || IsRawBodyBytesRequested(capabilities))
+            if (request.IsMediaTypeOctetOrMultipart() || IsRawBodyBytesRequested(capabilities))
             {
                 body = request.GetRequestBodyAsBytes();
             }
             else
             {
-                body = request.GetRequestBodyAsString();
+                body = request.ReadAsStringAsync().GetAwaiter().GetResult();
             }
             http.Body = body.ToRpc(logger, capabilities);
         }
@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
                 {
-                    rawBodyString = request.GetRequestBodyAsString();
+                    rawBodyString = request.ReadAsStringAsync().GetAwaiter().GetResult();
                     try
                     {
                         body = JsonConvert.DeserializeObject(rawBodyString);
@@ -232,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         body = rawBodyString;
                     }
                 }
-                else if (MessageConversionUtilities.IsMediaTypeOctetOrMultipart(mediaType))
+                else if (request.IsMediaTypeOctetOrMultipart())
                 {
                     body = bytes;
                     if (!IsRawBodyBytesRequested(capabilities))
@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             // default if content-tye not found or recognized
             if (body == null && rawBodyString == null)
             {
-                body = rawBodyString = request.GetRequestBodyAsString();
+                body = rawBodyString = request.ReadAsStringAsync().GetAwaiter().GetResult();
             }
 
             http.Body = body.ToRpc(logger, capabilities);

@@ -11,33 +11,29 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
-    public class HttpInvokerChannelFactory : IHttpInvokerChannelFactory
+    public class HttpWorkerChannelFactory : IHttpWorkerChannelFactory
     {
         private readonly ILoggerFactory _loggerFactory = null;
-        private readonly IHttpInvokerProcessFactory _httpInvokerProcessFactory = null;
-        private readonly IScriptEventManager _eventManager = null;
-        private readonly HttpInvokerOptions _httpInvokerOptions = null;
+        private readonly IHttpWorkerProcessFactory _httpInvokerProcessFactory = null;
+        private readonly HttpWorkerOptions _httpWorkerOptions = null;
         private IHttpInvokerService _httpInvokerService;
 
-        public HttpInvokerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<HttpInvokerOptions> httpInvokerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IHttpInvokerProcessFactory httpInvokerProcessFactory, IHttpInvokerService httpInvokerService)
+        public HttpWorkerChannelFactory(IEnvironment environment, ILoggerFactory loggerFactory, IOptions<HttpWorkerOptions> httpInvokerOptions,
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IHttpWorkerProcessFactory httpInvokerProcessFactory, IHttpInvokerService httpInvokerService)
         {
-            _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _httpInvokerOptions = httpInvokerOptions.Value ?? throw new ArgumentNullException(nameof(httpInvokerOptions.Value));
+            _httpWorkerOptions = httpInvokerOptions.Value ?? throw new ArgumentNullException(nameof(httpInvokerOptions.Value));
             _httpInvokerProcessFactory = httpInvokerProcessFactory ?? throw new ArgumentNullException(nameof(httpInvokerProcessFactory));
             _httpInvokerService = httpInvokerService ?? throw new ArgumentNullException(nameof(httpInvokerService));
         }
 
-        public IHttpInvokerChannel Create(string scriptRootPath, IMetricsLogger metricsLogger, int attemptCount)
+        public IHttpWorkerChannel Create(string scriptRootPath, IMetricsLogger metricsLogger, int attemptCount)
         {
             string workerId = Guid.NewGuid().ToString();
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerChannel.{workerId}");
-            ILanguageWorkerProcess httpWorkerProcess = _httpInvokerProcessFactory.Create(workerId, scriptRootPath, _httpInvokerOptions);
-            return new HttpInvokerChannel(
+            ILanguageWorkerProcess httpWorkerProcess = _httpInvokerProcessFactory.Create(workerId, scriptRootPath, _httpWorkerOptions);
+            return new HttpWorkerChannel(
                          workerId,
-                         scriptRootPath,
-                         _eventManager,
                          httpWorkerProcess,
                          _httpInvokerService,
                          workerLogger,

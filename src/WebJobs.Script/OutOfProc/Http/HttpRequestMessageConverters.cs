@@ -45,13 +45,13 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             // parse request body as content-type
             if (request.Body != null && request.ContentLength > 0)
             {
-                if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType) && MessageConversionUtilities.IsMediaTypeOctetOrMultipart(mediaType))
+                if (request.IsMediaTypeOctetOrMultipart())
                 {
                     jObjectHttp["Body"] = request.GetRequestBodyAsBytes();
                 }
                 else
                 {
-                    jObjectHttp["Body"] = request.GetRequestBodyAsString();
+                    jObjectHttp["Body"] = request.ReadAsStringAsync().GetAwaiter().GetResult();
                 }
             }
 

@@ -15,7 +15,7 @@ using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
-    public class HttpInvokerOptionsSetupTests
+    public class HttpWorkerOptionsSetupTests
     {
         private readonly TestEnvironment _environment = new TestEnvironment();
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private ScriptJobHostOptions _scriptJobHostOptions;
         private static string _currentDirectory = Directory.GetCurrentDirectory();
 
-        public HttpInvokerOptionsSetupTests()
+        public HttpWorkerOptionsSetupTests()
         {
             _testLoggerProvider = new TestLoggerProvider();
             _testLoggerFactory = new LoggerFactory();
@@ -75,8 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
-            HttpInvokerOptions options = new HttpInvokerOptions();
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptions options = new HttpWorkerOptions();
             var ex = Record.Exception(() => setup.Configure(options));
             Assert.Null(ex);
             if (options.Description != null && !string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
@@ -99,8 +99,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
-            HttpInvokerOptions options = new HttpInvokerOptions();
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptions options = new HttpWorkerOptions();
             var ex = Assert.Throws<HostConfigurationException>(() => setup.Configure(options));
             Assert.Contains("Missing WorkerDescription for HttpInvoker", ex.Message);
         }
@@ -118,8 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
-            HttpInvokerOptions options = new HttpInvokerOptions();
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptions options = new HttpWorkerOptions();
             var ex = Assert.Throws<ValidationException>(() => setup.Configure(options));
             Assert.Contains("WorkerDescription DefaultExecutablePath cannot be empty", ex.Message);
         }
@@ -167,8 +167,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpInvokerOptionsSetup setup = new HttpInvokerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
-            HttpInvokerOptions options = new HttpInvokerOptions();
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptions options = new HttpWorkerOptions();
             setup.Configure(options);
 
             //Verify worker exe path is expected

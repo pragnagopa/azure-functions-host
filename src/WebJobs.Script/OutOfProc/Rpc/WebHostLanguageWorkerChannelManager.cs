@@ -22,13 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
-        private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
+        private readonly IRpcWorkerChannelFactory _languageWorkerChannelFactory;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
 
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>>(StringComparer.OrdinalIgnoreCase);
 
-        public WebHostLanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, ILanguageWorkerChannelFactory languageWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
+        public WebHostLanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory languageWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;

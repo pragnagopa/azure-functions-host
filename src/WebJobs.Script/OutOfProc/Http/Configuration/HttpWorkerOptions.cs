@@ -3,12 +3,12 @@
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
-    public class HttpInvokerOptions
+    public class HttpWorkerOptions
     {
         public HttpWorkerDescription Description { get; set; }
 
         public WorkerProcessArguments Arguments { get; set; }
 
-        internal int Port { get; set; }
+        public int Port { get; set; }
     }
 }

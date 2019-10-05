@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
-        private HttpInvokerOptions _httpInvokerOptions;
+        private HttpWorkerOptions _httpWorkerOptions;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHost(IOptions<JobHostOptions> options,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            IOptions<HttpInvokerOptions> httpInvokerOptions,
+            IOptions<HttpWorkerOptions> httpInvokerOptions,
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _hostIdProvider = hostIdProvider;
             _proxyMetadataManager = proxyMetadataManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-            _httpInvokerOptions = httpInvokerOptions.Value;
+            _httpWorkerOptions = httpInvokerOptions.Value;
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
@@ -470,7 +470,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (_httpInvokerOptions.Description != null)
+            if (_httpWorkerOptions.Description != null)
             {
                 _logger.AddingDescriptorProviderForHttpInvoker();
                 _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
@@ -646,7 +646,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            if (!_environment.IsPlaceholderModeEnabled() && _httpInvokerOptions.Description == null)
+            if (!_environment.IsPlaceholderModeEnabled() && _httpWorkerOptions.Description == null)
             {
                 Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime);
             }

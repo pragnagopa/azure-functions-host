@@ -14,14 +14,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         private readonly IWorkerProcessFactory _processFactory;
         private readonly ILogger _workerProcessLogger;
         private readonly IScriptEventManager _eventManager;
-        private readonly HttpInvokerOptions _httpInvokerOptions;
+        private readonly HttpWorkerOptions _httpInvokerOptions;
         private readonly string _scriptRootPath;
-        private readonly WorkerProcessArguments _workerProcessArguments;
         private readonly string _workerId;
+        private readonly WorkerProcessArguments _workerProcessArguments;
 
         internal HttpWorkerProcess(string workerId,
                                        string rootScriptPath,
-                                       HttpInvokerOptions httpInvokerOptions,
+                                       HttpWorkerOptions httpInvokerOptions,
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
         internal override Process CreateWorkerProcess()
         {
-            var workerContext = new HttpInvokerWorkerContext()
+            var workerContext = new HttpWorkerContext()
             {
                 RequestId = Guid.NewGuid().ToString(),
                 WorkerId = _workerId,

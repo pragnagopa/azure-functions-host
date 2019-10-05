@@ -10,20 +10,20 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
-    internal class HttpInvokerOptionsSetup : IConfigureOptions<HttpInvokerOptions>
+    internal class HttpWorkerOptionsSetup : IConfigureOptions<HttpWorkerOptions>
     {
         private IConfiguration _configuration;
         private ILogger _logger;
         private ScriptJobHostOptions _scriptJobHostOptions;
 
-        public HttpInvokerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory)
+        public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory)
         {
             _scriptJobHostOptions = scriptJobHostOptions.Value;
             _configuration = configuration;
-            _logger = loggerFactory.CreateLogger<HttpInvokerOptionsSetup>();
+            _logger = loggerFactory.CreateLogger<HttpWorkerOptionsSetup>();
         }
 
-        public void Configure(HttpInvokerOptions options)
+        public void Configure(HttpWorkerOptions options)
         {
             IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
             var httpInvokerSection = jobHostSection.GetSection(ConfigurationSectionNames.HttpInvoker);

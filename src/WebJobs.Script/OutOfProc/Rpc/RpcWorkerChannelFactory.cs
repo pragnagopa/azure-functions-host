@@ -14,20 +14,20 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class LanguageWorkerChannelFactory : ILanguageWorkerChannelFactory
+    public class RpcWorkerChannelFactory : IRpcWorkerChannelFactory
     {
         private readonly ILoggerFactory _loggerFactory = null;
-        private readonly ILanguageWorkerProcessFactory _languageWorkerProcessFactory = null;
+        private readonly IRpcWorkerProcessFactory _rpcWorkerProcessFactory = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
 
-        public LanguageWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerProcessFactory languageWorkerProcessManager)
+        public RpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory languageWorkerProcessManager)
         {
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-            _languageWorkerProcessFactory = languageWorkerProcessManager;
+            _rpcWorkerProcessFactory = languageWorkerProcessManager;
         }
 
         public ILanguageWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             string workerId = Guid.NewGuid().ToString();
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
-            ILanguageWorkerProcess languageWorkerProcess = _languageWorkerProcessFactory.Create(workerId, runtime, scriptRootPath);
+            ILanguageWorkerProcess languageWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath);
             return new LanguageWorkerChannel(
                          workerId,
                          scriptRootPath,

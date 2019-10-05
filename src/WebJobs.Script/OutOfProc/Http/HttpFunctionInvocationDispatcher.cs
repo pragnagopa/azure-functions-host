@@ -16,13 +16,13 @@ using Microsoft.Extensions.Options;
 
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
-namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
+namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     internal class HttpFunctionInvocationDispatcher : IFunctionDispatcher
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
-        private readonly IHttpInvokerChannelFactory _httpInvokerChannelFactory;
+        private readonly IHttpWorkerChannelFactory _httpInvokerChannelFactory;
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(OutOfProcConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
@@ -33,14 +33,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         private bool _disposed = false;
         private bool _disposing = false;
         private ConcurrentStack<HttpWorkerErrorEvent> _invokerErrors = new ConcurrentStack<HttpWorkerErrorEvent>();
-        private IHttpInvokerChannel _httpInvokerChannel;
+        private IHttpWorkerChannel _httpInvokerChannel;
 
         public HttpFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
             IScriptJobHostEnvironment scriptJobHostEnvironment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IHttpInvokerChannelFactory httpInvokerChannelFactory)
+            IHttpWorkerChannelFactory httpInvokerChannelFactory)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
@@ -58,11 +58,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         }
 
         public FunctionDispatcherState State { get; private set; }
-
-        internal async void InitializeJobhostLanguageWorkerChannelAsync()
-        {
-            await InitializeJobhostLanguageWorkerChannelAsync(0);
-        }
 
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {

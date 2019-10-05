@@ -10,13 +10,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class HttpFunctionDescriptorProvider : OutOfProcDescriptorProvider
     {
-        private IFunctionDispatcher _dispatcher;
-
         public HttpFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
             IFunctionDispatcher dispatcher, ILoggerFactory loggerFactory)
             : base(host, config, bindingProviders, dispatcher, loggerFactory)
         {
-            _dispatcher = dispatcher;
         }
     }
 }

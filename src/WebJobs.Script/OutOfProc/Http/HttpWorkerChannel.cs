@@ -5,47 +5,39 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
-    public class HttpInvokerChannel : IHttpInvokerChannel, IDisposable
+    public class HttpWorkerChannel : IHttpWorkerChannel, IDisposable
     {
-        private readonly string _rootScriptPath;
-        private readonly IScriptEventManager _eventManager;
         private bool _disposed;
-        private string _workerId;
         private IDisposable _startLatencyMetric;
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
         private IHttpInvokerService _httpInvokerService;
 
-        internal HttpInvokerChannel(
+        internal HttpWorkerChannel(
            string workerId,
-           string rootScriptPath,
-           IScriptEventManager eventManager,
            ILanguageWorkerProcess languageWorkerProcess,
            IHttpInvokerService httpInvokerService,
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount)
         {
-            _workerId = workerId;
-            _rootScriptPath = rootScriptPath;
-            _eventManager = eventManager;
+            Id = workerId;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
             _httpInvokerService = httpInvokerService;
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpInvoker", attemptCount));
         }
 
-        public string Id => _workerId;
+        public string Id { get; }
 
-        public async Task InvokeFunction(ScriptInvocationContext context)
+        public Task InvokeFunction(ScriptInvocationContext context)
         {
-            await _httpInvokerService.InvokeAsync(context);
+            return _httpInvokerService.InvokeAsync(context);
         }
 
         public async Task StartWorkerProcessAsync()

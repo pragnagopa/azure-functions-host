@@ -17,17 +17,17 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 {
-    public class DefaultHttpInvokerService : IHttpInvokerService
+    public class DefaultHttpWorkerService : IHttpInvokerService
     {
         private readonly HttpClient _httpClient;
-        private readonly HttpInvokerOptions _httpInvokerOptions;
+        private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly ILogger _logger;
 
-        public DefaultHttpInvokerService(HttpClient httpClient, IOptions<HttpInvokerOptions> httpInvokerOptions, ILoggerFactory loggerFactory)
+        public DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _httpInvokerOptions = httpInvokerOptions.Value;
-            _logger = loggerFactory.CreateLogger<DefaultHttpInvokerService>();
+            _httpWorkerOptions = httpWorkerOptions.Value;
+            _logger = loggerFactory.CreateLogger<DefaultHttpWorkerService>();
         }
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
@@ -145,12 +145,12 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
         private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
         {
-            httpRequestMessage.RequestUri = new Uri(new UriBuilder("http", "localhost", _httpInvokerOptions.Port, functionName).ToString());
+            httpRequestMessage.RequestUri = new Uri(new UriBuilder("http", "localhost", _httpWorkerOptions.Port, functionName).ToString());
             // TODO any other standard headers? DateTime?
-            httpRequestMessage.Headers.Add(HttpInvokerConstants.InvocationIdHeaderName, invocationId);
-            httpRequestMessage.Headers.Add(HttpInvokerConstants.HostVersionHeaderName, ScriptHost.Version);
+            httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
+            httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             // TODO: user agent or X-header?
-            httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpInvokerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+            httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
         }
 
         private HttpScriptInvocationContext GetHttpScriptInvocationContext(ScriptInvocationContext scriptInvocationContext)

@@ -21,9 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private ILogger _testLogger;
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>>();
         private string _scriptRootPath;
-        private ILanguageWorkerChannelFactory _testLanguageWorkerChannelFactory;
+        private IRpcWorkerChannelFactory _testLanguageWorkerChannelFactory;
 
-        public TestLanguageWorkerChannelManager(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath, ILanguageWorkerChannelFactory testLanguageWorkerChannelFactory)
+        public TestLanguageWorkerChannelManager(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath, IRpcWorkerChannelFactory testLanguageWorkerChannelFactory)
         {
             _eventManager = eventManager;
             _testLogger = testLogger;

@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class LanguageWorkerProcessFactory : ILanguageWorkerProcessFactory
+    internal class RpcWorkerProcessFactory : IRpcWorkerProcessFactory
     {
         private readonly IWorkerProcessFactory _workerProcessFactory;
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IRpcServer _rpcServer = null;
         private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
 
-        public LanguageWorkerProcessFactory(IRpcServer rpcServer,
+        public RpcWorkerProcessFactory(IRpcServer rpcServer,
                                        IOptions<LanguageWorkerOptions> languageWorkerOptions,
                                        IScriptEventManager eventManager,
                                        ILoggerFactory loggerFactory,

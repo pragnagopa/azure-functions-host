@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
-        private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
+        private readonly IRpcWorkerChannelFactory _languageWorkerChannelFactory;
         private readonly IEnvironment _environment;
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
         private readonly int _debounceSeconds = 10;
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             IScriptJobHostEnvironment scriptJobHostEnvironment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            ILanguageWorkerChannelFactory languageWorkerChannelFactory,
+            IRpcWorkerChannelFactory languageWorkerChannelFactory,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IWebHostLanguageWorkerChannelManager webHostLanguageWorkerChannelManager,
             IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager,

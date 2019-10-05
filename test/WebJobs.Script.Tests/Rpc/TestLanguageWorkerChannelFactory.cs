@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class TestLanguageWorkerChannelFactory : ILanguageWorkerChannelFactory
+    public class TestLanguageWorkerChannelFactory : IRpcWorkerChannelFactory
     {
         private IScriptEventManager _eventManager;
         private ILogger _testLogger;
