@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -120,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Null(FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -131,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fileSystem = new MockFileSystem();
             fileSystem.AddDirectory(@"c:\functions");
 
-            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Null(FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -269,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("test.jar")]
         [InlineData("test.x")]
         [InlineData("test.py")]
-        public void ParseLanguage_HttpInvoker_Returns_Null(string scriptFile)
+        public void ParseLanguage_HttpWorker_Returns_Null(string scriptFile)
         {
             Assert.Equal(null, FunctionMetadataProvider.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigsNoLanguage()));
         }

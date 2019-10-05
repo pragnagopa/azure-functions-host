@@ -29,11 +29,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(402, nameof(FunctionsErrors)),
             "{message}");
 
-        private static readonly Action<ILogger, Exception> _addingDescriptorProvidersForAllLanguages =
+        private static readonly Action<ILogger, Exception> _hostIsInPlaceholderMode =
             LoggerMessage.Define(
             LogLevel.Debug,
-            new EventId(403, nameof(AddingDescriptorProvidersForAllLanguages)),
-            "Adding Function descriptor providers for all languages.");
+            new EventId(403, nameof(HostIsInPlaceholderMode)),
+            "Host is in placeholdermode");
 
         private static readonly Action<ILogger, string, Exception> _addingDescriptorProviderForLanguage =
             LoggerMessage.Define<string>(
@@ -95,6 +95,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(413, nameof(ScriptHostStarted)),
             "Host started ({ms}ms)");
 
+        private static readonly Action<ILogger, Exception> _addingDescriptorProviderForHttpWorker =
+           LoggerMessage.Define(
+           LogLevel.Debug,
+           new EventId(414, nameof(AddingDescriptorProviderForHttpWorker)),
+           "Adding Function descriptor provider for HttpWorker.");
+
         public static void HostIdIsSet(this ILogger logger)
         {
             _hostIdIsSet(logger, null);
@@ -111,14 +117,19 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             _functionsErrors(logger, message, null);
         }
 
-        public static void AddingDescriptorProvidersForAllLanguages(this ILogger logger)
+        public static void HostIsInPlaceholderMode(this ILogger logger)
         {
-            _addingDescriptorProvidersForAllLanguages(logger, null);
+            _hostIsInPlaceholderMode(logger, null);
         }
 
         public static void AddingDescriptorProviderForLanguage(this ILogger logger, string workerRuntime)
         {
             _addingDescriptorProviderForLanguage(logger, workerRuntime, null);
+        }
+
+        public static void AddingDescriptorProviderForHttpWorker(this ILogger logger)
+        {
+            _addingDescriptorProviderForHttpWorker(logger, null);
         }
 
         public static void CreatingDescriptors(this ILogger logger)
