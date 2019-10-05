@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -92,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Null(FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -103,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fileSystem = new MockFileSystem();
             fileSystem.AddDirectory(@"c:\functions");
 
-            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Null(FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
         }
 
         [Fact]

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal interface IJobHostLanguageWorkerChannelManager
+    public interface IJobHostLanguageWorkerChannelManager
     {
         void AddChannel(ILanguageWorkerChannel channel);
 

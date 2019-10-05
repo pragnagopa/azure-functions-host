@@ -449,8 +449,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime)
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool httpWorker)
         {
+            if (isPlaceholderMode)
+            {
+                return;
+            }
+            if (httpWorker)
+            {
+                // Do not enforce langauge for http worker
+                return;
+            }
             if (!IsSingleLanguage(functions, workerRuntime))
             {
                 if (string.IsNullOrEmpty(workerRuntime))

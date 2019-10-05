@@ -1,7 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.IO;
+using System.Net;
+using System.Net.Sockets;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -13,9 +14,11 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
     {
         private IConfiguration _configuration;
         private ILogger _logger;
+        private ScriptJobHostOptions _scriptJobHostOptions;
 
-        public HttpWorkerOptionsSetup(IConfiguration configuration, ILoggerFactory loggerFactory)
+        public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory)
         {
+            _scriptJobHostOptions = scriptJobHostOptions.Value;
             _configuration = configuration;
             _logger = loggerFactory.CreateLogger<HttpWorkerOptionsSetup>();
         }
@@ -33,23 +36,27 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 {
                     throw new HostConfigurationException($"Missing WorkerDescription for HttpInvoker");
                 }
-                httpInvokerDescription.ApplyDefaultsAndValidate();
-                if (string.IsNullOrEmpty(httpInvokerDescription.DefaultWorkerPath))
-                {
-                    if (!Path.IsPathRooted(httpInvokerDescription.DefaultExecutablePath))
-                    {
-                        httpInvokerDescription.DefaultExecutablePath = Path.Combine(httpInvokerDescription.WorkerDirectory, httpInvokerDescription.DefaultExecutablePath);
-                    }
-                }
-                var arguments = new WorkerProcessArguments()
+                httpInvokerDescription.ApplyDefaultsAndValidate(_scriptJobHostOptions.RootScriptPath);
+                options.Arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = options.Description.DefaultExecutablePath,
                     WorkerPath = options.Description.DefaultWorkerPath
                 };
 
-                arguments.ExecutableArguments.AddRange(options.Description.Arguments);
+                options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
+                options.Port = GetUnusedTcpPort();
                 _logger.LogDebug("Configured httpInvoker with {DefaultExecutablePath}: {exepath} with arguments {args}", nameof(options.Description.DefaultExecutablePath), options.Description.DefaultExecutablePath, options.Arguments);
             }
+        }
+
+        internal static int GetUnusedTcpPort()
+        {
+            // TODO verify in Azure
+            TcpListener tcpListener = new TcpListener(IPAddress.Loopback, 0);
+            tcpListener.Start();
+            int port = ((IPEndPoint)tcpListener.LocalEndpoint).Port;
+            tcpListener.Stop();
+            return port;
         }
     }
 }

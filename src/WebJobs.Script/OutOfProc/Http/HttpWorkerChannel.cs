@@ -16,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private IDisposable _startLatencyMetric;
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
-        private IHttpInvokerService _httpInvokerService;
+        private IHttpWorkerService _httpWorkerService;
 
         internal HttpWorkerChannel(
            string workerId,
            ILanguageWorkerProcess languageWorkerProcess,
-           IHttpInvokerService httpInvokerService,
+           IHttpWorkerService httpInvokerService,
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount)
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             Id = workerId;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
-            _httpInvokerService = httpInvokerService;
+            _httpWorkerService = httpInvokerService;
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpInvoker", attemptCount));
         }
 
@@ -37,8 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public Task InvokeFunction(ScriptInvocationContext context)
         {
-            // TODO: convert to Http request
-            return _httpInvokerService.GetInvocationResponse(context);
+            return _httpWorkerService.InvokeAsync(context);
         }
 
         public async Task StartWorkerProcessAsync()

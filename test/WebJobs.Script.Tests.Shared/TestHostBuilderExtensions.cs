@@ -3,12 +3,15 @@
 
 using System;
 using System.Collections.Immutable;
+using System.Net.Http;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
+using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -18,6 +21,7 @@ using Microsoft.CodeAnalysis.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -51,14 +55,14 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IEnvironment>(services);
             AddMockedSingleton<IScriptWebHostEnvironment>(services);
             AddMockedSingleton<IEventGenerator>(services);
-            AddMockedSingleton<IFunctionDispatcher>(services);
+            AddMockedSingleton<IFunctionDispatcherFactory>(services);
+            AddMockedSingleton<IHttpWorkerService>(services);
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
             services.AddSingleton<HostNameProvider>();
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
             services.AddFunctionMetadataProvider(webHostOptions);
-
             configureRootServices?.Invoke(services);
 
             var rootProvider = new WebHostServiceProvider(services);

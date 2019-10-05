@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -83,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptHostManager scriptHostManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IFunctionDispatcher functionDispatcher,
+            IFunctionDispatcherFactory functionDispatcherFactory,
             IFunctionMetadataManager functionMetadataManager,
             IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
@@ -115,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
             EventManager = eventManager;
-            _functionDispatcher = functionDispatcher;
+            _functionDispatcher = functionDispatcherFactory.GetFunctionDispatcher();
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
 
             _metricsLogger = metricsLogger;
@@ -474,8 +475,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
-                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+                if (_functionDispatcher is HttpFunctionInvocationDispatcher)
+                {
+                    _logger.AddingDescriptorProviderForHttpInvoker();
+                    _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+                }
+                else
+                {
+                    _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
+                    _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+                }
             }
 
             Collection<FunctionDescriptor> functions;
@@ -637,10 +646,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            if (!_environment.IsPlaceholderModeEnabled())
-            {
-                Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime);
-            }
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime, _environment.IsPlaceholderModeEnabled(), _functionDispatcher is HttpFunctionInvocationDispatcher);
 
             foreach (FunctionMetadata metadata in functions)
             {

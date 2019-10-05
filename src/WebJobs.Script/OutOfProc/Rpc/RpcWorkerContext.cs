@@ -12,8 +12,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public int MaxMessageLength { get; set; }
 
-        public override string GetFormatedArguments()
+        public override string GetFormattedArguments()
         {
+            if (ServerUri == null)
+            {
+                throw new ArgumentNullException(nameof(ServerUri));
+            }
+            if (ServerUri.Host == null)
+            {
+                throw new ArgumentNullException(nameof(ServerUri.Host));
+            }
             return $" --host {ServerUri.Host} --port {ServerUri.Port} --workerId {WorkerId} --requestId {RequestId} --grpcMaxMessageLength {MaxMessageLength}";
         }
     }

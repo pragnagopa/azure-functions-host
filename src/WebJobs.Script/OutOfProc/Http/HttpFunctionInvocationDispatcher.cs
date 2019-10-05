@@ -92,7 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
-            // TODO
             return _httpInvokerChannel.InvokeFunction(invocationContext);
         }
 
@@ -162,6 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
                 _logger.LogDebug("Disposing {HttpFunctionInvokeDispatcher}", nameof(HttpFunctionInvocationDispatcher));
                 _workerErrorSubscription.Dispose();
                 _workerRestartSubscription.Dispose();
+                (_httpInvokerChannel as IDisposable)?.Dispose();
                 _disposed = true;
             }
         }
