@@ -226,11 +226,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     .Where(p => fileSystem.Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName)
                     .ToArray();
 
-                if (functionFiles.Length == 0)
-                {
-                    throw new FunctionConfigurationException("No function script files present.");
-                }
-
                 if (functionFiles.Length == 1)
                 {
                     // if there is only a single file, that file is primary
@@ -246,17 +241,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            if (string.IsNullOrEmpty(functionPrimary))
+            if (!string.IsNullOrEmpty(functionPrimary))
             {
-                throw new FunctionConfigurationException("Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
-                    "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
+                return Path.GetFullPath(functionPrimary);
             }
-
-            return Path.GetFullPath(functionPrimary);
+            // Primary script file is not required for HttpWorker, any custom langauge worker.
+            return null;
         }
 
         internal static string ParseLanguage(string scriptFilePath, IEnumerable<WorkerConfig> workerConfigs)
         {
+            // scriptFilePath can be null for a customer worker such as httpWorker
+            if (string.IsNullOrEmpty(scriptFilePath))
+            {
+                return null;
+            }
+
             // determine the script type based on the primary script file extension
             string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
             switch (extension)
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "dll":
                     return DotNetScriptTypes.DotNetAssembly;
             }
-            var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
+            WorkerConfig workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions?.Contains("." + extension) ?? false);
             if (workerConfig != null)
             {
                 return workerConfig.Description.Language;
