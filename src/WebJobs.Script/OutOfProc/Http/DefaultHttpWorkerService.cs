@@ -116,6 +116,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 ScriptInvocationResult scriptInvocationResult = new ScriptInvocationResult();
                 if (invocationResult != null)
                 {
+                    if (invocationResult.Outputs == null || !invocationResult.Outputs.Any())
+                    {
+                        _logger.LogDebug("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                    }
+                    if (invocationResult.ReturnValue == null)
+                    {
+                        _logger.LogDebug("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                    }
                     ProcessLogsFromHttpResponse(scriptInvocationContext, invocationResult);
                     scriptInvocationResult.Outputs = invocationResult.Outputs ?? new Dictionary<string, object>();
                     scriptInvocationResult.Return = invocationResult?.ReturnValue;
