@@ -23,12 +23,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         private readonly HttpClient _httpClient;
         private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly ILogger _logger;
+        private readonly Uri _baseRequestUri;
 
         public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
         {
             _httpClient = new HttpClient();
             _httpWorkerOptions = httpWorkerOptions.Value;
             _logger = loggerFactory.CreateLogger<DefaultHttpWorkerService>();
+            _baseRequestUri = new Uri(_httpWorkerOptions.Description.BaseUri);
         }
 
         internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
@@ -69,12 +71,17 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
                 httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
 
-                AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+                var requestUri = "http://pgopacsharphttpworker.azurewebsites.net/HttpTrigger?name=pgopa";
+                HttpRequestMessage httpRequestMessage1 = new HttpRequestMessage(HttpMethod.Get, requestUri);
+                HttpClient httpClient = new HttpClient();
+                var res = await httpClient.SendAsync(httpRequestMessage1);
+
+                // AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
                 // Populate query params from httpTrigger
-                string httpInvokerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), HttpRequestMessageConverters.ConvertQueryCollectionToDictionary(httpRequest.Query));
-                httpRequestMessage.RequestUri = new Uri(httpInvokerUri);
-
+                // string httpInvokerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), HttpRequestMessageConverters.ConvertQueryCollectionToDictionary(httpRequest.Query));
+                httpRequestMessage.RequestUri = new Uri("http://pgopacsharphttpworker.azurewebsites.net/HttpTrigger?name=pgopa");
+                httpRequestMessage.Method = HttpMethod.Get;
                 _logger.LogDebug("Sending http request message for simple httpTrigger function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
                 HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
@@ -103,8 +110,8 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             {
                 HttpScriptInvocationContext httpScriptInvocationContext = await GetHttpScriptInvocationContext(scriptInvocationContext);
                 HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
-                AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
                 httpRequestMessage.Method = HttpMethod.Post;
+                AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
                 httpRequestMessage.Content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
                 _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                 HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
@@ -161,7 +168,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
 
         private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
         {
-            httpRequestMessage.RequestUri = new Uri(new UriBuilder(OutOfProcConstants.HttpScheme, OutOfProcConstants.HostName, _httpWorkerOptions.Port, functionName).ToString());
+            if (_baseRequestUri != null)
+            {
+                httpRequestMessage.RequestUri = new Uri(_baseRequestUri, functionName, false);
+            }
+            else
+            {
+                httpRequestMessage.RequestUri = new Uri(new UriBuilder(OutOfProcConstants.HttpScheme, OutOfProcConstants.HostName, _httpWorkerOptions.Port, functionName).ToString());
+            }
             // TODO any other standard headers? DateTime?
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
