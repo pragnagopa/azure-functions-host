@@ -71,20 +71,18 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
                 httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
 
-                var requestUri = "http://pgopacsharphttpworker.azurewebsites.net/HttpTrigger?name=pgopa";
-                HttpRequestMessage httpRequestMessage1 = new HttpRequestMessage(HttpMethod.Get, requestUri);
-                HttpClient httpClient = new HttpClient();
-                var res = await httpClient.SendAsync(httpRequestMessage1);
-
-                // AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+                AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
                 // Populate query params from httpTrigger
-                // string httpInvokerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), HttpRequestMessageConverters.ConvertQueryCollectionToDictionary(httpRequest.Query));
-                httpRequestMessage.RequestUri = new Uri("http://pgopacsharphttpworker.azurewebsites.net/HttpTrigger?name=pgopa");
-                httpRequestMessage.Method = HttpMethod.Get;
+                string httpInvokerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), HttpRequestMessageConverters.ConvertQueryCollectionToDictionary(httpRequest.Query));
+                // httpRequestMessage.RequestUri = new Uri("http://pgopacsharphttpworker.azurewebsites.net/HttpTrigger?name=pgopa");
+                // httpRequestMessage.Method = HttpMethod.Get;
                 _logger.LogDebug("Sending http request message for simple httpTrigger function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
-                HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
+                httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, httpInvokerUri);
+                HttpClient httpClient = new HttpClient();
+                HttpResponseMessage invocationResponse = await httpClient.SendAsync(httpRequestMessage);
+                // HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
 
                 _logger.LogDebug("Received http response for simple httpTrigger function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
