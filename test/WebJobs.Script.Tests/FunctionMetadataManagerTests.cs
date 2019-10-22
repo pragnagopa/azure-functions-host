@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-            Assert.Throws<FunctionConfigurationException>(() => _testFunctionMetadataManager.DeterminePrimaryScriptFile("foo.py", @"c:\functions", fileSystem));
+            Assert.Throws<FunctionConfigurationException>(() => _testFunctionMetadataManager.DeterminePrimaryScriptFile(string.Empty, @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fileSystem = new MockFileSystem(files);
 
             FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockFunctionMetadataProvider.Object, new OptionsWrapper<LanguageWorkerOptions>(GetTestLanguageWorkerOptions()), new OptionsWrapper<HttpWorkerOptions>(GetTestHttpWorkerOptions()), MockNullLoggerFactory.CreateLoggerFactory());
-            Assert.Null(testFunctionMetadataManager.DeterminePrimaryScriptFile("run.csx", @"c:\functions", fileSystem));
+            Assert.Null(testFunctionMetadataManager.DeterminePrimaryScriptFile(null, @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile("Helper.csx", @"c:\functions", fileSystem);
+            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(null, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\Run.csx", scriptFile);
         }
 
@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile("Run.csx", @"c:\functions", fileSystem);
+            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(null, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\Run.csx", scriptFile);
         }
 
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile("index.js", @"c:\functions", fileSystem);
+            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(string.Empty, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\run.js", scriptFile);
         }
 
@@ -177,16 +177,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("queueTrigger.py", @"c:\functions\queueTrigger.py")]
         [InlineData("helper.py", @"c:\functions\helper.py")]
         [InlineData("test.txt", @"c:\functions\test.txt")]
-        public void DeterminePrimaryScriptFile_MultipleFiles_ConfigTrumpsConvention(string expecTedScriptFile, string scriptFilePath)
+        public void DeterminePrimaryScriptFile_MultipleFiles_ConfigTrumpsConvention(string scriptFileProperty, string expedtedScriptFilePath)
         {
             var files = new Dictionary<string, MockFileData>
             {
-                { scriptFilePath, new MockFileData(string.Empty) }
+                { expedtedScriptFilePath, new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string actualScriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(expecTedScriptFile, @"c:\functions", fileSystem);
-            Assert.Equal(expecTedScriptFile, actualScriptFile);
+            string actualScriptFilePath = _testFunctionMetadataManager.DeterminePrimaryScriptFile(scriptFileProperty, @"c:\functions", fileSystem);
+            Assert.Equal(expedtedScriptFilePath, actualScriptFilePath);
         }
 
         private static HttpWorkerOptions GetTestHttpWorkerOptions()
