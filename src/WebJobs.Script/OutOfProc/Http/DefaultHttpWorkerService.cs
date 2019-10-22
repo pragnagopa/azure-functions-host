@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             HttpRequest httpRequest = input.request as HttpRequest;
             if (httpRequest == null)
             {
-                throw new ArgumentNullException(nameof(httpRequest));
+                throw new InvalidOperationException($"HttpTrigger value for: `{input.name}` is null");
             }
 
             try
