@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
         private readonly IOptions<JobHostOptions> _hostOptions;
-        private readonly IOptions<HttpWorkerOptions> _httpWorkerOptions;
+        private readonly bool _isHttpWorker;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
         private readonly IDebugStateProvider _debugManager;
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _httpRoutesManager = httpRoutesManager;
             _proxyMetadataManager = proxyMetadataManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-            _httpWorkerOptions = httpWorkerOptions;
+            _isHttpWorker = httpWorkerOptions.Value.Description != null;
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
@@ -493,7 +493,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
-            else if (_httpWorkerOptions.Value.Description != null)
+            else if (_isHttpWorker)
             {
                 _logger.AddingDescriptorProviderForHttpWorker();
                 _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
@@ -659,7 +659,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime, _environment.IsPlaceholderModeEnabled(), _functionDispatcher is HttpFunctionInvocationDispatcher);
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker);
 
             foreach (FunctionMetadata metadata in functions)
             {

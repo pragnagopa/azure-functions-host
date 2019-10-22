@@ -119,7 +119,6 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                 }
             }
 
-            // TODO: parse ClaimsPrincipal if exists
             if (request.HttpContext?.User?.Identities != null)
             {
                 jObjectHttp["Identities"] = JsonConvert.SerializeObject(request.HttpContext.User.Identities);
