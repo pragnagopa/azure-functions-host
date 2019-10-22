@@ -34,11 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("queueTrigger.py")]
         public void DeterminePrimaryScriptFile_MultipleFiles_SourceFileSpecified(string scriptFileName)
         {
-            JObject functionConfig = new JObject()
-            {
-                { "scriptFile", scriptFileName }
-            };
-
             var files = new Dictionary<string, MockFileData>
             {
                 { @"c:\functions\queueTrigger.py", new MockFileData(string.Empty) },
@@ -46,18 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(scriptFileName, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
         }
 
         [Fact]
         public void DeterminePrimaryScriptFile_RelativeSourceFileSpecified()
         {
-            JObject functionConfig = new JObject()
-            {
-                { "scriptFile", @"..\shared\queuetrigger.py" }
-            };
-
             var files = new Dictionary<string, MockFileData>
             {
                 { @"c:\shared\queueTrigger.py", new MockFileData(string.Empty) },
@@ -66,14 +56,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(@"..\shared\queuetrigger.py", @"c:\functions", fileSystem);
             Assert.Equal(@"c:\shared\queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
         }
 
         [Fact]
         public void DeterminePrimaryScriptFile_MultipleFiles_NoClearPrimary_Throws()
         {
-            var functionConfig = new JObject();
             var files = new Dictionary<string, MockFileData>
             {
                 { @"c:\functions\foo.py", new MockFileData(string.Empty) },
@@ -82,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-            Assert.Throws<FunctionConfigurationException>(() => _testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Throws<FunctionConfigurationException>(() => _testFunctionMetadataManager.DeterminePrimaryScriptFile("foo.py", @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -99,32 +88,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fileSystem = new MockFileSystem(files);
 
             FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockFunctionMetadataProvider.Object, new OptionsWrapper<LanguageWorkerOptions>(GetTestLanguageWorkerOptions()), new OptionsWrapper<HttpWorkerOptions>(GetTestHttpWorkerOptions()), MockNullLoggerFactory.CreateLoggerFactory());
-            Assert.Null(testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Null(testFunctionMetadataManager.DeterminePrimaryScriptFile("run.csx", @"c:\functions", fileSystem));
         }
 
         [Fact]
         public void DeterminePrimaryScriptFile_NoFiles_Throws()
         {
-            var functionConfig = new JObject();
             string[] functionFiles = new string[0];
 
             var fileSystem = new MockFileSystem();
             fileSystem.AddDirectory(@"c:\functions");
 
-            Assert.Throws<FunctionConfigurationException>(() => _testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Throws<FunctionConfigurationException>(() => _testFunctionMetadataManager.DeterminePrimaryScriptFile("run.csx", @"c:\functions", fileSystem));
         }
 
         [Fact]
         public void DeterminePrimaryScriptFile_NoFiles_HttpWorker_Returns_Null()
         {
-            var functionConfig = new JObject();
             string[] functionFiles = new string[0];
 
             var fileSystem = new MockFileSystem();
             fileSystem.AddDirectory(@"c:\functions");
 
             FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockFunctionMetadataProvider.Object, new OptionsWrapper<LanguageWorkerOptions>(GetTestLanguageWorkerOptions()), new OptionsWrapper<HttpWorkerOptions>(GetTestHttpWorkerOptions()), MockNullLoggerFactory.CreateLoggerFactory());
-            Assert.Null(testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Null(testFunctionMetadataManager.DeterminePrimaryScriptFile(null, @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -139,28 +126,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile("Helper.csx", @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\Run.csx", scriptFile);
         }
 
         [Fact]
         public void DeterminePrimaryScriptFile_SingleFile()
         {
-            var functionConfig = new JObject();
             var files = new Dictionary<string, MockFileData>
             {
                 { @"c:\functions\Run.csx", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile("Run.csx", @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\Run.csx", scriptFile);
         }
 
         [Fact]
         public void DeterminePrimaryScriptFile_MultipleFiles_RunTrumpsIndex()
         {
-            var functionConfig = new JObject();
             var files = new Dictionary<string, MockFileData>
             {
                 { @"c:\functions\run.js", new MockFileData(string.Empty) },
@@ -169,14 +154,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile("index.js", @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\run.js", scriptFile);
         }
 
         [Fact]
         public void DeterminePrimaryScriptFile_MultipleFiles_IndexFilePresent()
         {
-            var functionConfig = new JObject();
             var files = new Dictionary<string, MockFileData>
             {
                 { @"c:\functions\index.js", new MockFileData(string.Empty) },
@@ -184,57 +168,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile("index.js", @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\index.js", scriptFile);
         }
 
-        [Fact]
-        public void DeterminePrimaryScriptFile_MultipleFiles_ConfigTrumpsConvention()
+        [Theory]
+        [InlineData("run.py", @"c:\functions\run.py")]
+        [InlineData("queueTrigger.py", @"c:\functions\queueTrigger.py")]
+        [InlineData("helper.py", @"c:\functions\helper.py")]
+        [InlineData("test.txt", @"c:\functions\test.txt")]
+        public void DeterminePrimaryScriptFile_MultipleFiles_ConfigTrumpsConvention(string expecTedScriptFile, string scriptFilePath)
         {
-            JObject functionConfig = new JObject()
-            {
-                { "scriptFile", "queueTrigger.py" }
-            };
             var files = new Dictionary<string, MockFileData>
             {
-                { @"c:\functions\run.py", new MockFileData(string.Empty) },
-                { @"c:\functions\queueTrigger.py", new MockFileData(string.Empty) },
-                { @"c:\functions\helper.py", new MockFileData(string.Empty) },
-                { @"c:\functions\test.txt", new MockFileData(string.Empty) }
+                { scriptFilePath, new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
-            Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile);
-        }
-
-        [Theory]
-        [InlineData("node", "test.js")]
-        [InlineData("java", "test.jar")]
-        [InlineData("CSharp", "test.cs")]
-        [InlineData("CSharp", "test.csx")]
-        [InlineData("DotNetAssembly", "test.dll")]
-        [InlineData(null, "test.x")]
-        public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile)
-        {
-            Assert.Equal(language, _testFunctionMetadataManager.ParseLanguage(scriptFile));
-        }
-
-        [Theory]
-        [InlineData("test.js")]
-        [InlineData("test.jar")]
-        [InlineData("test.x")]
-        [InlineData("test.py")]
-        [InlineData("")]
-        [InlineData(null)]
-        public void ParseLanguage_HttpWorker_Returns_Null(string scriptFile)
-        {
-            var workerOptions = new LanguageWorkerOptions
-            {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigsNoLanguage()
-            };
-            FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockFunctionMetadataProvider.Object, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), new OptionsWrapper<HttpWorkerOptions>(GetTestHttpWorkerOptions()), MockNullLoggerFactory.CreateLoggerFactory());
-            Assert.Equal(null, testFunctionMetadataManager.ParseLanguage(scriptFile));
+            string actualScriptFile = _testFunctionMetadataManager.DeterminePrimaryScriptFile(expecTedScriptFile, @"c:\functions", fileSystem);
+            Assert.Equal(expecTedScriptFile, actualScriptFile);
         }
 
         private static HttpWorkerOptions GetTestHttpWorkerOptions()

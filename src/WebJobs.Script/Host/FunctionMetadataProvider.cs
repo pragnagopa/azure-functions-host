@@ -7,9 +7,11 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Abstractions;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -20,23 +22,21 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly IEnumerable<WorkerConfig> _workerConfigs;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private ImmutableArray<FunctionMetadata> _functions;
-        private Dictionary<string, JObject> _functionConfigs = new Dictionary<string, JObject>();
 
-        public FunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
+        public FunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<FunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _logger = logger;
+            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
-
-        public ImmutableDictionary<string, JObject> FunctionConfigs
-           => _functionConfigs.ToImmutableDictionary();
 
         public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh)
         {
@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script
         internal Collection<FunctionMetadata> ReadFunctionsMetadata(IFileSystem fileSystem = null)
         {
             _functionErrors.Clear();
-            _functionConfigs.Clear();
             fileSystem = fileSystem ?? FileUtility.Instance;
             using (_metricsLogger.LatencyEvent(MetricEventNames.ReadFunctionsMetadata))
             {
@@ -98,7 +97,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     ValidateName(functionName);
 
                     JObject functionConfig = JObject.Parse(json);
-                    _functionConfigs[functionName] = functionConfig;
 
                     return ParseFunctionMetadata(functionName, functionConfig, functionDirectory);
                 }
@@ -157,6 +155,32 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return functionMetadata;
+        }
+
+        internal string ParseLanguage(string scriptFilePath)
+        {
+            // scriptFilePath is not required for HttpWorker
+            if (string.IsNullOrEmpty(scriptFilePath))
+            {
+                return null;
+            }
+
+            // determine the script type based on the primary script file extension
+            string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
+            switch (extension)
+            {
+                case "csx":
+                case "cs":
+                    return DotNetScriptTypes.CSharp;
+                case "dll":
+                    return DotNetScriptTypes.DotNetAssembly;
+            }
+            var workerConfig = _workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
+            if (workerConfig != null)
+            {
+                return workerConfig.Description.Language;
+            }
+            return null;
         }
     }
 }

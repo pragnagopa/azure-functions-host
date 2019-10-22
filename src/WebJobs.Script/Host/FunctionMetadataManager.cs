@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
         private readonly ILogger _logger;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
-        private Dictionary<string, JObject> _functionConfigs = new Dictionary<string, JObject>();
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider, IOptions<LanguageWorkerOptions> languageWorkerOptions, IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
         {
@@ -52,54 +51,49 @@ namespace Microsoft.Azure.WebJobs.Script
             ICollection<string> functionsWhiteList = _scriptOptions.Value.Functions;
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
             List<FunctionMetadata> functionMetadataList = _functionMetadataProvider.GetFunctionMetadata().ToList();
+            List<FunctionMetadata> validFunctionMetadataList = _functionMetadataProvider.GetFunctionMetadata().ToList();
             foreach (var error in _functionMetadataProvider.FunctionErrors)
             {
                 ICollection<string> functionErrors = new Collection<string>(error.Value.ToList());
                 _functionErrors.Add(error.Key, functionErrors);
             }
-            _functionConfigs = _functionMetadataProvider.FunctionConfigs.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
             // Validate
             foreach (FunctionMetadata functionMetadata in functionMetadataList)
             {
-                if (!TryParseFunctionMetadata(functionMetadata, _functionConfigs[functionMetadata.Name], out string functionError))
+                if (!TryParseFunctionMetadata(functionMetadata, out string functionError))
                 {
                     // for functions in error, log the error and don't
                     // add to the functions collection
                     Utility.AddFunctionError(_functionErrors, functionMetadata.Name, functionError);
-                    functionMetadata.IsValid = false;
+                    validFunctionMetadataList.Remove(functionMetadata);
                 }
-                functionMetadata.IsValid = true;
             }
             Errors = _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
             if (functionsWhiteList != null)
             {
                 _logger.LogInformation($"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", functionsWhiteList)}]");
-                functionMetadataList = functionMetadataList.Where(function => functionsWhiteList.Any(functionName => functionName.Equals(function.Name, StringComparison.CurrentCultureIgnoreCase))).ToList();
+                validFunctionMetadataList = validFunctionMetadataList.Where(function => functionsWhiteList.Any(functionName => functionName.Equals(function.Name, StringComparison.CurrentCultureIgnoreCase))).ToList();
                 Errors = _functionErrors.Where(kvp => functionsWhiteList.Any(functionName => functionName.Equals(kvp.Key, StringComparison.CurrentCultureIgnoreCase))).ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             }
             _logger.FunctionMetadataManagerFunctionsLoaded(functionMetadataList.Count());
 
             // Exclude invalid functions
-            return functionMetadataList.Where(functionMetadata => functionMetadata.IsValid == true).ToImmutableArray();
+            return validFunctionMetadataList.ToImmutableArray();
         }
 
-        private bool TryParseFunctionMetadata(FunctionMetadata functionMetadata, JObject functionConfig,  out string error)
+        private bool TryParseFunctionMetadata(FunctionMetadata functionMetadata, out string error)
         {
             error = null;
             try
             {
-                functionMetadata.ScriptFile = DeterminePrimaryScriptFile(functionConfig, functionMetadata.FunctionDirectory);
+                functionMetadata.ScriptFile = DeterminePrimaryScriptFile(functionMetadata.ScriptFile, functionMetadata.FunctionDirectory);
             }
             catch (FunctionConfigurationException exc)
             {
                 error = exc.Message;
                 return false;
             }
-            functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile);
-            functionMetadata.EntryPoint = (string)functionConfig["entryPoint"];
-
             return true;
         }
 
@@ -107,14 +101,13 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Determines which script should be considered the "primary" entry point script.
         /// </summary>
         /// <exception cref="ConfigurationErrorsException">Thrown if the function metadata points to an invalid script file, or no script files are present for C# functions</exception>
-        internal string DeterminePrimaryScriptFile(JObject functionConfig, string scriptDirectory, IFileSystem fileSystem = null)
+        internal string DeterminePrimaryScriptFile(string scriptFile, string scriptDirectory, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? FileUtility.Instance;
 
             // First see if there is an explicit primary file indicated
             // in config. If so use that.
             string functionPrimary = null;
-            string scriptFile = (string)functionConfig["scriptFile"];
 
             if (!string.IsNullOrEmpty(scriptFile))
             {
@@ -164,32 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 return null;
             }
             return Path.GetFullPath(functionPrimary);
-        }
-
-        internal string ParseLanguage(string scriptFilePath)
-        {
-            // scriptFilePath can be null for a customer worker such as httpWorker
-            if (_isHttpWorker && string.IsNullOrEmpty(scriptFilePath))
-            {
-                return null;
-            }
-
-            // determine the script type based on the primary script file extension
-            string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
-            switch (extension)
-            {
-                case "csx":
-                case "cs":
-                    return DotNetScriptTypes.CSharp;
-                case "dll":
-                    return DotNetScriptTypes.DotNetAssembly;
-            }
-            var workerConfig = _workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
-            if (workerConfig != null)
-            {
-                return workerConfig.Description.Language;
-            }
-            return null;
         }
     }
 }

@@ -52,11 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public bool IsDirect { get; set; }
 
-        /// <summary>
-        /// Gets or sets a value indicating whether that this function metadata is valid
-        /// </summary>
-        public bool IsValid { get; set; }
-
         public string FunctionId { get; set; } = Guid.NewGuid().ToString();
 
         /// <summary>
