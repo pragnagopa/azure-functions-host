@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory)
+        private FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory)
         {
             var functionMetadata = new FunctionMetadata
             {
@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {functionMetadata.Name}'.");
                 }
             }
-
+            functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile);
             return functionMetadata;
         }
 
