@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     ValidateName(functionName);
 
                     JObject functionConfig = JObject.Parse(json);
-                    _functionConfigs.Add(functionName, functionConfig);
+                    _functionConfigs[functionName] = functionConfig;
 
                     return ParseFunctionMetadata(functionName, functionConfig, functionDirectory);
                 }
