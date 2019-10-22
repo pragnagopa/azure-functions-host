@@ -54,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal Collection<FunctionMetadata> ReadFunctionsMetadata(IFileSystem fileSystem = null)
         {
             _functionErrors.Clear();
+            _functionConfigs.Clear();
             fileSystem = fileSystem ?? FileUtility.Instance;
             using (_metricsLogger.LatencyEvent(MetricEventNames.ReadFunctionsMetadata))
             {
