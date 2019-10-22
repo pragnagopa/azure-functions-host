@@ -99,11 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task ReadFunctionsMetadataSucceeds()
         {
             IEnumerable<FunctionMetadataResponse> metadata = await _webFunctionsManager.GetFunctionsMetadata(includeProxies: false);
-            var jsFunctions = metadata.Where(funcMetadata => funcMetadata.Language == LanguageWorkerConstants.NodeLanguageWorkerName).ToList();
-            var unknownFunctions = metadata.Where(funcMetadata => string.IsNullOrEmpty(funcMetadata.Language)).ToList();
-
-            Assert.Equal(2, jsFunctions.Count());
-            Assert.Equal(1, unknownFunctions.Count());
+            Assert.Equal(3, metadata.Count());
         }
 
         [Fact]
