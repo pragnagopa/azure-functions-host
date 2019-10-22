@@ -46,12 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             await _languageWorkerProcess.StartProcessAsync();
         }
 
-        public Task Status()
-        {
-            // TODO: status endpoint on http invoker. Wait till 200 OK response before sending invocation requests
-            throw new NotImplementedException();
-        }
-
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
