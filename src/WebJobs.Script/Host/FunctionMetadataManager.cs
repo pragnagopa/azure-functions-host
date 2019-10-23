@@ -88,6 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
             try
             {
                 functionMetadata.ScriptFile = DeterminePrimaryScriptFile(functionMetadata.ScriptFile, functionMetadata.FunctionDirectory);
+                functionMetadata.Language = Utility.ParseLanguage(functionMetadata.ScriptFile, _workerConfigs);
             }
             catch (FunctionConfigurationException exc)
             {

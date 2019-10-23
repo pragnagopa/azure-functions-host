@@ -110,45 +110,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(false, $"Valid function name {functionName} failed validation.");
             }
         }
-
-        [Theory]
-        [InlineData("node", "test.js")]
-        [InlineData("java", "test.jar")]
-        [InlineData("CSharp", "test.cs")]
-        [InlineData("CSharp", "test.csx")]
-        [InlineData("DotNetAssembly", "test.dll")]
-        [InlineData(null, "test.x")]
-        public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile)
-        {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
-            Assert.Equal(language, metadataProvider.ParseLanguage(scriptFile));
-        }
-
-        [Theory]
-        [InlineData("test.js")]
-        [InlineData("test.jar")]
-        [InlineData("test.x")]
-        [InlineData("test.py")]
-        [InlineData("")]
-        [InlineData(null)]
-        public void ParseLanguage_HttpWorker_Returns_Null(string scriptFile)
-        {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            LanguageWorkerOptions languageWorkerOptions = new LanguageWorkerOptions
-            {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigsNoLanguage()
-            };
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(languageWorkerOptions), NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
-            var workerOptions = new LanguageWorkerOptions
-            {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigsNoLanguage()
-            };
-            Assert.Equal(null, metadataProvider.ParseLanguage(scriptFile));
-        }
     }
 }

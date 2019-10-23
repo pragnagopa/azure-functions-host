@@ -496,6 +496,32 @@ namespace Microsoft.Azure.WebJobs.Script
             return ContainsFunctionWithWorkerRuntime(functionsListWithoutProxies, workerRuntime);
         }
 
+        internal static string ParseLanguage(string scriptFilePath, IEnumerable<WorkerConfig> workerConfigs)
+        {
+            // scriptFilePath is not required for HttpWorker
+            if (string.IsNullOrEmpty(scriptFilePath))
+            {
+                return null;
+            }
+
+            // determine the script type based on the primary script file extension
+            string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
+            switch (extension)
+            {
+                case "csx":
+                case "cs":
+                    return DotNetScriptTypes.CSharp;
+                case "dll":
+                    return DotNetScriptTypes.DotNetAssembly;
+            }
+            var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
+            if (workerConfig != null)
+            {
+                return workerConfig.Description.Language;
+            }
+            return null;
+        }
+
         internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions)
         {
             if (IsSingleLanguage(functions, null))

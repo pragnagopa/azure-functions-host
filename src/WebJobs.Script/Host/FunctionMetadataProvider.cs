@@ -153,34 +153,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {functionMetadata.Name}'.");
                 }
             }
-            functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile);
+            functionMetadata.Language = Utility.ParseLanguage(functionMetadata.ScriptFile, _workerConfigs);
             return functionMetadata;
-        }
-
-        internal string ParseLanguage(string scriptFilePath)
-        {
-            // scriptFilePath is not required for HttpWorker
-            if (string.IsNullOrEmpty(scriptFilePath))
-            {
-                return null;
-            }
-
-            // determine the script type based on the primary script file extension
-            string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
-            switch (extension)
-            {
-                case "csx":
-                case "cs":
-                    return DotNetScriptTypes.CSharp;
-                case "dll":
-                    return DotNetScriptTypes.DotNetAssembly;
-            }
-            var workerConfig = _workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
-            if (workerConfig != null)
-            {
-                return workerConfig.Description.Language;
-            }
-            return null;
         }
     }
 }

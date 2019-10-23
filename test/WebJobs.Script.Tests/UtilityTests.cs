@@ -427,6 +427,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("node", "test.js")]
+        [InlineData("java", "test.jar")]
+        [InlineData("CSharp", "test.cs")]
+        [InlineData("CSharp", "test.csx")]
+        [InlineData("DotNetAssembly", "test.dll")]
+        [InlineData(null, "test.x")]
+        public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile)
+        {
+            Assert.Equal(language, Utility.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigs()));
+        }
+
+        [Theory]
+        [InlineData("test.js")]
+        [InlineData("test.jar")]
+        [InlineData("test.x")]
+        [InlineData("test.py")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void ParseLanguage_HttpWorker_Returns_Null(string scriptFile)
+        {
+            Assert.Null(Utility.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigsNoLanguage()));
+        }
+
+        [Theory]
         [InlineData(true, true, true)]
         [InlineData(true, false, false)]
         [InlineData(false, true, false)]
