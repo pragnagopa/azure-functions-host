@@ -44,7 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 };
 
                 options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
-                options.Port = GetUnusedTcpPort();
+                // options.Port = GetUnusedTcpPort();
+                options.Port = 65000;
                 _logger.LogDebug("Configured httpWorker with {DefaultExecutablePath}: {exepath} with arguments {args}", nameof(options.Description.DefaultExecutablePath), options.Description.DefaultExecutablePath, options.Arguments);
             }
         }
