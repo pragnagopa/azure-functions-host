@@ -11,6 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     public class HttpWorkerDescription : WorkerDescription
     {
+        /// <summary>
+        /// Gets or sets WorkingDirectory for the process: DefaultExecutablePath
+        /// </summary>
+        public string WorkingDirectory { get; set; }
+
         public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger)
         {
             if (workerDirectory == null)
@@ -21,16 +26,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             WorkerArguments = WorkerArguments ?? new List<string>();
 
             WorkerDirectory = WorkerDirectory ?? workerDirectory;
-            WorkingDirectory = WorkingDirectory ?? workerDirectory;
 
             ExpandEnvironmentVariables();
 
             // If DefaultWorkerPath is not set then compute full path for DefaultExecutablePath from WorkingDirectory.
             // Empty DefaultWorkerPath indicates DefaultExecutablePath is either a runtime on the system path or a file relative to WorkingDirectory.
-            // No need to find full path for DefaultWorkerPath as WorkingDirectory will be set when launching the worker process.
+            // No need to find full path for DefaultWorkerPath as WorkerDirectory will be set when launching the worker process.
             if (string.IsNullOrEmpty(DefaultWorkerPath) && !string.IsNullOrEmpty(DefaultExecutablePath) && !Path.IsPathRooted(DefaultExecutablePath))
             {
-                DefaultExecutablePath = Path.Combine(WorkingDirectory, DefaultExecutablePath);
+                DefaultExecutablePath = Path.Combine(WorkerDirectory, DefaultExecutablePath);
             }
 
             if (string.IsNullOrEmpty(DefaultExecutablePath))

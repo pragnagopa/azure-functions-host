@@ -73,6 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 }
 
                 httpWorkerDescription.ApplyDefaultsAndValidate(_scriptJobHostOptions.RootScriptPath, _logger);
+                // Set default working directory to function app root.
+                httpWorkerDescription.WorkingDirectory = httpWorkerDescription.WorkingDirectory ?? _scriptJobHostOptions.RootScriptPath;
                 options.Arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = options.Description.DefaultExecutablePath,
