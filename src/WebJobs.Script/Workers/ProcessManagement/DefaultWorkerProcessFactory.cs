@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 throw new ArgumentNullException(nameof(context.Arguments.ExecutablePath));
             }
-            var startInfo = new ProcessStartInfo(Environment.ExpandEnvironmentVariables(context.Arguments.ExecutablePath))
+            var startInfo = new ProcessStartInfo(context.Arguments.ExecutablePath)
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -35,13 +35,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 WorkingDirectory = context.WorkingDirectory,
                 Arguments = GetArguments(context),
             };
-
             var processEnvVariables = context.EnvironmentVariables;
             if (processEnvVariables != null && processEnvVariables.Any())
             {
-                foreach (var evnVar in processEnvVariables)
+                foreach (var envVar in processEnvVariables)
                 {
-                    startInfo.EnvironmentVariables[evnVar.Key] = evnVar.Value;
+                    startInfo.EnvironmentVariables[envVar.Key] = envVar.Value;
+                    startInfo.Arguments = startInfo.Arguments.Replace($"%{envVar.Key}%", envVar.Value);
                 }
             }
             return new Process { StartInfo = startInfo };

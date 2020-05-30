@@ -55,21 +55,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             };
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.WorkerIdEnvVarName, _workerId);
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.CustomHandlerPortEnvVarName, _httpWorkerOptions.Port.ToString());
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.CustomHandlerIdEnvVarName, _workerId);
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.FunctionAppRootVarName, _scriptRootPath);
             Process workerProcess = _processFactory.CreateWorkerProcess(workerContext);
             if (_environment.IsLinuxConsumption())
             {
                 AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.FileName);
             }
             return workerProcess;
-        }
-
-        private static List<string> ExpandInjectEnvVars(List<string> argsList, string key, string value)
-        {
-            for (int i = 0; i < argsList.Count; i++)
-            {
-                argsList[i] = argsList[i].Replace($"%{key}%", value);
-            }
-            return argsList;
         }
 
         private void AssignUserExecutePermissionsIfNotExists(string filePath)

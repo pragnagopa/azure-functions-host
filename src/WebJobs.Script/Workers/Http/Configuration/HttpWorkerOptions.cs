@@ -5,6 +5,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     public class HttpWorkerOptions
     {
+        public string Type { get; set; }
+
         public HttpWorkerDescription Description { get; set; }
 
         public WorkerProcessArguments Arguments { get; set; }

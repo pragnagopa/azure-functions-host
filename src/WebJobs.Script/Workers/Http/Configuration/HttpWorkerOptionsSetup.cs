@@ -36,22 +36,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (httpWorkerSection.Exists() && customHandlerSection.Exists())
             {
-                throw new HostConfigurationException($"Specifying both {ConfigurationSectionNames.HttpWorker} and {ConfigurationSectionNames.CustomHandler} in {ScriptConstants.HostMetadataFileName} file is not supported.");
+                throw new HostConfigurationException($"Specifying both {ConfigurationSectionNames.HttpWorker} and {ConfigurationSectionNames.CustomHandler} sections in {ScriptConstants.HostMetadataFileName} file is not supported.");
             }
 
             if (customHandlerSection.Exists())
             {
-                ConfigureOptionsHelper(options, customHandlerSection);
+                ConfigureWorkerDescription(options, customHandlerSection);
                 return;
             }
 
-            ConfigureOptionsHelper(options, httpWorkerSection);
+            if (httpWorkerSection.Exists())
+            {
+                // TODO: Add aka.ms/link to new docs
+                _logger.LogWarning($"Section {ConfigurationSectionNames.HttpWorker} will be deprecated. Please use {ConfigurationSectionNames.CustomHandler} section.");
+                ConfigureWorkerDescription(options, httpWorkerSection);
+                // Explicity set this empty to differentiate between customHandler and httpWorker options.
+                options.Type = string.Empty;
+            }
         }
 
-        private void ConfigureOptionsHelper(HttpWorkerOptions options, IConfigurationSection workerSection)
+        private void ConfigureWorkerDescription(HttpWorkerOptions options, IConfigurationSection workerSection)
         {
-            if (workerSection.Exists())
-            {
                 workerSection.Bind(options);
                 HttpWorkerDescription httpWorkerDescription = options.Description;
 
@@ -83,7 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
                 options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
                 options.Port = GetUnusedTcpPort();
-            }
         }
 
         private static List<string> GetArgumentList(IConfigurationSection httpWorkerSection, string argumentSectioName)

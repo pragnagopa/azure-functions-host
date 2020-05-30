@@ -168,7 +168,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
         {
-            httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, functionName).ToString());
+            string pathValue = functionName;
+            // _httpWorkerOptions.Type is populated only in customHandler section
+            if (httpRequestMessage.RequestUri != null && !string.IsNullOrEmpty(_httpWorkerOptions.Type))
+            {
+                pathValue = httpRequestMessage.RequestUri.AbsolutePath.Normalize();
+            }
+            httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString());
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
