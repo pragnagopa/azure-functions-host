@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     public class HttpWorkerOptions
     {
-        public string Type { get; set; }
+        public string Type { get; set; } = "http";
 
         public HttpWorkerDescription Description { get; set; }
 

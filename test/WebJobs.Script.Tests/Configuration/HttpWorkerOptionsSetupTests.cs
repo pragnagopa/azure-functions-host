@@ -99,6 +99,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
         }
 
+        [Theory]
+        [InlineData(@"{
+                    'version': '2.0',
+                    }")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'customHandler': {
+                            'description': {
+                                'defaultExecutablePath': 'testExe'
+                            }
+                        }
+                    }")]
+        public void MissingOrValid_CustomHandlerConfig_DoesNotThrowException(string hostJsonContent)
+        {
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            var configuration = BuildHostJsonConfiguration();
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptions options = new HttpWorkerOptions();
+            var ex = Record.Exception(() =>
+            {
+                try
+                {
+                    setup.Configure(options);
+                }
+                catch (FileNotFoundException)
+                {
+                }
+            });
+            Assert.Null(ex);
+            if (options.Description != null && !string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
+            {
+                string expectedDefaultExecutablePath = Path.Combine(_scriptJobHostOptions.RootScriptPath, "testExe");
+                Assert.Equal(expectedDefaultExecutablePath, options.Description.DefaultExecutablePath);
+                Assert.Equal(_scriptJobHostOptions.RootScriptPath, options.Description.WorkerDirectory);
+                Assert.Equal(_scriptJobHostOptions.RootScriptPath, options.Description.WorkingDirectory);
+                Assert.Equal("http", options.Type);
+                Assert.True(options.EnableHttpRequestForward);
+            }
+        }
+
         [Fact]
         public void InValid_HttpWorkerConfig_Throws_HostConfigurationException()
         {
@@ -115,17 +155,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
             var ex = Assert.Throws<HostConfigurationException>(() => setup.Configure(options));
-            Assert.Contains("Missing WorkerDescription for HttpWorker", ex.Message);
+            Assert.Contains("Missing WorkerDescription", ex.Message);
         }
 
         [Fact]
-        public void HttpWorkerConfig_ExpandEnvVars()
+        public void CustomHandlerConfig_ExpandEnvVars()
         {
             string hostJsonContent = @"{
                     'version': '2.0',
-                    'httpWorker': {
+                    'customHandler': {
                             'description': {
-                                'langauge': 'testExe',
                                 'defaultExecutablePath': '%TestEnv%',
                                 'defaultWorkerPath': '%TestEnv%',
                                 'arguments': ['--xTest1',  '%TestEnv%'],
@@ -154,19 +193,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Contains("--xTest2", options.Description.WorkerArguments);
         }
 
-        [Fact]
-        public void HttpWorkerConfig_DefaultExecutablePathFromSystemPath_DoesNotThrow()
-        {
-            string hostJsonContent = @"{
+        [Theory]
+        [InlineData(@"{
                     'version': '2.0',
-                    'httpWorker': {
+                    'customHandler': {
                             'description': {
-                                'langauge': 'testExe',
+                                'defaultExecutablePath': 'dotnet',
+                                'arguments':['ManualTrigger/run.csx']
+                            }
+                        }
+                    }")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'customHandler': {
+                            'description': {
                                 'defaultExecutablePath': 'dotnet',
                                 'defaultWorkerPath':'ManualTrigger/run.csx'
                             }
                         }
-                    }";
+                    }")]
+        public void CustomHandlerConfig_DefaultExecutablePathFromSystemPath_DoesNotThrow(string hostJsonContent)
+        {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
@@ -279,6 +326,75 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             Assert.Equal(1, options.Description.Arguments.Count);
             Assert.Equal("--xTest1 --xTest2", options.Description.Arguments[0]);
+        }
+
+        [Theory]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'customHandler': {
+                            'description': {
+                                'defaultExecutablePath': 'node',
+                                'arguments': ['httpWorker.js'],
+                                'workingDirectory': 'c:/myWorkingDir',
+                                'workerDirectory': 'c:/myWorkerDir'
+                            }
+                        }
+                    }", false, false, false)]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'customHandler': {
+                            'description': {
+                                'defaultExecutablePath': 'node',
+                                'workingDirectory': 'myWorkingDir',
+                                'workerDirectory': 'myWorkerDir'
+                            }
+                        }
+                    }", true, true, true)]
+        public void CustomHandler_Config_ExpectedValues_WorkerDirectory_WorkingDirectory(string hostJsonContent, bool appendCurrentDirToDefaultExe, bool appendCurrentDirToWorkingDir, bool appendCurrentDirToWorkerDir)
+        {
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            var configuration = BuildHostJsonConfiguration();
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptions options = new HttpWorkerOptions();
+
+            try
+            {
+                setup.Configure(options);
+            }
+            catch (FileNotFoundException)
+            {
+                //ignore
+            }
+
+            //Verify worker exe path is expected
+            if (appendCurrentDirToDefaultExe)
+            {
+                Assert.Equal(Path.Combine(_scriptJobHostOptions.RootScriptPath, "myWorkerDir", "node"), options.Description.DefaultExecutablePath);
+            }
+            else
+            {
+                Assert.Equal("node", options.Description.DefaultExecutablePath);
+            }
+
+            // Verify worker dir is expected
+            if (appendCurrentDirToWorkerDir)
+            {
+                Assert.Equal(Path.Combine(_scriptJobHostOptions.RootScriptPath, "myWorkerDir"), options.Description.WorkerDirectory);
+            }
+            else
+            {
+                Assert.Equal(@"c:/myWorkerDir", options.Description.WorkerDirectory);
+            }
+
+            //Verify workering Dir is expected
+            if (appendCurrentDirToWorkingDir)
+            {
+                Assert.Equal(Path.Combine(_scriptJobHostOptions.RootScriptPath, "myWorkingDir"), options.Description.WorkingDirectory);
+            }
+            else
+            {
+                Assert.Equal(@"c:/myWorkingDir", options.Description.WorkingDirectory);
+            }
         }
 
         [Fact]
