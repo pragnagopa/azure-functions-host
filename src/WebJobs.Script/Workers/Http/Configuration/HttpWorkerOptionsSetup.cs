@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (httpWorkerSection.Exists() && customHandlerSection.Exists())
             {
-                throw new HostConfigurationException($"Specifying both {ConfigurationSectionNames.HttpWorker} and {ConfigurationSectionNames.CustomHandler} sections in {ScriptConstants.HostMetadataFileName} file is not supported.");
+                _logger.LogWarning($"Both {ConfigurationSectionNames.HttpWorker} and {ConfigurationSectionNames.CustomHandler} sections are spefified in {ScriptConstants.HostMetadataFileName} file. {ConfigurationSectionNames.CustomHandler} takes precedence.");
             }
 
             if (customHandlerSection.Exists())
@@ -57,37 +58,50 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private void ConfigureWorkerDescription(HttpWorkerOptions options, IConfigurationSection workerSection)
         {
-                workerSection.Bind(options);
-                HttpWorkerDescription httpWorkerDescription = options.Description;
+            workerSection.Bind(options);
+            HttpWorkerDescription httpWorkerDescription = options.Description;
 
-                if (httpWorkerDescription == null)
+            if (httpWorkerDescription == null)
+            {
+                throw new HostConfigurationException($"Missing WorkerDescription");
+            }
+
+            var argumentsList = GetArgumentList(workerSection, argumentsSectionName);
+            if (argumentsList != null)
+            {
+                httpWorkerDescription.Arguments = argumentsList;
+            }
+
+            var workerArgumentList = GetArgumentList(workerSection, workerArgumentsSectionName);
+            if (workerArgumentList != null)
+            {
+                httpWorkerDescription.WorkerArguments = workerArgumentList;
+            }
+
+            httpWorkerDescription.ApplyDefaultsAndValidate(_scriptJobHostOptions.RootScriptPath, _logger);
+
+            // Set default working directory to function app root.
+            if (string.IsNullOrEmpty(httpWorkerDescription.WorkingDirectory))
+            {
+                httpWorkerDescription.WorkingDirectory = _scriptJobHostOptions.RootScriptPath;
+            }
+            else
+            {
+                // Compute working directory relative to fucntion app root.
+                if (!Path.IsPathRooted(httpWorkerDescription.WorkingDirectory))
                 {
-                    throw new HostConfigurationException($"Missing WorkerDescription");
+                    httpWorkerDescription.WorkingDirectory = Path.Combine(_scriptJobHostOptions.RootScriptPath, httpWorkerDescription.WorkingDirectory);
                 }
+            }
 
-                var argumentsList = GetArgumentList(workerSection, argumentsSectionName);
-                if (argumentsList != null)
-                {
-                    httpWorkerDescription.Arguments = argumentsList;
-                }
+            options.Arguments = new WorkerProcessArguments()
+            {
+                ExecutablePath = options.Description.DefaultExecutablePath,
+                WorkerPath = options.Description.DefaultWorkerPath
+            };
 
-                var workerArgumentList = GetArgumentList(workerSection, workerArgumentsSectionName);
-                if (workerArgumentList != null)
-                {
-                    httpWorkerDescription.WorkerArguments = workerArgumentList;
-                }
-
-                httpWorkerDescription.ApplyDefaultsAndValidate(_scriptJobHostOptions.RootScriptPath, _logger);
-                // Set default working directory to function app root.
-                httpWorkerDescription.WorkingDirectory = httpWorkerDescription.WorkingDirectory ?? _scriptJobHostOptions.RootScriptPath;
-                options.Arguments = new WorkerProcessArguments()
-                {
-                    ExecutablePath = options.Description.DefaultExecutablePath,
-                    WorkerPath = options.Description.DefaultWorkerPath
-                };
-
-                options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
-                options.Port = GetUnusedTcpPort();
+            options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
+            options.Port = GetUnusedTcpPort();
         }
 
         private static List<string> GetArgumentList(IConfigurationSection httpWorkerSection, string argumentSectioName)

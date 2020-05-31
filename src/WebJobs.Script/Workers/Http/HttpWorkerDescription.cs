@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
@@ -32,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             // If DefaultWorkerPath is not set then compute full path for DefaultExecutablePath from WorkingDirectory.
             // Empty DefaultWorkerPath indicates DefaultExecutablePath is either a runtime on the system path or a file relative to WorkingDirectory.
             // No need to find full path for DefaultWorkerPath as WorkerDirectory will be set when launching the worker process.
-            if (string.IsNullOrEmpty(DefaultWorkerPath) && !string.IsNullOrEmpty(DefaultExecutablePath) && !Path.IsPathRooted(DefaultExecutablePath))
+            // DefaultWorkerPath can be specified as part of the arguments list
+            if (string.IsNullOrEmpty(DefaultWorkerPath) && !string.IsNullOrEmpty(DefaultExecutablePath) && !Path.IsPathRooted(DefaultExecutablePath) && !Arguments.Any())
             {
                 DefaultExecutablePath = Path.Combine(WorkerDirectory, DefaultExecutablePath);
             }
