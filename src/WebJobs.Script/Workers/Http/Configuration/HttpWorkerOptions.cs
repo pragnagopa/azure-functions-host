@@ -12,5 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         public WorkerProcessArguments Arguments { get; set; }
 
         public int Port { get; set; }
+
+        public bool EnableHttpRequestForward { get; set; }
     }
 }
