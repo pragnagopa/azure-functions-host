@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             // _httpWorkerOptions.Type is populated only in customHandler section
             if (httpRequestMessage.RequestUri != null && !string.IsNullOrEmpty(_httpWorkerOptions.Type))
             {
-                pathValue = httpRequestMessage.RequestUri.AbsolutePath.Normalize();
+                pathValue = httpRequestMessage.RequestUri.AbsolutePath;
             }
             httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString());
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
