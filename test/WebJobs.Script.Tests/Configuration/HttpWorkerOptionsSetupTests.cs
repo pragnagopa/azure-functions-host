@@ -75,23 +75,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                             }
                         }
                     }")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'customHandler': {
+                            'description': {
+                                'defaultExecutablePath': 'testExe'
+                            }
+                        }
+                    }")]
         public void MissingOrValid_HttpWorkerConfig_DoesNotThrowException(string hostJsonContent)
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
-            var ex = Record.Exception(() =>
-            {
-                try
-                {
-                    setup.Configure(options);
-                }
-                catch (FileNotFoundException)
-                {
-                }
-            });
-            Assert.Null(ex);
+
+            setup.Configure(options);
+
             if (options.Description != null && !string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
             {
                 string expectedDefaultExecutablePath = Path.Combine(_scriptJobHostOptions.RootScriptPath, "testExe");
@@ -102,60 +102,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Theory]
         [InlineData(@"{
                     'version': '2.0',
-                    }")]
-        [InlineData(@"{
-                    'version': '2.0',
-                    'customHandler': {
-                            'description': {
-                                'defaultExecutablePath': 'testExe'
-                            }
-                        }
-                    }")]
-        public void MissingOrValid_CustomHandlerConfig_DoesNotThrowException(string hostJsonContent)
-        {
-            File.WriteAllText(_hostJsonFile, hostJsonContent);
-            var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
-            HttpWorkerOptions options = new HttpWorkerOptions();
-            var ex = Record.Exception(() =>
-            {
-                try
-                {
-                    setup.Configure(options);
-                }
-                catch (FileNotFoundException)
-                {
-                }
-            });
-            Assert.Null(ex);
-            if (options.Description != null && !string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
-            {
-                string expectedDefaultExecutablePath = Path.Combine(_scriptJobHostOptions.RootScriptPath, "testExe");
-                Assert.Equal(expectedDefaultExecutablePath, options.Description.DefaultExecutablePath);
-                Assert.Equal(_scriptJobHostOptions.RootScriptPath, options.Description.WorkerDirectory);
-                Assert.Equal(_scriptJobHostOptions.RootScriptPath, options.Description.WorkingDirectory);
-                Assert.Equal("http", options.Type);
-                Assert.True(options.EnableHttpRequestForward);
-            }
-        }
-
-        [Fact]
-        public void InValid_HttpWorkerConfig_Throws_HostConfigurationException()
-        {
-            string hostJsonContent = @"{
-                    'version': '2.0',
                     'httpWorker': {
                             'invalid': {
                                 'defaultExecutablePath': 'testExe'
                             }
                         }
-                    }";
+                    }")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'httpWorker': {
+                            'description': {
+                                'langauge': 'testExe'
+                            }
+                        }
+                    }")]
+        public void InValid_HttpWorkerConfig_Throws_Exception(string hostJsonContent)
+        {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
-            var ex = Assert.Throws<HostConfigurationException>(() => setup.Configure(options));
-            Assert.Contains("Missing WorkerDescription", ex.Message);
+            var ex = Record.Exception(() => setup.Configure(options));
+            Assert.NotNull(ex);
+            if (options.Description == null)
+            {
+                Assert.IsType<HostConfigurationException>(ex);
+                Assert.Equal($"Missing Description section in {ConfigurationSectionNames.CustomHandler} section.", ex.Message);
+            }
+            else
+            {
+                Assert.IsType<ValidationException>(ex);
+                Assert.Equal($"WorkerDescription DefaultExecutablePath cannot be empty", ex.Message);
+            }
         }
 
         [Fact]
@@ -166,9 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'customHandler': {
                             'description': {
                                 'defaultExecutablePath': '%TestEnv%',
-                                'defaultWorkerPath': '%TestEnv%',
-                                'arguments': ['--xTest1',  '%TestEnv%'],
-                                'workerArguments': ['--xTest2', '%TestEnv%']
+                                'defaultWorkerPath': '%TestEnv%'
                             }
                         }
                     }";
@@ -176,21 +152,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
-            try
-            {
-                setup.Configure(options);
-            }
-            catch (FileNotFoundException)
-            {
-            }
+            setup.Configure(options);
             Assert.Equal("TestVal", options.Description.DefaultExecutablePath);
             Assert.Contains("TestVal", options.Description.DefaultWorkerPath);
-            Assert.Equal(2, options.Description.Arguments.Count);
-            Assert.Contains("TestVal", options.Description.Arguments);
-            Assert.Contains("--xTest1", options.Description.Arguments);
-            Assert.Equal(2, options.Description.WorkerArguments.Count);
-            Assert.Contains("TestVal", options.Description.WorkerArguments);
-            Assert.Contains("--xTest2", options.Description.WorkerArguments);
         }
 
         [Theory]
@@ -222,25 +186,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal("dotnet", options.Description.DefaultExecutablePath);
         }
 
-        [Fact]
-        public void InValid_HttpWorkerConfig_Throws_ValidationException()
-        {
-            string hostJsonContent = @"{
-                    'version': '2.0',
-                    'httpWorker': {
-                            'description': {
-                                'langauge': 'testExe'
-                            }
-                        }
-                    }";
-            File.WriteAllText(_hostJsonFile, hostJsonContent);
-            var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
-            HttpWorkerOptions options = new HttpWorkerOptions();
-            var ex = Assert.Throws<ValidationException>(() => setup.Configure(options));
-            Assert.Contains("WorkerDescription DefaultExecutablePath cannot be empty", ex.Message);
-        }
-
         [Theory]
         [InlineData(@"{
                     'version': '2.0',
@@ -260,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                                 'defaultExecutablePath': 'node'
                             }
                         }
-                    }", true, false, false)]
+                    }", false, false, false)]
         [InlineData(@"{
                     'version': '2.0',
                     'httpWorker': {
@@ -287,15 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
 
-            try
-            {
-                setup.Configure(options);
-            }
-            catch (FileNotFoundException)
-            {
-                //ignore
-            }
-
+            setup.Configure(options);
             //Verify worker exe path is expected
             if (appendCurrentDirectoryToExe)
             {
@@ -356,16 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
-
-            try
-            {
-                setup.Configure(options);
-            }
-            catch (FileNotFoundException)
-            {
-                //ignore
-            }
-
+            setup.Configure(options);
             //Verify worker exe path is expected
             if (appendCurrentDirToDefaultExe)
             {
