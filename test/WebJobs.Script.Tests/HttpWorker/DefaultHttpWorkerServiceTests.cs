@@ -80,6 +80,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         }
 
         [Fact]
+        public async Task ProcessDefaultInvocationRequest_CustomHandler_EnableRequestForwarding_False()
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+            var customHandlerOptions = new HttpWorkerOptions()
+            {
+                Port = _defaultPort,
+                Type = "http"
+            };
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateDefaultInvocationRequest(request))
+                .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage());
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(customHandlerOptions), _testLogger);
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
+            await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
+            var invocationResult = await testScriptInvocationContext.ResultSource.Task;
+
+            var expectedHttpScriptInvocationResult = HttpWorkerTestUtilities.GetTestHttpScriptInvocationResult();
+            var testLogs = _functionLogger.GetLogMessages();
+            Assert.True(testLogs.Count() == expectedHttpScriptInvocationResult.Logs.Count());
+            Assert.True(testLogs.All(m => m.FormattedMessage.Contains("invocation log")));
+            Assert.Equal(expectedHttpScriptInvocationResult.Outputs.Count(), invocationResult.Outputs.Count());
+            Assert.Equal(expectedHttpScriptInvocationResult.ReturnValue, invocationResult.Return);
+        }
+
+        [Fact]
         public async Task ProcessDefaultInvocationRequest_DataType_Binary_Succeeds()
         {
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
@@ -168,6 +197,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessHttpInAndOutInvocationRequest(testScriptInvocationContext);
+            var invocationResult = await testScriptInvocationContext.ResultSource.Task;
+            var expectedHttpResponseMessage = HttpWorkerTestUtilities.GetValidSimpleHttpResponseMessage();
+            var expectedResponseContent = await expectedHttpResponseMessage.Content.ReadAsStringAsync();
+
+            var testLogs = _functionLogger.GetLogMessages();
+            Assert.Equal(0, testLogs.Count());
+
+            Assert.Equal(1, invocationResult.Outputs.Count());
+            var httpOutputResponse = invocationResult.Outputs.FirstOrDefault().Value as HttpResponseMessage;
+            Assert.NotNull(httpOutputResponse);
+            Assert.Equal(expectedHttpResponseMessage.StatusCode, httpOutputResponse.StatusCode);
+            Assert.Equal(expectedResponseContent, await httpOutputResponse.Content.ReadAsStringAsync());
+
+            var response = invocationResult.Return as HttpResponseMessage;
+            Assert.NotNull(response);
+            Assert.Equal(expectedHttpResponseMessage.StatusCode, response.StatusCode);
+            Assert.Equal(expectedResponseContent, await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public async Task ProcessSimpleHttpTriggerInvocationRequest_CustomHandler_EnableForwardingHttpRequest_True()
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+            var customHandlerOptions = new HttpWorkerOptions()
+            {
+                Port = _defaultPort,
+                Type = "http",
+                EnableForwardingHttpRequest = true
+            };
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateSimpleHttpTriggerInvocationRequest(request))
+                .ReturnsAsync(HttpWorkerTestUtilities.GetValidSimpleHttpResponseMessage());
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(customHandlerOptions), _testLogger);
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
+            await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
             var expectedHttpResponseMessage = HttpWorkerTestUtilities.GetValidSimpleHttpResponseMessage();
             var expectedResponseContent = await expectedHttpResponseMessage.Content.ReadAsStringAsync();

@@ -38,9 +38,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
         {
-            if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction() && _httpWorkerOptions.EnableHttpRequestForward)
+            if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction())
             {
-                return ProcessHttpInAndOutInvocationRequest(scriptInvocationContext);
+                // type is empty for httpWorker. Opt-in for custom handler section.
+                if (string.IsNullOrEmpty(_httpWorkerOptions.Type) || _httpWorkerOptions.EnableForwardingHttpRequest)
+                {
+                    return ProcessHttpInAndOutInvocationRequest(scriptInvocationContext);
+                }
+                return ProcessDefaultInvocationRequest(scriptInvocationContext);
             }
             return ProcessDefaultInvocationRequest(scriptInvocationContext);
         }

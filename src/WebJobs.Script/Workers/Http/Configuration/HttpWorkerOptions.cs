@@ -13,6 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public int Port { get; set; }
 
-        public bool EnableHttpRequestForward { get; set; } = true;
+        public bool EnableForwardingHttpRequest { get; set; }
     }
 }
