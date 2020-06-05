@@ -199,16 +199,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return defaultWorkerDescription;
         }
 
-        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
+        private void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
         {
             var defaultExecutablePathSetting = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionDefaultExecutablePath}");
             workerDescription.DefaultExecutablePath = defaultExecutablePathSetting.Value != null ? defaultExecutablePathSetting.Value : workerDescription.DefaultExecutablePath;
 
             var defaultRuntimeVersionAppSetting = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}");
+            _logger.LogInformation($" defaultRuntimeVersionAppSetting.Key: {defaultRuntimeVersionAppSetting.Key} path {defaultRuntimeVersionAppSetting.Path} defaultRuntimeVersionAppSetting.value: {defaultRuntimeVersionAppSetting.Value}");
             workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting.Value != null ? defaultRuntimeVersionAppSetting.Value : workerDescription.DefaultRuntimeVersion;
         }
 
-        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
+        internal void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
         {
             if (workerDescription.Language.Equals(RpcWorkerConstants.JavaLanguageWorkerName))
             {
