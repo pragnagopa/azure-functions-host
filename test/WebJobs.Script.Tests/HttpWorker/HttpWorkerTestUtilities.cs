@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         public static List<(string name, DataType type, object val)> GetSimpleHttpTriggerScriptInvocationInputs()
         {
             List<(string name, DataType type, object val)> inputs = new List<(string name, DataType type, object val)>();
-            inputs.Add(("myqueueItem", DataType.String, GetTestHttpRequest()));
+            inputs.Add(("testInputReq", DataType.String, GetTestHttpRequest()));
             return inputs;
         }
 

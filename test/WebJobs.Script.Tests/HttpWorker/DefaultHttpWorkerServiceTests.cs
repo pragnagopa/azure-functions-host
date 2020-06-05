@@ -10,6 +10,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ using Microsoft.Net.Http.Headers;
 using Moq;
 using Moq.Protected;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
@@ -91,15 +93,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateDefaultInvocationRequest(request))
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateeSimpleHttpTriggerSentAsDefaultInvocationRequest(request))
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage());
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(customHandlerOptions), _testLogger);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
-            await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
-            var invocationResult = await testScriptInvocationContext.ResultSource.Task;
-
+            var invocationResult = await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
             var expectedHttpScriptInvocationResult = HttpWorkerTestUtilities.GetTestHttpScriptInvocationResult();
             var testLogs = _functionLogger.GetLogMessages();
             Assert.True(testLogs.Count() == expectedHttpScriptInvocationResult.Logs.Count());
@@ -436,6 +436,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 Assert.True(httpScriptInvocationContext.Data.Keys.Contains(item.name));
                 Assert.Equal(JsonConvert.SerializeObject(item.val), httpScriptInvocationContext.Data[item.name]);
             }
+        }
+
+        private async void ValidateeSimpleHttpTriggerSentAsDefaultInvocationRequest(HttpRequestMessage httpRequestMessage)
+        {
+            Assert.Contains($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}", httpRequestMessage.Headers.UserAgent.ToString());
+            Assert.Equal(_testInvocationId.ToString(), httpRequestMessage.Headers.GetValues(HttpWorkerConstants.InvocationIdHeaderName).Single());
+            Assert.Equal(ScriptHost.Version, httpRequestMessage.Headers.GetValues(HttpWorkerConstants.HostVersionHeaderName).Single());
+            Assert.Equal(httpRequestMessage.RequestUri.ToString(), $"http://127.0.0.1:{_defaultPort}/{TestFunctionName}");
+
+            HttpScriptInvocationContext httpScriptInvocationContext = await httpRequestMessage.Content.ReadAsAsync<HttpScriptInvocationContext>();
+
+            // Verify Metadata
+            var expectedMetadata = HttpWorkerTestUtilities.GetScriptInvocationBindingData();
+            Assert.Equal(expectedMetadata.Count(), httpScriptInvocationContext.Metadata.Count());
+            foreach (var key in expectedMetadata.Keys)
+            {
+                Assert.Equal(JsonConvert.SerializeObject(expectedMetadata[key]), httpScriptInvocationContext.Metadata[key]);
+            }
+
+            // Verify Data
+            Assert.True(httpScriptInvocationContext.Data.Keys.Contains("testInputReq"));
+            JObject resultHttpReq = JObject.FromObject(httpScriptInvocationContext.Data["testInputReq"]);
+            JObject expectedHttpRequest = await HttpWorkerTestUtilities.GetTestHttpRequest().GetRequestAsJObject();
+            Assert.True(JToken.DeepEquals(expectedHttpRequest, resultHttpReq));
         }
 
         private async void ValidateSimpleHttpTriggerInvocationRequest(HttpRequestMessage httpRequestMessage)
