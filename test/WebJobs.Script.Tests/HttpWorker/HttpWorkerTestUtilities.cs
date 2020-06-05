@@ -129,6 +129,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             };
         }
 
+        public static HttpResponseMessage GetValidHttpResponseMessageWithJsonRes()
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ObjectContent<HttpScriptInvocationResult>(GetHttpScriptInvocationResultWithJsonRes(), new JsonMediaTypeFormatter())
+            };
+        }
+
         public static HttpResponseMessage GetValidHttpResponseMessage_DataType_Binary_Data()
         {
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -239,6 +247,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             functionMetadata.Bindings.Add(queueOutputRetrun);
             scriptInvocationContext.FunctionMetadata = functionMetadata;
             return scriptInvocationContext;
+        }
+
+        public static HttpScriptInvocationResult GetHttpScriptInvocationResultWithJsonRes()
+        {
+            JObject httpRes = new JObject();
+            httpRes["statusCode"] = "201";
+            httpRes["body"] = "my world";
+            return new HttpScriptInvocationResult()
+            {
+                Logs = new List<string>() { "invocation log1", "invocation log2" },
+                Outputs = new Dictionary<string, object>()
+                {
+                    { "res", httpRes }
+                }
+            };
         }
 
         public static ScriptInvocationContext GetSimpleHttpTriggerScriptInvocationContext(string functionName, Guid invocationId, ILogger testLogger)

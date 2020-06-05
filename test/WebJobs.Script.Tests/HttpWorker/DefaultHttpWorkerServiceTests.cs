@@ -94,18 +94,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>())
                 .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateeSimpleHttpTriggerSentAsDefaultInvocationRequest(request))
-                .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage());
+                .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessageWithJsonRes());
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(customHandlerOptions), _testLogger);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
-            var invocationResult = await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
-            var expectedHttpScriptInvocationResult = HttpWorkerTestUtilities.GetTestHttpScriptInvocationResult();
+            await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
+            var invocationResult = await testScriptInvocationContext.ResultSource.Task;
+
+            var expectedHttpScriptInvocationResult = HttpWorkerTestUtilities.GetHttpScriptInvocationResultWithJsonRes();
             var testLogs = _functionLogger.GetLogMessages();
             Assert.True(testLogs.Count() == expectedHttpScriptInvocationResult.Logs.Count());
             Assert.True(testLogs.All(m => m.FormattedMessage.Contains("invocation log")));
             Assert.Equal(expectedHttpScriptInvocationResult.Outputs.Count(), invocationResult.Outputs.Count());
             Assert.Equal(expectedHttpScriptInvocationResult.ReturnValue, invocationResult.Return);
+            var responseJson = JObject.Parse(invocationResult.Outputs["res"].ToString());
+            Assert.Equal("my world", responseJson["Body"]);
+            Assert.Equal("201", responseJson["StatusCode"]);
         }
 
         [Fact]

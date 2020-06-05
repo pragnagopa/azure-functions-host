@@ -31,17 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         public void ToScripInvocationResultTests(bool includeReturnValue)
         {
             var testInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext("test", Guid.NewGuid(), new TestLogger("test"));
-            JObject httpRes = new JObject();
-            httpRes["statusCode"] = "201";
-            httpRes["body"] = "my world";
-            var testHttpInvocationResult = new HttpScriptInvocationResult()
-            {
-                Logs = new List<string>() { "invocation log1", "invocation log2" },
-                Outputs = new Dictionary<string, object>()
-                {
-                    { "res", httpRes }
-                }
-            };
+            var testHttpInvocationResult = HttpWorkerTestUtilities.GetHttpScriptInvocationResultWithJsonRes();
             if (includeReturnValue)
             {
                 testHttpInvocationResult.ReturnValue = "Hello return";
