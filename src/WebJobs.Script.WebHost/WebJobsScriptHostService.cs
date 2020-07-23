@@ -292,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 bool isActiveHost = ReferenceEquals(localHost, ActiveHost);
                 ILogger logger = GetHostLogger(localHost);
-                logger.LogError(exc, "Starup error.....");
+                logger.LogError(exc.StackTrace);
 
                 if (isActiveHost)
                 {
